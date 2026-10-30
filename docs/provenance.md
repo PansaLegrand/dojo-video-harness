@@ -16,8 +16,7 @@ Harness adaptations:
 - New local host with filesystem persistence, run/approval state, and BYOK providers.
 - New small function-calling loop, executable tool registry, and Markdown skills.
 - Replacement of SaaS project/auth/translation dependencies with local adapters.
-- A single chat composer that changes mode for pending questions, explicit review
-  before application, and compact tool traces.
+- Product-synced chat, clarification, review, and quick-edit components with local host policy adapters.
 - Removal of the Prisma receipt helper from the pure semantic module; the local
   host verifies incoming evidence against its persisted provider receipts instead.
 - Removal of the private media identity package dependency, which was only used
@@ -28,8 +27,7 @@ Harness adaptations:
   distribution. This preserves the renderer/command schema API while consuming
   the updated dependency. Engine source import suffixes retain the existing
   DojoClip source-build transformation.
-- Shared TypeScript/Vite aliases and a vendor base configuration for standalone
-  source compilation.
+- Next.js App Router, shared TypeScript aliases, and a vendor base configuration for standalone source compilation. Vite is retained only for tests and the optional product reference fixture.
 
 `scripts/extract-editor.mjs` records the one-time extraction procedure. Do not
 rerun it over the adapted working tree. Future engine updates should reconcile
@@ -41,3 +39,7 @@ this is unrelated to the source license. This repository is published publicly u
 ## Engine naming migration — 2026-10-31
 
 The engine repository, package scope, source paths, schema/tool identities, and API names now use `dojo-video-engine` / `@dojo-video-engine/*` / `DojoVideoEngine`. The extraction manifest retains original content hashes; its renamed path labels are navigation aids, not claims that the source bytes are unchanged. Historical paths remain available in Git history.
+
+## Product UI alignment — 2026-10-31
+
+The custom application/chat presentation was superseded by the product components. `config/product-ui.manifest.json` records 84 managed UI, style, locale, and route files. The new conflict-aware sync command and explicit host wrappers replace the one-time extraction workflow for UI upkeep.

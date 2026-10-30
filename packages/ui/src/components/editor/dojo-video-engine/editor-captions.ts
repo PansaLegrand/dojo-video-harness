@@ -67,24 +67,13 @@ export function serializeEditorSubtitles(
     .join("\n");
 }
 
-const openingPunctuation = new Set([
-  "“",
-  "‘",
-  "(",
-  "[",
-  "{",
-  "「",
-  "『",
-  "【",
-  "（",
-]);
+const openingPunctuation = new Set(["“", "‘", "(", "[", "{", "「", "『", "【", "（"]);
 function openingTailStart(value: string) {
   let cursor = value.length;
   while (cursor > 0 && /\s/u.test(value[cursor - 1]!)) cursor--;
   let found = false;
   while (cursor > 0 && openingPunctuation.has(value[cursor - 1]!)) {
-    found = true;
-    cursor--;
+    found = true; cursor--;
     while (cursor > 0 && /\s/u.test(value[cursor - 1]!)) cursor--;
   }
   return found ? cursor : value.length;
@@ -94,15 +83,11 @@ function utteranceWordSpans(text: string, words: Array<{ text: string }>) {
   const spans: Array<{ start: number; end: number }> = [];
   let cursor = 0;
   for (const word of words) {
-    const pattern = Array.from(word.text)
-      .map(
-        (letter, index) =>
-          (index > 0 && /\p{P}/u.test(letter) ? "\\s*" : "") +
-          letter.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&"),
-      )
-      .join("");
-    const matcher = new RegExp(pattern, "giu");
-    matcher.lastIndex = cursor;
+    const pattern = Array.from(word.text).map((letter, index) =>
+      (index > 0 && /\p{P}/u.test(letter) ? "\\s*" : "") +
+      letter.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&"),
+    ).join("");
+    const matcher = new RegExp(pattern, "giu"); matcher.lastIndex = cursor;
     const match = matcher.exec(text);
     if (!match) return null;
     cursor = match.index + match[0].length;
@@ -112,17 +97,11 @@ function utteranceWordSpans(text: string, words: Array<{ text: string }>) {
 }
 
 /** Preserve original writing-system spacing and punctuation in a timed source slice. */
-function retainedUtteranceText(
-  text: string,
-  words: Array<{ text: string }>,
-  retained: number[],
-  spans: ReturnType<typeof utteranceWordSpans>,
-) {
+function retainedUtteranceText(text: string, words: Array<{ text: string }>, retained: number[], spans: ReturnType<typeof utteranceWordSpans>) {
   if (!words.length || retained.length === words.length) return text;
-  const fallback = () => retained.map((index) => words[index]!.text).join(" ");
+  const fallback = () => retained.map(index => words[index]!.text).join(" ");
   if (!retained.length) return "";
-  const first = retained[0]!,
-    last = retained.at(-1)!;
+  const first = retained[0]!, last = retained.at(-1)!;
   if (retained.length !== last - first + 1) return fallback();
   if (!spans) return fallback();
   let start = first === 0 ? 0 : spans[first]!.start;
@@ -168,38 +147,21 @@ export function editorCuesFromAsr(
       !utterance.text
     )
       return [];
-    const normalizedWords = normalizeAsrUtteranceWords(
-      utterance.words,
-      utterance.text,
-    );
+    const normalizedWords = normalizeAsrUtteranceWords(utterance.words, utterance.text);
     const spans = utteranceWordSpans(utterance.text, normalizedWords);
     const retained: number[] = [];
     const words = normalizedWords.flatMap((word, wordIndex) => {
       const start = Math.max(0, local(word.startMs));
       const end = Math.min(durationMs, local(word.endMs));
-      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
-        return [];
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
       retained.push(wordIndex);
       const span = spans?.[wordIndex];
-      return [
-        {
-          text: span ? utterance.text!.slice(span.start, span.end) : word.text,
-          startMs: start,
-          endMs: end,
-        },
-      ];
+      return [{ text: span ? utterance.text!.slice(span.start, span.end) : word.text, startMs: start, endMs: end }];
     });
     if (normalizedWords.length && !words.length) return [];
-    const text = retainedUtteranceText(
-      utterance.text,
-      normalizedWords,
-      retained,
-      spans,
-    );
+    const text = retainedUtteranceText(utterance.text, normalizedWords, retained, spans);
     // Conflicting provider prose/word tokens must not masquerade as precise highlights.
-    const timedWords = words.every((word) => text.includes(word.text))
-      ? words
-      : [];
+    const timedWords = words.every(word => text.includes(word.text)) ? words : [];
     return [
       {
         id: `asr-${index}`,
@@ -219,8 +181,7 @@ export async function startEditorTranscription(
   projectId: string,
   assetId: string,
   language: string,
-  signal: AbortSignal | undefined,
-  operationId: string,
+  signal?: AbortSignal,
 ) {
   return editorRequest<{ task_id: string }>(
     "/api/asr/tasks/create-and-start-automatic-speech-recognition",
@@ -230,7 +191,6 @@ export async function startEditorTranscription(
       signal,
       body: JSON.stringify({
         asset_id: assetId,
-        request_id: operationId,
         project_id: projectId,
         language,
         task_name: "Editor captions",
@@ -260,78 +220,26 @@ export async function getEditorTranscription(
   );
 }
 
-type TranslationData = {
-  task_id?: string;
-  project_id?: string | null;
-  target_language?: string;
-  output_subtitle_data?: {
-    utterances?: Array<{
-      text: string;
-      start_time_ms: number;
-      end_time_ms: number;
-    }>;
-  };
-};
+type TranslationData = { task_id?: string; project_id?: string | null; target_language?: string; output_subtitle_data?: { utterances?: Array<{ text: string; start_time_ms: number; end_time_ms: number }> } };
 function translatedCues(data: TranslationData, cues: CaptionCue[]) {
   const result = data.output_subtitle_data?.utterances;
-  if (!result?.length || result.length !== cues.length)
-    throw new Error(
-      "The translated result does not match the source captions.",
-    );
-  return result.map((cue, index) => ({
-    id: cues[index].id,
-    text: cue.text,
-    startMs: cues[index].startMs,
-    endMs: cues[index].endMs,
-  }));
+  if (!result?.length || result.length !== cues.length) throw new Error("The translated result does not match the source captions.");
+  return result.map((cue, index) => ({ id: cues[index].id, text: cue.text, startMs: cues[index].startMs, endMs: cues[index].endMs }));
 }
 export async function translateEditorCaptions(
-  projectId: string,
-  cues: CaptionCue[],
-  language: string,
-  signal?: AbortSignal,
-  sourceLanguage = "auto",
-  operationId: string = crypto.randomUUID(),
+  projectId: string, cues: CaptionCue[], language: string, signal?: AbortSignal, sourceLanguage = "auto",
 ): Promise<{ cues: CaptionCue[]; taskId?: string }> {
-  const data = await editorRequest<TranslationData>(
-    "/api/subtitle-translation",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal,
-      body: JSON.stringify({
-        project_id: projectId,
-        request_id: operationId,
-        source_language: sourceLanguage,
-        target_language: language,
-        text: cues.map((cue) => cue.text).join(" "),
-        utterances: cues.map((cue, index) => ({
-          text: cue.text,
-          index,
-          start_time_ms: Math.round(cue.startMs),
-          end_time_ms: Math.round(cue.endMs),
-        })),
-      }),
-    },
-  );
+  const data = await editorRequest<TranslationData>("/api/subtitle-translation", {
+    method: "POST", headers: { "Content-Type": "application/json" }, signal,
+    body: JSON.stringify({ project_id: projectId, source_language: sourceLanguage, target_language: language,
+      text: cues.map(cue => cue.text).join(" "),
+      utterances: cues.map((cue, index) => ({ text: cue.text, index, start_time_ms: Math.round(cue.startMs), end_time_ms: Math.round(cue.endMs) })),
+    }),
+  });
   return { cues: translatedCues(data, cues), taskId: data.task_id };
 }
-export async function recoverEditorTranslation(
-  projectId: string,
-  taskId: string,
-  cues: CaptionCue[],
-  language: string,
-  signal?: AbortSignal,
-) {
-  const data = await editorRequest<TranslationData>(
-    `/api/subtitle-translation/${encodeURIComponent(taskId)}`,
-    { signal },
-  );
-  if (
-    data.task_id !== taskId ||
-    data.project_id !== projectId ||
-    data.target_language !== language
-  )
-    throw new Error("The translation receipt does not match these captions.");
+export async function recoverEditorTranslation(projectId: string, taskId: string, cues: CaptionCue[], language: string, signal?: AbortSignal) {
+  const data = await editorRequest<TranslationData>(`/api/subtitle-translation/${encodeURIComponent(taskId)}`, { signal });
+  if (data.task_id !== taskId || data.project_id !== projectId || data.target_language !== language) throw new Error("The translation receipt does not match these captions.");
   return translatedCues(data, cues);
 }

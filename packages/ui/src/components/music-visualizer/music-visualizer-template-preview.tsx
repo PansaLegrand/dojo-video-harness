@@ -1,18 +1,13 @@
+"use client";
+
 import React from "react";
 import { cn } from "@/lib/utils";
 import type { MusicVisualizerLayerTemplate } from "@/types/music-visualizer";
 import "./music-visualizer-template-preview.css";
 
 /** Shared style illustrations for the visualizer creator and native editor. */
-export function VisualizerTemplatePreview(props: {
-  template: MusicVisualizerLayerTemplate;
-  borderless?: boolean;
-}) {
-  return (
-    <span className="music-visualizer-template-preview">
-      <VisualizerTemplateArtwork {...props} />
-    </span>
-  );
+export function VisualizerTemplatePreview(props: { template: MusicVisualizerLayerTemplate; borderless?: boolean }) {
+  return <span className="music-visualizer-template-preview"><VisualizerTemplateArtwork {...props} /></span>;
 }
 
 function VisualizerTemplateArtwork({
@@ -29,40 +24,31 @@ function VisualizerTemplateArtwork({
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950 p-3"
         style={{
-          background: `linear-gradient(145deg, ${template.background}, #020617), radial-gradient(circle at 70% 20%, ${template.accent}55, transparent 34%)`,
+          background:
+            `linear-gradient(145deg, ${template.background}, #020617), radial-gradient(circle at 70% 20%, ${template.accent}55, transparent 34%)`,
         }}
       >
         <span className="absolute inset-2 rounded-md bg-white/5" />
         <span
           className={cn(
             "absolute left-[18%] top-[25%] h-8 w-8 rounded-full shadow-inner",
-            borderless
-              ? "bg-white/10"
-              : "border-[6px] border-white/20 bg-gray-950",
+            borderless ? "bg-white/10" : "border-[6px] border-white/20 bg-gray-950"
           )}
         />
         <span
           className={cn(
             "absolute right-[18%] top-[25%] h-8 w-8 rounded-full shadow-inner",
-            borderless
-              ? "bg-white/10"
-              : "border-[6px] border-white/20 bg-gray-950",
+            borderless ? "bg-white/10" : "border-[6px] border-white/20 bg-gray-950"
           )}
         />
         <span
           className={cn(
             "absolute bottom-4 left-1/2 h-7 w-2/3 -translate-x-1/2 rounded-md bg-black/35",
-            !borderless && "ring-1 ring-white/10",
+            !borderless && "ring-1 ring-white/10"
           )}
         >
-          <span
-            className="absolute bottom-2 left-4 h-1 w-10 rounded-full"
-            style={{ background: template.accent }}
-          />
-          <span
-            className="absolute bottom-2 right-4 h-1 w-10 rounded-full"
-            style={{ background: template.secondary }}
-          />
+          <span className="absolute bottom-2 left-4 h-1 w-10 rounded-full" style={{ background: template.accent }} />
+          <span className="absolute bottom-2 right-4 h-1 w-10 rounded-full" style={{ background: template.secondary }} />
         </span>
       </span>
     );
@@ -74,13 +60,11 @@ function VisualizerTemplateArtwork({
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950 p-3"
         style={{
-          background: `radial-gradient(circle at 50% 50%, ${template.accent}33, transparent 55%), #030712`,
+          background:
+            `radial-gradient(circle at 50% 50%, ${template.accent}33, transparent 55%), #030712`,
         }}
       >
-        <span
-          className="absolute inset-x-4 top-1/2 h-10 -translate-y-1/2 rounded-full blur-lg"
-          style={{ background: template.glow }}
-        />
+        <span className="absolute inset-x-4 top-1/2 h-10 -translate-y-1/2 rounded-full blur-lg" style={{ background: template.glow }} />
         <svg
           viewBox="0 0 100 40"
           preserveAspectRatio="none"
@@ -116,40 +100,31 @@ function VisualizerTemplateArtwork({
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950 p-3"
         style={{
-          background: `radial-gradient(circle at 50% 50%, ${template.accent}33, transparent 55%), #030712`,
+          background:
+            `radial-gradient(circle at 50% 50%, ${template.accent}33, transparent 55%), #030712`,
         }}
       >
-        <span
-          className="absolute inset-x-5 top-1/2 h-6 -translate-y-1/2 rounded-full blur-xl"
-          style={{ background: template.glow }}
-        />
+        <span className="absolute inset-x-5 top-1/2 h-6 -translate-y-1/2 rounded-full blur-xl" style={{ background: template.glow }} />
         <span className="absolute inset-x-4 top-1/2 flex h-16 -translate-y-1/2 items-center gap-1">
-          {[26, 46, 34, 58, 40, 62, 44, 52, 30, 48, 36, 24].map(
-            (height, index) => (
+          {[26, 46, 34, 58, 40, 62, 44, 52, 30, 48, 36, 24].map((height, index) => (
+            <span key={`${height}-${index}`} className="flex flex-1 flex-col items-center gap-[3px]">
               <span
-                key={`${height}-${index}`}
-                className="flex flex-1 flex-col items-center gap-[3px]"
-              >
-                <span
-                  className="w-full rounded-full"
-                  style={{
-                    height: height / 2,
-                    background:
-                      index % 3 === 0 ? template.secondary : template.accent,
-                    boxShadow: `0 0 10px ${template.glow}`,
-                  }}
-                />
-                <span
-                  className="w-full rounded-full opacity-70"
-                  style={{
-                    height: height / 2,
-                    background:
-                      index % 3 === 0 ? template.secondary : template.accent,
-                  }}
-                />
-              </span>
-            ),
-          )}
+                className="w-full rounded-full"
+                style={{
+                  height: height / 2,
+                  background: index % 3 === 0 ? template.secondary : template.accent,
+                  boxShadow: `0 0 10px ${template.glow}`,
+                }}
+              />
+              <span
+                className="w-full rounded-full opacity-70"
+                style={{
+                  height: height / 2,
+                  background: index % 3 === 0 ? template.secondary : template.accent,
+                }}
+              />
+            </span>
+          ))}
         </span>
       </span>
     );
@@ -160,9 +135,7 @@ function VisualizerTemplateArtwork({
       <span
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950"
-        style={{
-          background: `radial-gradient(circle, ${template.accent}2e, transparent 58%), #030712`,
-        }}
+        style={{ background: `radial-gradient(circle, ${template.accent}2e, transparent 58%), #030712` }}
       >
         <span
           className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full"
@@ -177,8 +150,7 @@ function VisualizerTemplateArtwork({
             className="absolute left-1/2 top-1/2 h-[2px] origin-left rounded-full"
             style={{
               width: `${24 + (index % 5) * 3}px`,
-              background:
-                index % 4 === 0 ? template.secondary : template.accent,
+              background: index % 4 === 0 ? template.secondary : template.accent,
               transform: `rotate(${index * 15}deg) translateX(31px)`,
               boxShadow: `0 0 7px ${template.glow}`,
             }}
@@ -193,9 +165,7 @@ function VisualizerTemplateArtwork({
       <span
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950"
-        style={{
-          background: `radial-gradient(ellipse, ${template.accent}24, transparent 62%), #030712`,
-        }}
+        style={{ background: `radial-gradient(ellipse, ${template.accent}24, transparent 62%), #030712` }}
       >
         {[0, 1, 2].map((line) => (
           <span
@@ -230,9 +200,7 @@ function VisualizerTemplateArtwork({
       <span
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950"
-        style={{
-          background: `radial-gradient(circle, ${template.accent}35, transparent 60%), #030712`,
-        }}
+        style={{ background: `radial-gradient(circle, ${template.accent}35, transparent 60%), #030712` }}
       >
         {[62, 46, 30].map((size, index) => (
           <span
@@ -249,10 +217,7 @@ function VisualizerTemplateArtwork({
         ))}
         <span
           className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            background: template.foreground,
-            boxShadow: `0 0 18px ${template.glow}`,
-          }}
+          style={{ background: template.foreground, boxShadow: `0 0 18px ${template.glow}` }}
         />
       </span>
     );
@@ -263,9 +228,7 @@ function VisualizerTemplateArtwork({
       <span
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950"
-        style={{
-          background: `radial-gradient(ellipse, ${template.secondary}38, transparent 38%), #030712`,
-        }}
+        style={{ background: `radial-gradient(ellipse, ${template.secondary}38, transparent 38%), #030712` }}
       >
         {Array.from({ length: 38 }).map((_, index) => {
           const angle = index * 2.399;
@@ -279,12 +242,7 @@ function VisualizerTemplateArtwork({
                 top: `${50 + Math.sin(angle) * radius * 0.46}%`,
                 width: 2 + (index % 3),
                 height: 2 + (index % 3),
-                background:
-                  index % 4 === 0
-                    ? template.foreground
-                    : index % 2
-                      ? template.accent
-                      : template.secondary,
+                background: index % 4 === 0 ? template.foreground : index % 2 ? template.accent : template.secondary,
                 boxShadow: `0 0 7px ${template.glow}`,
               }}
             />
@@ -292,9 +250,7 @@ function VisualizerTemplateArtwork({
         })}
         <span
           className="absolute left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            background: `radial-gradient(circle, ${template.foreground}, ${template.accent}, transparent 72%)`,
-          }}
+          style={{ background: `radial-gradient(circle, ${template.foreground}, ${template.accent}, transparent 72%)` }}
         />
       </span>
     );
@@ -305,20 +261,13 @@ function VisualizerTemplateArtwork({
       <span
         aria-hidden="true"
         className="relative block h-24 overflow-hidden rounded-md bg-gray-950"
-        style={{
-          background: `radial-gradient(circle, ${template.accent}38, transparent 58%), #030712`,
-        }}
+        style={{ background: `radial-gradient(circle, ${template.accent}38, transparent 58%), #030712` }}
       >
         {[66, 54].map((size, index) => (
           <span
             key={size}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border"
-            style={{
-              width: size,
-              height: size,
-              borderColor: index ? template.secondary : template.accent,
-              opacity: 0.42,
-            }}
+            style={{ width: size, height: size, borderColor: index ? template.secondary : template.accent, opacity: 0.42 }}
           />
         ))}
         <span
@@ -368,10 +317,7 @@ function VisualizerTemplateArtwork({
                   width: size,
                   height: size - index * 3,
                   borderRadius: `${62 - index * 8}% ${38 + index * 8}% ${55 + index * 5}% ${45 - index * 5}%`,
-                  background:
-                    index === 2
-                      ? `linear-gradient(135deg, ${template.foreground}, ${template.accent}, ${template.secondary})`
-                      : "transparent",
+                  background: index === 2 ? `linear-gradient(135deg, ${template.foreground}, ${template.accent}, ${template.secondary})` : "transparent",
                   border: `2px solid ${index % 2 ? template.secondary : template.accent}`,
                   opacity: 0.45 + index * 0.2,
                   boxShadow: `0 0 14px ${template.glow}`,
@@ -395,10 +341,7 @@ function VisualizerTemplateArtwork({
                     left: `${50 + Math.cos(angle) * radius}%`,
                     top: `${50 + Math.sin(angle) * radius * 0.58}%`,
                     width: 3 + (index % 5) * 2,
-                    background:
-                      index % 4 === 0
-                        ? template.secondary
-                        : template.foreground,
+                    background: index % 4 === 0 ? template.secondary : template.foreground,
                     boxShadow: `0 0 6px ${template.glow}`,
                     transform: `rotate(${(angle * 180) / Math.PI}deg)`,
                   }}
@@ -419,11 +362,7 @@ function VisualizerTemplateArtwork({
                   key={index}
                   className="rounded-[2px]"
                   style={{
-                    background: lit
-                      ? row < 2
-                        ? template.secondary
-                        : template.accent
-                      : "rgba(255,255,255,.08)",
+                    background: lit ? (row < 2 ? template.secondary : template.accent) : "rgba(255,255,255,.08)",
                     boxShadow: lit ? `0 0 6px ${template.glow}` : undefined,
                   }}
                 />
@@ -448,13 +387,7 @@ function VisualizerTemplateArtwork({
                 }}
               />
             ))}
-            <span
-              className="absolute left-[8%] right-[8%] top-1/2 h-1 -translate-y-1/2 -skew-y-6 rounded-full"
-              style={{
-                background: template.foreground,
-                boxShadow: `0 0 12px ${template.glow}`,
-              }}
-            />
+            <span className="absolute left-[8%] right-[8%] top-1/2 h-1 -translate-y-1/2 -skew-y-6 rounded-full" style={{ background: template.foreground, boxShadow: `0 0 12px ${template.glow}` }} />
           </>
         ) : null}
 
@@ -486,32 +419,16 @@ function VisualizerTemplateArtwork({
                 boxShadow: `0 0 16px ${template.glow}`,
               }}
             />
-            <span
-              className="absolute right-[17%] top-[22%] h-2 w-14 origin-right rotate-[32deg] rounded-full"
-              style={{ background: template.foreground }}
-            />
+            <span className="absolute right-[17%] top-[22%] h-2 w-14 origin-right rotate-[32deg] rounded-full" style={{ background: template.foreground }} />
           </>
         ) : null}
 
         {template.key === "audio-terrain" ? (
           <span className="absolute inset-x-3 bottom-1 top-5 -skew-y-6 space-y-1">
             {Array.from({ length: 9 }).map((_, row) => (
-              <span
-                key={row}
-                className="flex h-1.5 items-end gap-[2px]"
-                style={{ opacity: 0.2 + row * 0.08 }}
-              >
+              <span key={row} className="flex h-1.5 items-end gap-[2px]" style={{ opacity: 0.2 + row * 0.08 }}>
                 {Array.from({ length: 18 }).map((__, column) => (
-                  <span
-                    key={column}
-                    className="flex-1 rounded-full"
-                    style={{
-                      height: `${35 + ((column * 11 + row * 7) % 65)}%`,
-                      background:
-                        column % 5 ? template.accent : template.secondary,
-                      boxShadow: `0 0 4px ${template.glow}`,
-                    }}
-                  />
+                  <span key={column} className="flex-1 rounded-full" style={{ height: `${35 + ((column * 11 + row * 7) % 65)}%`, background: column % 5 ? template.accent : template.secondary, boxShadow: `0 0 4px ${template.glow}` }} />
                 ))}
               </span>
             ))}
@@ -526,8 +443,7 @@ function VisualizerTemplateArtwork({
                 className="absolute left-1/2 top-1/2 h-[2px] origin-left rounded-full"
                 style={{
                   width: 18 + (index % 4) * 7,
-                  background:
-                    index % 3 === 0 ? template.secondary : template.foreground,
+                  background: index % 3 === 0 ? template.secondary : template.foreground,
                   boxShadow: `0 0 8px ${template.glow}`,
                   transform: `rotate(${index * 51 + (index % 4) * 8}deg) translateX(${(index % 3) * 8}px)`,
                 }}
@@ -544,11 +460,9 @@ function VisualizerTemplateArtwork({
                 className="absolute left-[7%] right-[7%] h-px rounded-full"
                 style={{
                   top: `${30 + line * 10}%`,
-                  background:
-                    line === 2 ? template.foreground : template.secondary,
+                  background: line === 2 ? template.foreground : template.secondary,
                   opacity: line === 2 ? 0.9 : 0.35,
-                  boxShadow:
-                    line === 2 ? `0 0 8px ${template.glow}` : undefined,
+                  boxShadow: line === 2 ? `0 0 8px ${template.glow}` : undefined,
                   transform: `skewY(${line % 2 ? 5 : -5}deg) translateY(${(line - 2) * 2}px)`,
                 }}
               />
@@ -569,25 +483,19 @@ function VisualizerTemplateArtwork({
           `radial-gradient(circle at 78% 20%, ${template.accent}44, transparent 32%), #030712`,
       }}
     >
-      <span
-        className="absolute inset-x-5 top-5 h-8 rounded-full blur-xl"
-        style={{ background: template.glow }}
-      />
+      <span className="absolute inset-x-5 top-5 h-8 rounded-full blur-xl" style={{ background: template.glow }} />
       <span className="absolute inset-x-4 bottom-4 flex items-end gap-1">
-        {[18, 34, 26, 48, 62, 38, 76, 46, 64, 28, 42, 22].map(
-          (height, index) => (
-            <span
-              key={`${height}-${index}`}
-              className="flex-1 rounded-full"
-              style={{
-                height,
-                background:
-                  index % 3 === 0 ? template.secondary : template.accent,
-                boxShadow: `0 0 12px ${template.glow}`,
-              }}
-            />
-          ),
-        )}
+        {[18, 34, 26, 48, 62, 38, 76, 46, 64, 28, 42, 22].map((height, index) => (
+          <span
+            key={`${height}-${index}`}
+            className="flex-1 rounded-full"
+            style={{
+              height,
+              background: index % 3 === 0 ? template.secondary : template.accent,
+              boxShadow: `0 0 12px ${template.glow}`,
+            }}
+          />
+        ))}
       </span>
     </span>
   );

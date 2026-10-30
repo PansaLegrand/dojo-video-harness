@@ -4,10 +4,8 @@ export const nativeEditorAdditionalCopy: Record<
   Record<string, string>
 > = {
   es: {
-    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.":
-      "La recuperación del navegador no está disponible. Mantén esta pestaña abierta hasta que se guarden los cambios pendientes.",
-    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.":
-      "Otra pestaña cambió los datos de recuperación de este proyecto. Mantén esta pestaña abierta hasta que se guarden sus cambios pendientes.",
+    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.": "La recuperación del navegador no está disponible. Mantén esta pestaña abierta hasta que se guarden los cambios pendientes.",
+    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.": "Otra pestaña cambió los datos de recuperación de este proyecto. Mantén esta pestaña abierta hasta que se guarden sus cambios pendientes.",
     "Retry browser recovery": "Reintentar recuperación del navegador",
     "Select layer": "Seleccionar capa",
     "Move layer": "Mover capa",
@@ -20,60 +18,39 @@ export const nativeEditorAdditionalCopy: Record<
     "Bottom left corner": "Esquina inferior izquierda",
     "Left edge": "Borde izquierdo",
     "Top left corner": "Esquina superior izquierda",
-    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.":
-      "Usa las flechas para mover o cambiar el tamaño un píxel. Mantén Mayús para diez píxeles. Suelta las flechas para guardar. Escape cancela.",
-    "Use the inspector to edit animated or transformed dimensions.":
-      "Usa el inspector para editar dimensiones animadas o transformadas.",
-    "More layers are available in the inspector.":
-      "Hay más capas disponibles en el inspector.",
-    "The selection contains a clip that is no longer available.":
-      "La selección incluye un clip que ya no está disponible.",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "Desbloquea todos los clips seleccionados y sus pistas vinculadas antes de usar esta acción por lotes.",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "Para ajustar tiempos por lotes, selecciona los clips de origen sin sus subtítulos o gráficos vinculados.",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "Desvincula el clip de su origen antes de cambiar su tiempo o duplicarlo.",
-    "Select 500 clips or fewer for a single batch edit.":
-      "Selecciona como máximo 500 clips para una sola edición por lotes.",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "Selecciona como máximo 250 clips para duplicarlos en un paso.",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "Todos los clips seleccionados deben moverse a pistas desbloqueadas del mismo tipo.",
+    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.": "Usa las flechas para mover o cambiar el tamaño un píxel. Mantén Mayús para diez píxeles. Suelta las flechas para guardar. Escape cancela.",
+    "Use the inspector to edit animated or transformed dimensions.": "Usa el inspector para editar dimensiones animadas o transformadas.",
+    "More layers are available in the inspector.": "Hay más capas disponibles en el inspector.",
+    "The selection contains a clip that is no longer available.": "La selección incluye un clip que ya no está disponible.",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "Desbloquea todos los clips seleccionados y sus pistas vinculadas antes de usar esta acción por lotes.",
+    "Select source clips without linked captions or graphics for batch timing edits.": "Para ajustar tiempos por lotes, selecciona los clips de origen sin sus subtítulos o gráficos vinculados.",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "Desvincula el clip de su origen antes de cambiar su tiempo o duplicarlo.",
+    "Select 500 clips or fewer for a single batch edit.": "Selecciona como máximo 500 clips para una sola edición por lotes.",
+    "Select 250 clips or fewer to duplicate in one step.": "Selecciona como máximo 250 clips para duplicarlos en un paso.",
+    "Every selected clip must move to an unlocked track of the same type.": "Todos los clips seleccionados deben moverse a pistas desbloqueadas del mismo tipo.",
     "Selected clips": "Clips seleccionados",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "Las acciones por lotes afectan a todos los clips seleccionados. El inspector edita el clip principal.",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "Las acciones por lotes afectan a todos los clips seleccionados. El inspector edita el clip principal.",
     "Duplicate selected clips": "Duplicar clips seleccionados",
     "Delete selected clips": "Eliminar clips seleccionados",
-    "Select 24 clips or fewer before asking the video agent.":
-      "Selecciona como máximo 24 clips antes de consultar al agente de video.",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "Mayús-clic selecciona un rango. ⌘/Ctrl-clic alterna la selección de clips. ⌘/Ctrl+A selecciona todos. Escape borra la selección.",
+    "Select 24 clips or fewer before asking the video agent.": "Selecciona como máximo 24 clips antes de consultar al agente de video.",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "Mayús-clic selecciona un rango. ⌘/Ctrl-clic alterna la selección de clips. ⌘/Ctrl+A selecciona todos. Escape borra la selección.",
     "Select one clip to split.": "Selecciona un solo clip para dividirlo.",
-    "You're offline. Your pending edits are kept in this browser.":
-      "Estás sin conexión. Tus cambios pendientes se conservan en este navegador.",
-    "Save interrupted. Retry will safely check the same edit.":
-      "Se interrumpió el guardado. Al reintentar se comprobará el mismo cambio de forma segura.",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "Vuelve a iniciar sesión para guardar. Tus cambios pendientes se conservan en este navegador.",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "Ya no tienes permiso para guardar este proyecto. Tus cambios pendientes se conservan en este navegador.",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "El servidor rechazó un cambio pendiente. Descarga el borrador antes de descartar los cambios sin guardar.",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "Este cambio entra en conflicto con uno más reciente. Elige qué versión conservar.",
+    "You're offline. Your pending edits are kept in this browser.": "Estás sin conexión. Tus cambios pendientes se conservan en este navegador.",
+    "Save interrupted. Retry will safely check the same edit.": "Se interrumpió el guardado. Al reintentar se comprobará el mismo cambio de forma segura.",
+    "Sign in again to save. Your pending edits are kept in this browser.": "Vuelve a iniciar sesión para guardar. Tus cambios pendientes se conservan en este navegador.",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "Ya no tienes permiso para guardar este proyecto. Tus cambios pendientes se conservan en este navegador.",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "El servidor rechazó un cambio pendiente. Descarga el borrador antes de descartar los cambios sin guardar.",
+    "This edit conflicts with a newer change. Choose which version to keep.": "Este cambio entra en conflicto con uno más reciente. Elige qué versión conservar.",
     "Sign in again": "Volver a iniciar sesión",
     "Retrying save…": "Reintentando guardar…",
     "Retry save": "Reintentar guardado",
     "Discard unsaved changes": "Descartar cambios sin guardar",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "Usa las flechas izquierda y derecha para mover un clip o ajustar un borde de recorte enfocado un fotograma. Mantén pulsada Mayús para ajustar un segundo. Intro o Espacio seleccionan el clip.",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "Usa las flechas izquierda y derecha para mover un clip o ajustar un borde de recorte enfocado un fotograma. Mantén pulsada Mayús para ajustar un segundo. Intro o Espacio seleccionan el clip.",
     "Font family": "Familia tipográfica",
     "Loading font\u2026": "Cargando fuente…",
     "Font preview unavailable": "Vista previa no disponible",
     "Size & appearance": "Tamaño y apariencia",
-    "Drag on the preview to reposition this item.":
-      "Arrastra este elemento en la vista previa para cambiar su posición.",
+    "Drag on the preview to reposition this item.": "Arrastra este elemento en la vista previa para cambiar su posición.",
     "Font color": "Color de fuente",
     "Transparent background": "Fondo transparente",
     "Delete empty track": "Eliminar pista vacía",
@@ -83,26 +60,18 @@ export const nativeEditorAdditionalCopy: Record<
     "Saving name…": "Guardando nombre…",
     "Name saved": "Nombre guardado",
     "Name not saved": "Nombre no guardado",
-    Retry: "Reintentar",
-    "Project name cannot be empty.":
-      "El nombre del proyecto no puede estar vacío.",
-    "Project name must be 120 characters or fewer.":
-      "El nombre del proyecto debe tener 120 caracteres o menos.",
-    "Enter to send · ⌘/Ctrl+Enter for a new line":
-      "Enter para enviar · ⌘/Ctrl+Enter para una nueva línea",
+    "Retry": "Reintentar",
+    "Project name cannot be empty.": "El nombre del proyecto no puede estar vacío.",
+    "Project name must be 120 characters or fewer.": "El nombre del proyecto debe tener 120 caracteres o menos.",
+    "Enter to send · ⌘/Ctrl+Enter for a new line": "Enter para enviar · ⌘/Ctrl+Enter para una nueva línea",
     Delete: "Eliminar",
-    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.":
-      "Este video es demasiado grande para una descarga estándar. Acorta el proyecto o vuelve a exportarlo en un navegador que permita guardar directamente en un archivo.",
+    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.": "Este video es demasiado grande para una descarga estándar. Acorta el proyecto o vuelve a exportarlo en un navegador que permita guardar directamente en un archivo.",
     "Add text": "Añadir texto",
     "Your video starts here": "Tu video empieza aquí",
-    "Import a video, image or audio file to start editing.":
-      "Importa un video, una imagen o un archivo de audio para empezar a editar.",
-    "Your imported media will appear here.":
-      "Aquí aparecerán los archivos que importes.",
-    "Select a video or audio clip to generate captions.":
-      "Selecciona un clip de video o audio para generar subtítulos.",
-    "Select a video or audio clip to add a music visualizer.":
-      "Selecciona un clip de video o audio para añadir un visualizador musical.",
+    "Import a video, image or audio file to start editing.": "Importa un video, una imagen o un archivo de audio para empezar a editar.",
+    "Your imported media will appear here.": "Aquí aparecerán los archivos que importes.",
+    "Select a video or audio clip to generate captions.": "Selecciona un clip de video o audio para generar subtítulos.",
+    "Select a video or audio clip to add a music visualizer.": "Selecciona un clip de video o audio para añadir un visualizador musical.",
     "Resize timeline": "Cambiar altura de la línea de tiempo",
     "What would you like to create?": "¿Qué te gustaría crear?",
     "Add an opening title": "Añade un título de apertura",
@@ -110,7 +79,7 @@ export const nativeEditorAdditionalCopy: Record<
     "Help me edit this video": "Ayúdame a editar este video",
     "Text formatting": "Formato de texto",
     "Text size": "Tamaño del texto",
-    Bold: "Negrita",
+    "Bold": "Negrita",
     "Align left": "Alinear a la izquierda",
     "Align center": "Centrar",
     "Align right": "Alinear a la derecha",
@@ -246,10 +215,8 @@ export const nativeEditorAdditionalCopy: Record<
     "Plate corners": "Esquinas del fondo",
   },
   fr: {
-    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.":
-      "La récupération du navigateur est indisponible. Gardez cet onglet ouvert jusqu’à l’enregistrement des modifications en attente.",
-    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.":
-      "Un autre onglet a modifié les données de récupération de ce projet. Gardez cet onglet ouvert jusqu’à l’enregistrement de ses modifications en attente.",
+    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.": "La récupération du navigateur est indisponible. Gardez cet onglet ouvert jusqu’à l’enregistrement des modifications en attente.",
+    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.": "Un autre onglet a modifié les données de récupération de ce projet. Gardez cet onglet ouvert jusqu’à l’enregistrement de ses modifications en attente.",
     "Retry browser recovery": "Réessayer la récupération du navigateur",
     "Select layer": "Sélectionner le calque",
     "Move layer": "Déplacer le calque",
@@ -262,60 +229,39 @@ export const nativeEditorAdditionalCopy: Record<
     "Bottom left corner": "Coin inférieur gauche",
     "Left edge": "Bord gauche",
     "Top left corner": "Coin supérieur gauche",
-    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.":
-      "Utilisez les flèches pour déplacer ou redimensionner d’un pixel. Maintenez Maj pour dix pixels. Relâchez les flèches pour enregistrer. Échap annule.",
-    "Use the inspector to edit animated or transformed dimensions.":
-      "Utilisez l’inspecteur pour modifier les dimensions animées ou transformées.",
-    "More layers are available in the inspector.":
-      "D’autres calques sont disponibles dans l’inspecteur.",
-    "The selection contains a clip that is no longer available.":
-      "La sélection contient un clip qui n’est plus disponible.",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "Déverrouillez tous les clips sélectionnés et leurs pistes liées avant d’utiliser cette action groupée.",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "Pour modifier les temps en groupe, sélectionnez les clips sources sans leurs sous-titres ou graphiques liés.",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "Dissociez le clip de sa source avant de modifier son temps ou de le dupliquer.",
-    "Select 500 clips or fewer for a single batch edit.":
-      "Sélectionnez au maximum 500 clips pour une modification groupée.",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "Sélectionnez au maximum 250 clips pour les dupliquer en une étape.",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "Tous les clips sélectionnés doivent être déplacés vers des pistes déverrouillées du même type.",
+    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.": "Utilisez les flèches pour déplacer ou redimensionner d’un pixel. Maintenez Maj pour dix pixels. Relâchez les flèches pour enregistrer. Échap annule.",
+    "Use the inspector to edit animated or transformed dimensions.": "Utilisez l’inspecteur pour modifier les dimensions animées ou transformées.",
+    "More layers are available in the inspector.": "D’autres calques sont disponibles dans l’inspecteur.",
+    "The selection contains a clip that is no longer available.": "La sélection contient un clip qui n’est plus disponible.",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "Déverrouillez tous les clips sélectionnés et leurs pistes liées avant d’utiliser cette action groupée.",
+    "Select source clips without linked captions or graphics for batch timing edits.": "Pour modifier les temps en groupe, sélectionnez les clips sources sans leurs sous-titres ou graphiques liés.",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "Dissociez le clip de sa source avant de modifier son temps ou de le dupliquer.",
+    "Select 500 clips or fewer for a single batch edit.": "Sélectionnez au maximum 500 clips pour une modification groupée.",
+    "Select 250 clips or fewer to duplicate in one step.": "Sélectionnez au maximum 250 clips pour les dupliquer en une étape.",
+    "Every selected clip must move to an unlocked track of the same type.": "Tous les clips sélectionnés doivent être déplacés vers des pistes déverrouillées du même type.",
     "Selected clips": "Clips sélectionnés",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "Les actions groupées affectent tous les clips sélectionnés. L’inspecteur modifie le clip principal.",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "Les actions groupées affectent tous les clips sélectionnés. L’inspecteur modifie le clip principal.",
     "Duplicate selected clips": "Dupliquer les clips sélectionnés",
     "Delete selected clips": "Supprimer les clips sélectionnés",
-    "Select 24 clips or fewer before asking the video agent.":
-      "Sélectionnez au maximum 24 clips avant de consulter l’agent vidéo.",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "Maj-clic sélectionne une plage. ⌘/Ctrl-clic bascule la sélection des clips. ⌘/Ctrl+A sélectionne tout. Échap efface la sélection.",
+    "Select 24 clips or fewer before asking the video agent.": "Sélectionnez au maximum 24 clips avant de consulter l’agent vidéo.",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "Maj-clic sélectionne une plage. ⌘/Ctrl-clic bascule la sélection des clips. ⌘/Ctrl+A sélectionne tout. Échap efface la sélection.",
     "Select one clip to split.": "Sélectionnez un seul clip à diviser.",
-    "You're offline. Your pending edits are kept in this browser.":
-      "Vous êtes hors ligne. Vos modifications en attente sont conservées dans ce navigateur.",
-    "Save interrupted. Retry will safely check the same edit.":
-      "L’enregistrement a été interrompu. Réessayer vérifiera la même modification en toute sécurité.",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "Reconnectez-vous pour enregistrer. Vos modifications en attente sont conservées dans ce navigateur.",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "Vous n’avez plus accès à l’enregistrement de ce projet. Vos modifications en attente sont conservées dans ce navigateur.",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "Le serveur a refusé une modification en attente. Téléchargez votre brouillon avant d’abandonner les modifications non enregistrées.",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "Cette modification est en conflit avec une modification plus récente. Choisissez la version à conserver.",
+    "You're offline. Your pending edits are kept in this browser.": "Vous êtes hors ligne. Vos modifications en attente sont conservées dans ce navigateur.",
+    "Save interrupted. Retry will safely check the same edit.": "L’enregistrement a été interrompu. Réessayer vérifiera la même modification en toute sécurité.",
+    "Sign in again to save. Your pending edits are kept in this browser.": "Reconnectez-vous pour enregistrer. Vos modifications en attente sont conservées dans ce navigateur.",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "Vous n’avez plus accès à l’enregistrement de ce projet. Vos modifications en attente sont conservées dans ce navigateur.",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "Le serveur a refusé une modification en attente. Téléchargez votre brouillon avant d’abandonner les modifications non enregistrées.",
+    "This edit conflicts with a newer change. Choose which version to keep.": "Cette modification est en conflit avec une modification plus récente. Choisissez la version à conserver.",
     "Sign in again": "Se reconnecter",
     "Retrying save…": "Nouvelle tentative d’enregistrement…",
     "Retry save": "Réessayer l’enregistrement",
     "Discard unsaved changes": "Abandonner les modifications non enregistrées",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "Utilisez les flèches gauche et droite pour déplacer un clip ou ajuster la poignée de découpe sélectionnée d’une image. Maintenez Maj pour ajuster d’une seconde. Entrée ou Espace sélectionne le clip.",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "Utilisez les flèches gauche et droite pour déplacer un clip ou ajuster la poignée de découpe sélectionnée d’une image. Maintenez Maj pour ajuster d’une seconde. Entrée ou Espace sélectionne le clip.",
     "Font family": "Famille de police",
     "Loading font\u2026": "Chargement de la police…",
     "Font preview unavailable": "Aperçu indisponible",
     "Size & appearance": "Taille et apparence",
-    "Drag on the preview to reposition this item.":
-      "Faites glisser cet élément dans l’aperçu pour le repositionner.",
+    "Drag on the preview to reposition this item.": "Faites glisser cet élément dans l’aperçu pour le repositionner.",
     "Font color": "Couleur du texte",
     "Transparent background": "Fond transparent",
     "Delete empty track": "Supprimer la piste vide",
@@ -325,25 +271,18 @@ export const nativeEditorAdditionalCopy: Record<
     "Saving name…": "Enregistrement du nom…",
     "Name saved": "Nom enregistré",
     "Name not saved": "Nom non enregistré",
-    Retry: "Réessayer",
+    "Retry": "Réessayer",
     "Project name cannot be empty.": "Le nom du projet ne peut pas être vide.",
-    "Project name must be 120 characters or fewer.":
-      "Le nom du projet doit contenir 120 caractères maximum.",
-    "Enter to send · ⌘/Ctrl+Enter for a new line":
-      "Entrée pour envoyer · ⌘/Ctrl+Entrée pour un saut de ligne",
+    "Project name must be 120 characters or fewer.": "Le nom du projet doit contenir 120 caractères maximum.",
+    "Enter to send · ⌘/Ctrl+Enter for a new line": "Entrée pour envoyer · ⌘/Ctrl+Entrée pour un saut de ligne",
     Delete: "Supprimer",
-    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.":
-      "Cette vidéo est trop volumineuse pour un téléchargement standard. Raccourcissez le projet ou réessayez avec un navigateur permettant l’enregistrement direct dans un fichier.",
+    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.": "Cette vidéo est trop volumineuse pour un téléchargement standard. Raccourcissez le projet ou réessayez avec un navigateur permettant l’enregistrement direct dans un fichier.",
     "Add text": "Ajouter du texte",
     "Your video starts here": "Votre vidéo commence ici",
-    "Import a video, image or audio file to start editing.":
-      "Importez une vidéo, une image ou un fichier audio pour commencer le montage.",
-    "Your imported media will appear here.":
-      "Vos fichiers importés apparaîtront ici.",
-    "Select a video or audio clip to generate captions.":
-      "Sélectionnez un clip vidéo ou audio pour générer des sous-titres.",
-    "Select a video or audio clip to add a music visualizer.":
-      "Sélectionnez un clip vidéo ou audio pour ajouter un visualiseur musical.",
+    "Import a video, image or audio file to start editing.": "Importez une vidéo, une image ou un fichier audio pour commencer le montage.",
+    "Your imported media will appear here.": "Vos fichiers importés apparaîtront ici.",
+    "Select a video or audio clip to generate captions.": "Sélectionnez un clip vidéo ou audio pour générer des sous-titres.",
+    "Select a video or audio clip to add a music visualizer.": "Sélectionnez un clip vidéo ou audio pour ajouter un visualiseur musical.",
     "Resize timeline": "Redimensionner la timeline",
     "What would you like to create?": "Que souhaitez-vous créer ?",
     "Add an opening title": "Ajouter un titre d’ouverture",
@@ -351,7 +290,7 @@ export const nativeEditorAdditionalCopy: Record<
     "Help me edit this video": "Aidez-moi à monter cette vidéo",
     "Text formatting": "Mise en forme du texte",
     "Text size": "Taille du texte",
-    Bold: "Gras",
+    "Bold": "Gras",
     "Align left": "Aligner à gauche",
     "Align center": "Centrer",
     "Align right": "Aligner à droite",
@@ -488,10 +427,8 @@ export const nativeEditorAdditionalCopy: Record<
     "Plate corners": "Coins du fond",
   },
   de: {
-    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.":
-      "Die Browser-Wiederherstellung ist nicht verfügbar. Diesen Tab offen lassen, bis ausstehende Änderungen gespeichert sind.",
-    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.":
-      "Ein anderer Tab hat die Wiederherstellungsdaten dieses Projekts geändert. Diesen Tab offen lassen, bis seine ausstehenden Änderungen gespeichert sind.",
+    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.": "Die Browser-Wiederherstellung ist nicht verfügbar. Diesen Tab offen lassen, bis ausstehende Änderungen gespeichert sind.",
+    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.": "Ein anderer Tab hat die Wiederherstellungsdaten dieses Projekts geändert. Diesen Tab offen lassen, bis seine ausstehenden Änderungen gespeichert sind.",
     "Retry browser recovery": "Browser-Wiederherstellung erneut versuchen",
     "Select layer": "Ebene auswählen",
     "Move layer": "Ebene verschieben",
@@ -504,61 +441,39 @@ export const nativeEditorAdditionalCopy: Record<
     "Bottom left corner": "Untere linke Ecke",
     "Left edge": "Linker Rand",
     "Top left corner": "Obere linke Ecke",
-    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.":
-      "Mit den Pfeiltasten um ein Pixel verschieben oder die Größe ändern. Mit Umschalt um zehn Pixel. Zum Speichern die Pfeiltasten loslassen. Escape bricht ab.",
-    "Use the inspector to edit animated or transformed dimensions.":
-      "Animierte oder transformierte Abmessungen im Inspektor bearbeiten.",
-    "More layers are available in the inspector.":
-      "Weitere Ebenen sind im Inspektor verfügbar.",
-    "The selection contains a clip that is no longer available.":
-      "Die Auswahl enthält einen Clip, der nicht mehr verfügbar ist.",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "Entsperren Sie alle ausgewählten Clips und ihre verknüpften Spuren, bevor Sie diese Sammelaktion verwenden.",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "Wählen Sie für gemeinsame Zeitänderungen Quellclips ohne verknüpfte Untertitel oder Grafiken aus.",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "Lösen Sie die Quellverknüpfung des Clips, bevor Sie seine Zeit ändern oder ihn duplizieren.",
-    "Select 500 clips or fewer for a single batch edit.":
-      "Wählen Sie für eine gemeinsame Bearbeitung höchstens 500 Clips aus.",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "Wählen Sie zum Duplizieren in einem Schritt höchstens 250 Clips aus.",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "Alle ausgewählten Clips müssen auf entsperrte Spuren desselben Typs verschoben werden.",
+    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.": "Mit den Pfeiltasten um ein Pixel verschieben oder die Größe ändern. Mit Umschalt um zehn Pixel. Zum Speichern die Pfeiltasten loslassen. Escape bricht ab.",
+    "Use the inspector to edit animated or transformed dimensions.": "Animierte oder transformierte Abmessungen im Inspektor bearbeiten.",
+    "More layers are available in the inspector.": "Weitere Ebenen sind im Inspektor verfügbar.",
+    "The selection contains a clip that is no longer available.": "Die Auswahl enthält einen Clip, der nicht mehr verfügbar ist.",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "Entsperren Sie alle ausgewählten Clips und ihre verknüpften Spuren, bevor Sie diese Sammelaktion verwenden.",
+    "Select source clips without linked captions or graphics for batch timing edits.": "Wählen Sie für gemeinsame Zeitänderungen Quellclips ohne verknüpfte Untertitel oder Grafiken aus.",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "Lösen Sie die Quellverknüpfung des Clips, bevor Sie seine Zeit ändern oder ihn duplizieren.",
+    "Select 500 clips or fewer for a single batch edit.": "Wählen Sie für eine gemeinsame Bearbeitung höchstens 500 Clips aus.",
+    "Select 250 clips or fewer to duplicate in one step.": "Wählen Sie zum Duplizieren in einem Schritt höchstens 250 Clips aus.",
+    "Every selected clip must move to an unlocked track of the same type.": "Alle ausgewählten Clips müssen auf entsperrte Spuren desselben Typs verschoben werden.",
     "Selected clips": "Ausgewählte Clips",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "Sammelaktionen betreffen alle ausgewählten Clips. Der Inspektor bearbeitet den primären Clip.",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "Sammelaktionen betreffen alle ausgewählten Clips. Der Inspektor bearbeitet den primären Clip.",
     "Duplicate selected clips": "Ausgewählte Clips duplizieren",
     "Delete selected clips": "Ausgewählte Clips löschen",
-    "Select 24 clips or fewer before asking the video agent.":
-      "Wählen Sie höchstens 24 Clips aus, bevor Sie den Videoagenten fragen.",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "Umschalt-Klick wählt einen Bereich aus. ⌘/Strg-Klick ändert die Auswahl einzelner Clips. ⌘/Strg+A wählt alle aus. Escape hebt die Auswahl auf.",
-    "Select one clip to split.":
-      "Wählen Sie einen einzelnen Clip zum Teilen aus.",
-    "You're offline. Your pending edits are kept in this browser.":
-      "Sie sind offline. Ihre ausstehenden Änderungen bleiben in diesem Browser gespeichert.",
-    "Save interrupted. Retry will safely check the same edit.":
-      "Das Speichern wurde unterbrochen. Beim erneuten Versuch wird dieselbe Änderung sicher geprüft.",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "Melden Sie sich erneut an, um zu speichern. Ihre ausstehenden Änderungen bleiben in diesem Browser gespeichert.",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "Sie dürfen dieses Projekt nicht mehr speichern. Ihre ausstehenden Änderungen bleiben in diesem Browser gespeichert.",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "Der Server hat eine ausstehende Änderung abgelehnt. Laden Sie Ihren Entwurf herunter, bevor Sie ungespeicherte Änderungen verwerfen.",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "Diese Änderung steht im Konflikt mit einer neueren Änderung. Wählen Sie die Version, die Sie behalten möchten.",
+    "Select 24 clips or fewer before asking the video agent.": "Wählen Sie höchstens 24 Clips aus, bevor Sie den Videoagenten fragen.",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "Umschalt-Klick wählt einen Bereich aus. ⌘/Strg-Klick ändert die Auswahl einzelner Clips. ⌘/Strg+A wählt alle aus. Escape hebt die Auswahl auf.",
+    "Select one clip to split.": "Wählen Sie einen einzelnen Clip zum Teilen aus.",
+    "You're offline. Your pending edits are kept in this browser.": "Sie sind offline. Ihre ausstehenden Änderungen bleiben in diesem Browser gespeichert.",
+    "Save interrupted. Retry will safely check the same edit.": "Das Speichern wurde unterbrochen. Beim erneuten Versuch wird dieselbe Änderung sicher geprüft.",
+    "Sign in again to save. Your pending edits are kept in this browser.": "Melden Sie sich erneut an, um zu speichern. Ihre ausstehenden Änderungen bleiben in diesem Browser gespeichert.",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "Sie dürfen dieses Projekt nicht mehr speichern. Ihre ausstehenden Änderungen bleiben in diesem Browser gespeichert.",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "Der Server hat eine ausstehende Änderung abgelehnt. Laden Sie Ihren Entwurf herunter, bevor Sie ungespeicherte Änderungen verwerfen.",
+    "This edit conflicts with a newer change. Choose which version to keep.": "Diese Änderung steht im Konflikt mit einer neueren Änderung. Wählen Sie die Version, die Sie behalten möchten.",
     "Sign in again": "Erneut anmelden",
     "Retrying save…": "Speichern wird erneut versucht…",
     "Retry save": "Speichern erneut versuchen",
     "Discard unsaved changes": "Ungespeicherte Änderungen verwerfen",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "Mit den Pfeiltasten links und rechts verschieben Sie einen Clip oder den fokussierten Zuschnittgriff um ein Bild. Mit gedrückter Umschalttaste ändern Sie die Position um eine Sekunde. Eingabe oder Leertaste wählt den Clip aus.",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "Mit den Pfeiltasten links und rechts verschieben Sie einen Clip oder den fokussierten Zuschnittgriff um ein Bild. Mit gedrückter Umschalttaste ändern Sie die Position um eine Sekunde. Eingabe oder Leertaste wählt den Clip aus.",
     "Font family": "Schriftfamilie",
     "Loading font\u2026": "Schrift wird geladen…",
     "Font preview unavailable": "Schriftvorschau nicht verfügbar",
     "Size & appearance": "Größe und Aussehen",
-    "Drag on the preview to reposition this item.":
-      "Ziehe dieses Element in der Vorschau an die gewünschte Position.",
+    "Drag on the preview to reposition this item.": "Ziehe dieses Element in der Vorschau an die gewünschte Position.",
     "Font color": "Schriftfarbe",
     "Transparent background": "Transparenter Hintergrund",
     "Delete empty track": "Leere Spur löschen",
@@ -568,25 +483,18 @@ export const nativeEditorAdditionalCopy: Record<
     "Saving name…": "Name wird gespeichert…",
     "Name saved": "Name gespeichert",
     "Name not saved": "Name nicht gespeichert",
-    Retry: "Erneut versuchen",
+    "Retry": "Erneut versuchen",
     "Project name cannot be empty.": "Der Projektname darf nicht leer sein.",
-    "Project name must be 120 characters or fewer.":
-      "Der Projektname darf höchstens 120 Zeichen enthalten.",
-    "Enter to send · ⌘/Ctrl+Enter for a new line":
-      "Enter zum Senden · ⌘/Strg+Enter für eine neue Zeile",
+    "Project name must be 120 characters or fewer.": "Der Projektname darf höchstens 120 Zeichen enthalten.",
+    "Enter to send · ⌘/Ctrl+Enter for a new line": "Enter zum Senden · ⌘/Strg+Enter für eine neue Zeile",
     Delete: "Löschen",
-    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.":
-      "Dieses Video ist für einen normalen Download zu groß. Kürze das Projekt oder exportiere es erneut mit einem Browser, der direkt in eine Datei speichern kann.",
+    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.": "Dieses Video ist für einen normalen Download zu groß. Kürze das Projekt oder exportiere es erneut mit einem Browser, der direkt in eine Datei speichern kann.",
     "Add text": "Text hinzufügen",
     "Your video starts here": "Hier beginnt dein Video",
-    "Import a video, image or audio file to start editing.":
-      "Importiere ein Video, ein Bild oder eine Audiodatei, um mit der Bearbeitung zu beginnen.",
-    "Your imported media will appear here.":
-      "Deine importierten Medien erscheinen hier.",
-    "Select a video or audio clip to generate captions.":
-      "Wähle einen Video- oder Audioclip aus, um Untertitel zu erstellen.",
-    "Select a video or audio clip to add a music visualizer.":
-      "Wähle einen Video- oder Audioclip aus, um eine Musikvisualisierung hinzuzufügen.",
+    "Import a video, image or audio file to start editing.": "Importiere ein Video, ein Bild oder eine Audiodatei, um mit der Bearbeitung zu beginnen.",
+    "Your imported media will appear here.": "Deine importierten Medien erscheinen hier.",
+    "Select a video or audio clip to generate captions.": "Wähle einen Video- oder Audioclip aus, um Untertitel zu erstellen.",
+    "Select a video or audio clip to add a music visualizer.": "Wähle einen Video- oder Audioclip aus, um eine Musikvisualisierung hinzuzufügen.",
     "Resize timeline": "Zeitleistenhöhe ändern",
     "What would you like to create?": "Was möchtest du erstellen?",
     "Add an opening title": "Einen Eröffnungstitel hinzufügen",
@@ -594,7 +502,7 @@ export const nativeEditorAdditionalCopy: Record<
     "Help me edit this video": "Hilf mir, dieses Video zu bearbeiten",
     "Text formatting": "Textformatierung",
     "Text size": "Textgröße",
-    Bold: "Fett",
+    "Bold": "Fett",
     "Align left": "Linksbündig",
     "Align center": "Zentriert",
     "Align right": "Rechtsbündig",
@@ -731,10 +639,8 @@ export const nativeEditorAdditionalCopy: Record<
     "Plate corners": "Hintergrundecken",
   },
   it: {
-    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.":
-      "Il ripristino del browser non è disponibile. Tieni aperta questa scheda finché le modifiche in sospeso non vengono salvate.",
-    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.":
-      "Un’altra scheda ha modificato i dati di ripristino di questo progetto. Tieni aperta questa scheda finché le sue modifiche in sospeso non vengono salvate.",
+    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.": "Il ripristino del browser non è disponibile. Tieni aperta questa scheda finché le modifiche in sospeso non vengono salvate.",
+    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.": "Un’altra scheda ha modificato i dati di ripristino di questo progetto. Tieni aperta questa scheda finché le sue modifiche in sospeso non vengono salvate.",
     "Retry browser recovery": "Riprova il ripristino del browser",
     "Select layer": "Seleziona livello",
     "Move layer": "Sposta livello",
@@ -747,60 +653,39 @@ export const nativeEditorAdditionalCopy: Record<
     "Bottom left corner": "Angolo inferiore sinistro",
     "Left edge": "Bordo sinistro",
     "Top left corner": "Angolo superiore sinistro",
-    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.":
-      "Usa le frecce per spostare o ridimensionare di un pixel. Tieni premuto Maiusc per dieci pixel. Rilascia le frecce per salvare. Escape annulla.",
-    "Use the inspector to edit animated or transformed dimensions.":
-      "Usa l’ispettore per modificare dimensioni animate o trasformate.",
-    "More layers are available in the inspector.":
-      "Altri livelli sono disponibili nell’ispettore.",
-    "The selection contains a clip that is no longer available.":
-      "La selezione contiene una clip non più disponibile.",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "Sblocca tutte le clip selezionate e le loro tracce collegate prima di usare questa azione di gruppo.",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "Per modificare i tempi in gruppo, seleziona le clip sorgenti senza i sottotitoli o gli elementi grafici collegati.",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "Scollega la clip dalla sorgente prima di modificarne i tempi o duplicarla.",
-    "Select 500 clips or fewer for a single batch edit.":
-      "Seleziona al massimo 500 clip per una modifica di gruppo.",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "Seleziona al massimo 250 clip per duplicarle in un solo passaggio.",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "Tutte le clip selezionate devono essere spostate su tracce sbloccate dello stesso tipo.",
+    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.": "Usa le frecce per spostare o ridimensionare di un pixel. Tieni premuto Maiusc per dieci pixel. Rilascia le frecce per salvare. Escape annulla.",
+    "Use the inspector to edit animated or transformed dimensions.": "Usa l’ispettore per modificare dimensioni animate o trasformate.",
+    "More layers are available in the inspector.": "Altri livelli sono disponibili nell’ispettore.",
+    "The selection contains a clip that is no longer available.": "La selezione contiene una clip non più disponibile.",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "Sblocca tutte le clip selezionate e le loro tracce collegate prima di usare questa azione di gruppo.",
+    "Select source clips without linked captions or graphics for batch timing edits.": "Per modificare i tempi in gruppo, seleziona le clip sorgenti senza i sottotitoli o gli elementi grafici collegati.",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "Scollega la clip dalla sorgente prima di modificarne i tempi o duplicarla.",
+    "Select 500 clips or fewer for a single batch edit.": "Seleziona al massimo 500 clip per una modifica di gruppo.",
+    "Select 250 clips or fewer to duplicate in one step.": "Seleziona al massimo 250 clip per duplicarle in un solo passaggio.",
+    "Every selected clip must move to an unlocked track of the same type.": "Tutte le clip selezionate devono essere spostate su tracce sbloccate dello stesso tipo.",
     "Selected clips": "Clip selezionate",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "Le azioni di gruppo interessano tutte le clip selezionate. L’ispettore modifica la clip principale.",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "Le azioni di gruppo interessano tutte le clip selezionate. L’ispettore modifica la clip principale.",
     "Duplicate selected clips": "Duplica le clip selezionate",
     "Delete selected clips": "Elimina le clip selezionate",
-    "Select 24 clips or fewer before asking the video agent.":
-      "Seleziona al massimo 24 clip prima di chiedere all’agente video.",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "Maiusc-clic seleziona un intervallo. ⌘/Ctrl-clic attiva o disattiva la selezione delle clip. ⌘/Ctrl+A seleziona tutto. Esc cancella la selezione.",
+    "Select 24 clips or fewer before asking the video agent.": "Seleziona al massimo 24 clip prima di chiedere all’agente video.",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "Maiusc-clic seleziona un intervallo. ⌘/Ctrl-clic attiva o disattiva la selezione delle clip. ⌘/Ctrl+A seleziona tutto. Esc cancella la selezione.",
     "Select one clip to split.": "Seleziona una sola clip da dividere.",
-    "You're offline. Your pending edits are kept in this browser.":
-      "Sei offline. Le modifiche in attesa restano in questo browser.",
-    "Save interrupted. Retry will safely check the same edit.":
-      "Il salvataggio è stato interrotto. Riprovando verrà verificata in sicurezza la stessa modifica.",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "Accedi di nuovo per salvare. Le modifiche in attesa restano in questo browser.",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "Non hai più il permesso di salvare questo progetto. Le modifiche in attesa restano in questo browser.",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "Il server ha rifiutato una modifica in attesa. Scarica la bozza prima di scartare le modifiche non salvate.",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "Questa modifica è in conflitto con una modifica più recente. Scegli la versione da conservare.",
+    "You're offline. Your pending edits are kept in this browser.": "Sei offline. Le modifiche in attesa restano in questo browser.",
+    "Save interrupted. Retry will safely check the same edit.": "Il salvataggio è stato interrotto. Riprovando verrà verificata in sicurezza la stessa modifica.",
+    "Sign in again to save. Your pending edits are kept in this browser.": "Accedi di nuovo per salvare. Le modifiche in attesa restano in questo browser.",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "Non hai più il permesso di salvare questo progetto. Le modifiche in attesa restano in questo browser.",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "Il server ha rifiutato una modifica in attesa. Scarica la bozza prima di scartare le modifiche non salvate.",
+    "This edit conflicts with a newer change. Choose which version to keep.": "Questa modifica è in conflitto con una modifica più recente. Scegli la versione da conservare.",
     "Sign in again": "Accedi di nuovo",
     "Retrying save…": "Nuovo tentativo di salvataggio…",
     "Retry save": "Riprova a salvare",
     "Discard unsaved changes": "Scarta le modifiche non salvate",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "Usa le frecce sinistra e destra per spostare una clip o regolare il bordo di taglio selezionato di un fotogramma. Tieni premuto Maiusc per regolare di un secondo. Invio o Spazio selezionano la clip.",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "Usa le frecce sinistra e destra per spostare una clip o regolare il bordo di taglio selezionato di un fotogramma. Tieni premuto Maiusc per regolare di un secondo. Invio o Spazio selezionano la clip.",
     "Font family": "Famiglia di caratteri",
     "Loading font\u2026": "Caricamento carattere…",
     "Font preview unavailable": "Anteprima non disponibile",
     "Size & appearance": "Dimensioni e aspetto",
-    "Drag on the preview to reposition this item.":
-      "Trascina questo elemento nell’anteprima per riposizionarlo.",
+    "Drag on the preview to reposition this item.": "Trascina questo elemento nell’anteprima per riposizionarlo.",
     "Font color": "Colore testo",
     "Transparent background": "Sfondo trasparente",
     "Delete empty track": "Elimina traccia vuota",
@@ -810,26 +695,18 @@ export const nativeEditorAdditionalCopy: Record<
     "Saving name…": "Salvataggio del nome…",
     "Name saved": "Nome salvato",
     "Name not saved": "Nome non salvato",
-    Retry: "Riprova",
-    "Project name cannot be empty.":
-      "Il nome del progetto non può essere vuoto.",
-    "Project name must be 120 characters or fewer.":
-      "Il nome del progetto deve contenere al massimo 120 caratteri.",
-    "Enter to send · ⌘/Ctrl+Enter for a new line":
-      "Invio per inviare · ⌘/Ctrl+Invio per andare a capo",
+    "Retry": "Riprova",
+    "Project name cannot be empty.": "Il nome del progetto non può essere vuoto.",
+    "Project name must be 120 characters or fewer.": "Il nome del progetto deve contenere al massimo 120 caratteri.",
+    "Enter to send · ⌘/Ctrl+Enter for a new line": "Invio per inviare · ⌘/Ctrl+Invio per andare a capo",
     Delete: "Elimina",
-    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.":
-      "Questo video è troppo grande per un download standard. Accorcia il progetto o riprova con un browser che supporti il salvataggio diretto su file.",
+    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.": "Questo video è troppo grande per un download standard. Accorcia il progetto o riprova con un browser che supporti il salvataggio diretto su file.",
     "Add text": "Aggiungi testo",
     "Your video starts here": "Il tuo video inizia qui",
-    "Import a video, image or audio file to start editing.":
-      "Importa un video, un’immagine o un file audio per iniziare il montaggio.",
-    "Your imported media will appear here.":
-      "I file importati appariranno qui.",
-    "Select a video or audio clip to generate captions.":
-      "Seleziona un clip video o audio per generare i sottotitoli.",
-    "Select a video or audio clip to add a music visualizer.":
-      "Seleziona un clip video o audio per aggiungere un visualizzatore musicale.",
+    "Import a video, image or audio file to start editing.": "Importa un video, un’immagine o un file audio per iniziare il montaggio.",
+    "Your imported media will appear here.": "I file importati appariranno qui.",
+    "Select a video or audio clip to generate captions.": "Seleziona un clip video o audio per generare i sottotitoli.",
+    "Select a video or audio clip to add a music visualizer.": "Seleziona un clip video o audio per aggiungere un visualizzatore musicale.",
     "Resize timeline": "Ridimensiona la timeline",
     "What would you like to create?": "Cosa vuoi creare?",
     "Add an opening title": "Aggiungi un titolo iniziale",
@@ -837,7 +714,7 @@ export const nativeEditorAdditionalCopy: Record<
     "Help me edit this video": "Aiutami a montare questo video",
     "Text formatting": "Formattazione del testo",
     "Text size": "Dimensione testo",
-    Bold: "Grassetto",
+    "Bold": "Grassetto",
     "Align left": "Allinea a sinistra",
     "Align center": "Centra",
     "Align right": "Allinea a destra",
@@ -974,10 +851,8 @@ export const nativeEditorAdditionalCopy: Record<
     "Plate corners": "Angoli dello sfondo",
   },
   pt: {
-    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.":
-      "A recuperação do navegador está indisponível. Mantenha esta aba aberta até que as alterações pendentes sejam salvas.",
-    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.":
-      "Outra aba alterou os dados de recuperação deste projeto. Mantenha esta aba aberta até que as alterações pendentes dela sejam salvas.",
+    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.": "A recuperação do navegador está indisponível. Mantenha esta aba aberta até que as alterações pendentes sejam salvas.",
+    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.": "Outra aba alterou os dados de recuperação deste projeto. Mantenha esta aba aberta até que as alterações pendentes dela sejam salvas.",
     "Retry browser recovery": "Tentar recuperação do navegador novamente",
     "Select layer": "Selecionar camada",
     "Move layer": "Mover camada",
@@ -990,60 +865,39 @@ export const nativeEditorAdditionalCopy: Record<
     "Bottom left corner": "Canto inferior esquerdo",
     "Left edge": "Borda esquerda",
     "Top left corner": "Canto superior esquerdo",
-    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.":
-      "Use as setas para mover ou redimensionar um pixel. Segure Shift para dez pixels. Solte as setas para salvar. Escape cancela.",
-    "Use the inspector to edit animated or transformed dimensions.":
-      "Use o inspetor para editar dimensões animadas ou transformadas.",
-    "More layers are available in the inspector.":
-      "Há mais camadas disponíveis no inspetor.",
-    "The selection contains a clip that is no longer available.":
-      "A seleção contém um clipe que não está mais disponível.",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "Desbloqueie todos os clipes selecionados e suas faixas vinculadas antes de usar esta ação em lote.",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "Para ajustar tempos em lote, selecione os clipes de origem sem suas legendas ou gráficos vinculados.",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "Desvincule o clipe da origem antes de alterar seu tempo ou duplicá-lo.",
-    "Select 500 clips or fewer for a single batch edit.":
-      "Selecione no máximo 500 clipes para uma edição em lote.",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "Selecione no máximo 250 clipes para duplicar em uma etapa.",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "Todos os clipes selecionados devem ser movidos para faixas desbloqueadas do mesmo tipo.",
+    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.": "Use as setas para mover ou redimensionar um pixel. Segure Shift para dez pixels. Solte as setas para salvar. Escape cancela.",
+    "Use the inspector to edit animated or transformed dimensions.": "Use o inspetor para editar dimensões animadas ou transformadas.",
+    "More layers are available in the inspector.": "Há mais camadas disponíveis no inspetor.",
+    "The selection contains a clip that is no longer available.": "A seleção contém um clipe que não está mais disponível.",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "Desbloqueie todos os clipes selecionados e suas faixas vinculadas antes de usar esta ação em lote.",
+    "Select source clips without linked captions or graphics for batch timing edits.": "Para ajustar tempos em lote, selecione os clipes de origem sem suas legendas ou gráficos vinculados.",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "Desvincule o clipe da origem antes de alterar seu tempo ou duplicá-lo.",
+    "Select 500 clips or fewer for a single batch edit.": "Selecione no máximo 500 clipes para uma edição em lote.",
+    "Select 250 clips or fewer to duplicate in one step.": "Selecione no máximo 250 clipes para duplicar em uma etapa.",
+    "Every selected clip must move to an unlocked track of the same type.": "Todos os clipes selecionados devem ser movidos para faixas desbloqueadas do mesmo tipo.",
     "Selected clips": "Clipes selecionados",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "As ações em lote afetam todos os clipes selecionados. O inspetor edita o clipe principal.",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "As ações em lote afetam todos os clipes selecionados. O inspetor edita o clipe principal.",
     "Duplicate selected clips": "Duplicar clipes selecionados",
     "Delete selected clips": "Excluir clipes selecionados",
-    "Select 24 clips or fewer before asking the video agent.":
-      "Selecione no máximo 24 clipes antes de consultar o agente de vídeo.",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "Shift-clique seleciona um intervalo. ⌘/Ctrl-clique alterna a seleção de clipes. ⌘/Ctrl+A seleciona todos. Escape limpa a seleção.",
+    "Select 24 clips or fewer before asking the video agent.": "Selecione no máximo 24 clipes antes de consultar o agente de vídeo.",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "Shift-clique seleciona um intervalo. ⌘/Ctrl-clique alterna a seleção de clipes. ⌘/Ctrl+A seleciona todos. Escape limpa a seleção.",
     "Select one clip to split.": "Selecione apenas um clipe para dividir.",
-    "You're offline. Your pending edits are kept in this browser.":
-      "Você está offline. Suas alterações pendentes ficam neste navegador.",
-    "Save interrupted. Retry will safely check the same edit.":
-      "O salvamento foi interrompido. Tentar novamente verificará a mesma alteração com segurança.",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "Entre novamente para salvar. Suas alterações pendentes ficam neste navegador.",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "Você não tem mais permissão para salvar este projeto. Suas alterações pendentes ficam neste navegador.",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "O servidor rejeitou uma alteração pendente. Baixe o rascunho antes de descartar alterações não salvas.",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "Esta alteração está em conflito com uma alteração mais recente. Escolha qual versão manter.",
+    "You're offline. Your pending edits are kept in this browser.": "Você está offline. Suas alterações pendentes ficam neste navegador.",
+    "Save interrupted. Retry will safely check the same edit.": "O salvamento foi interrompido. Tentar novamente verificará a mesma alteração com segurança.",
+    "Sign in again to save. Your pending edits are kept in this browser.": "Entre novamente para salvar. Suas alterações pendentes ficam neste navegador.",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "Você não tem mais permissão para salvar este projeto. Suas alterações pendentes ficam neste navegador.",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "O servidor rejeitou uma alteração pendente. Baixe o rascunho antes de descartar alterações não salvas.",
+    "This edit conflicts with a newer change. Choose which version to keep.": "Esta alteração está em conflito com uma alteração mais recente. Escolha qual versão manter.",
     "Sign in again": "Entrar novamente",
     "Retrying save…": "Tentando salvar novamente…",
     "Retry save": "Tentar salvar novamente",
     "Discard unsaved changes": "Descartar alterações não salvas",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "Use as setas esquerda e direita para mover um clipe ou ajustar a alça de corte em foco em um quadro. Segure Shift para ajustar um segundo. Enter ou Espaço seleciona o clipe.",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "Use as setas esquerda e direita para mover um clipe ou ajustar a alça de corte em foco em um quadro. Segure Shift para ajustar um segundo. Enter ou Espaço seleciona o clipe.",
     "Font family": "Família da fonte",
     "Loading font\u2026": "Carregando fonte…",
     "Font preview unavailable": "Prévia da fonte indisponível",
     "Size & appearance": "Tamanho e aparência",
-    "Drag on the preview to reposition this item.":
-      "Arraste este elemento na prévia para reposicioná-lo.",
+    "Drag on the preview to reposition this item.": "Arraste este elemento na prévia para reposicioná-lo.",
     "Font color": "Cor da fonte",
     "Transparent background": "Fundo transparente",
     "Delete empty track": "Excluir faixa vazia",
@@ -1053,25 +907,18 @@ export const nativeEditorAdditionalCopy: Record<
     "Saving name…": "Salvando nome…",
     "Name saved": "Nome salvo",
     "Name not saved": "Nome não salvo",
-    Retry: "Tentar novamente",
+    "Retry": "Tentar novamente",
     "Project name cannot be empty.": "O nome do projeto não pode estar vazio.",
-    "Project name must be 120 characters or fewer.":
-      "O nome do projeto deve ter no máximo 120 caracteres.",
-    "Enter to send · ⌘/Ctrl+Enter for a new line":
-      "Enter para enviar · ⌘/Ctrl+Enter para uma nova linha",
+    "Project name must be 120 characters or fewer.": "O nome do projeto deve ter no máximo 120 caracteres.",
+    "Enter to send · ⌘/Ctrl+Enter for a new line": "Enter para enviar · ⌘/Ctrl+Enter para uma nova linha",
     Delete: "Excluir",
-    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.":
-      "Este vídeo é grande demais para um download padrão. Encurte o projeto ou tente exportar em um navegador que permita salvar diretamente em um arquivo.",
+    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.": "Este vídeo é grande demais para um download padrão. Encurte o projeto ou tente exportar em um navegador que permita salvar diretamente em um arquivo.",
     "Add text": "Adicionar texto",
     "Your video starts here": "Seu vídeo começa aqui",
-    "Import a video, image or audio file to start editing.":
-      "Importe um vídeo, uma imagem ou um arquivo de áudio para começar a editar.",
-    "Your imported media will appear here.":
-      "Seus arquivos importados aparecerão aqui.",
-    "Select a video or audio clip to generate captions.":
-      "Selecione um clipe de vídeo ou áudio para gerar legendas.",
-    "Select a video or audio clip to add a music visualizer.":
-      "Selecione um clipe de vídeo ou áudio para adicionar um visualizador musical.",
+    "Import a video, image or audio file to start editing.": "Importe um vídeo, uma imagem ou um arquivo de áudio para começar a editar.",
+    "Your imported media will appear here.": "Seus arquivos importados aparecerão aqui.",
+    "Select a video or audio clip to generate captions.": "Selecione um clipe de vídeo ou áudio para gerar legendas.",
+    "Select a video or audio clip to add a music visualizer.": "Selecione um clipe de vídeo ou áudio para adicionar um visualizador musical.",
     "Resize timeline": "Redimensionar a linha do tempo",
     "What would you like to create?": "O que você gostaria de criar?",
     "Add an opening title": "Adicionar um título de abertura",
@@ -1079,7 +926,7 @@ export const nativeEditorAdditionalCopy: Record<
     "Help me edit this video": "Ajude-me a editar este vídeo",
     "Text formatting": "Formatação de texto",
     "Text size": "Tamanho do texto",
-    Bold: "Negrito",
+    "Bold": "Negrito",
     "Align left": "Alinhar à esquerda",
     "Align center": "Centralizar",
     "Align right": "Alinhar à direita",
@@ -1216,10 +1063,8 @@ export const nativeEditorAdditionalCopy: Record<
     "Plate corners": "Cantos do fundo",
   },
   ko: {
-    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.":
-      "브라우저 복구 저장소를 사용할 수 없습니다. 대기 중인 변경 사항이 저장될 때까지 이 탭을 열어 두세요.",
-    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.":
-      "다른 탭에서 이 프로젝트의 복구 데이터를 변경했습니다. 이 탭의 대기 중인 변경 사항이 저장될 때까지 탭을 열어 두세요.",
+    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.": "브라우저 복구 저장소를 사용할 수 없습니다. 대기 중인 변경 사항이 저장될 때까지 이 탭을 열어 두세요.",
+    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.": "다른 탭에서 이 프로젝트의 복구 데이터를 변경했습니다. 이 탭의 대기 중인 변경 사항이 저장될 때까지 탭을 열어 두세요.",
     "Retry browser recovery": "브라우저 복구 다시 시도",
     "Select layer": "레이어 선택",
     "Move layer": "레이어 이동",
@@ -1232,60 +1077,39 @@ export const nativeEditorAdditionalCopy: Record<
     "Bottom left corner": "왼쪽 아래 모서리",
     "Left edge": "왼쪽 가장자리",
     "Top left corner": "왼쪽 위 모서리",
-    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.":
-      "방향키로 1픽셀씩 이동하거나 크기를 조절합니다. Shift를 누르면 10픽셀씩 조절합니다. 방향키를 놓으면 저장되며 Escape를 누르면 취소됩니다.",
-    "Use the inspector to edit animated or transformed dimensions.":
-      "애니메이션이나 변환이 적용된 크기는 속성 패널에서 편집하세요.",
-    "More layers are available in the inspector.":
-      "속성 패널에서 더 많은 레이어를 선택할 수 있습니다.",
-    "The selection contains a clip that is no longer available.":
-      "선택 항목에 더 이상 사용할 수 없는 클립이 있습니다.",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "일괄 작업을 사용하기 전에 선택한 모든 클립과 연결된 트랙의 잠금을 해제하세요.",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "시간을 일괄 편집하려면 연결된 자막이나 그래픽을 제외하고 원본 클립을 선택하세요.",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "시간을 변경하거나 복제하기 전에 클립의 원본 연결을 해제하세요.",
-    "Select 500 clips or fewer for a single batch edit.":
-      "한 번에 편집할 클립을 500개 이하로 선택하세요.",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "한 번에 복제할 클립을 250개 이하로 선택하세요.",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "선택한 모든 클립은 잠금 해제된 같은 유형의 트랙으로 이동해야 합니다.",
+    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.": "방향키로 1픽셀씩 이동하거나 크기를 조절합니다. Shift를 누르면 10픽셀씩 조절합니다. 방향키를 놓으면 저장되며 Escape를 누르면 취소됩니다.",
+    "Use the inspector to edit animated or transformed dimensions.": "애니메이션이나 변환이 적용된 크기는 속성 패널에서 편집하세요.",
+    "More layers are available in the inspector.": "속성 패널에서 더 많은 레이어를 선택할 수 있습니다.",
+    "The selection contains a clip that is no longer available.": "선택 항목에 더 이상 사용할 수 없는 클립이 있습니다.",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "일괄 작업을 사용하기 전에 선택한 모든 클립과 연결된 트랙의 잠금을 해제하세요.",
+    "Select source clips without linked captions or graphics for batch timing edits.": "시간을 일괄 편집하려면 연결된 자막이나 그래픽을 제외하고 원본 클립을 선택하세요.",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "시간을 변경하거나 복제하기 전에 클립의 원본 연결을 해제하세요.",
+    "Select 500 clips or fewer for a single batch edit.": "한 번에 편집할 클립을 500개 이하로 선택하세요.",
+    "Select 250 clips or fewer to duplicate in one step.": "한 번에 복제할 클립을 250개 이하로 선택하세요.",
+    "Every selected clip must move to an unlocked track of the same type.": "선택한 모든 클립은 잠금 해제된 같은 유형의 트랙으로 이동해야 합니다.",
     "Selected clips": "선택한 클립",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "일괄 작업은 선택한 모든 클립에 적용됩니다. 검사기는 주 클립을 편집합니다.",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "일괄 작업은 선택한 모든 클립에 적용됩니다. 검사기는 주 클립을 편집합니다.",
     "Duplicate selected clips": "선택한 클립 복제",
     "Delete selected clips": "선택한 클립 삭제",
-    "Select 24 clips or fewer before asking the video agent.":
-      "비디오 에이전트에 요청하기 전에 클립을 24개 이하로 선택하세요.",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "Shift-클릭으로 범위를 선택합니다. ⌘/Ctrl-클릭으로 클립 선택을 전환합니다. ⌘/Ctrl+A는 전체 선택, Escape는 선택 해제입니다.",
+    "Select 24 clips or fewer before asking the video agent.": "비디오 에이전트에 요청하기 전에 클립을 24개 이하로 선택하세요.",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "Shift-클릭으로 범위를 선택합니다. ⌘/Ctrl-클릭으로 클립 선택을 전환합니다. ⌘/Ctrl+A는 전체 선택, Escape는 선택 해제입니다.",
     "Select one clip to split.": "분할할 클립을 하나만 선택하세요.",
-    "You're offline. Your pending edits are kept in this browser.":
-      "오프라인 상태입니다. 저장 대기 중인 변경 사항은 이 브라우저에 보관됩니다.",
-    "Save interrupted. Retry will safely check the same edit.":
-      "저장이 중단되었습니다. 다시 시도하면 동일한 변경 사항을 안전하게 확인합니다.",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "저장하려면 다시 로그인하세요. 저장 대기 중인 변경 사항은 이 브라우저에 보관됩니다.",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "이 프로젝트를 저장할 권한이 없습니다. 저장 대기 중인 변경 사항은 이 브라우저에 보관됩니다.",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "서버가 저장 대기 중인 변경 사항을 거부했습니다. 저장되지 않은 변경 사항을 버리기 전에 초안을 다운로드하세요.",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "이 수정은 더 최근의 변경 사항과 충돌합니다. 유지할 버전을 선택하세요.",
+    "You're offline. Your pending edits are kept in this browser.": "오프라인 상태입니다. 저장 대기 중인 변경 사항은 이 브라우저에 보관됩니다.",
+    "Save interrupted. Retry will safely check the same edit.": "저장이 중단되었습니다. 다시 시도하면 동일한 변경 사항을 안전하게 확인합니다.",
+    "Sign in again to save. Your pending edits are kept in this browser.": "저장하려면 다시 로그인하세요. 저장 대기 중인 변경 사항은 이 브라우저에 보관됩니다.",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "이 프로젝트를 저장할 권한이 없습니다. 저장 대기 중인 변경 사항은 이 브라우저에 보관됩니다.",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "서버가 저장 대기 중인 변경 사항을 거부했습니다. 저장되지 않은 변경 사항을 버리기 전에 초안을 다운로드하세요.",
+    "This edit conflicts with a newer change. Choose which version to keep.": "이 수정은 더 최근의 변경 사항과 충돌합니다. 유지할 버전을 선택하세요.",
     "Sign in again": "다시 로그인",
     "Retrying save…": "저장 다시 시도 중…",
     "Retry save": "저장 다시 시도",
     "Discard unsaved changes": "저장되지 않은 변경 사항 버리기",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "왼쪽 및 오른쪽 화살표로 클립을 이동하거나 선택한 자르기 핸들을 한 프레임씩 조정하세요. Shift를 누르면 1초씩 조정합니다. Enter 또는 스페이스바로 클립을 선택합니다.",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "왼쪽 및 오른쪽 화살표로 클립을 이동하거나 선택한 자르기 핸들을 한 프레임씩 조정하세요. Shift를 누르면 1초씩 조정합니다. Enter 또는 스페이스바로 클립을 선택합니다.",
     "Font family": "글꼴 모음",
     "Loading font\u2026": "글꼴 로드 중…",
     "Font preview unavailable": "글꼴 미리보기 불가",
     "Size & appearance": "크기 및 모양",
-    "Drag on the preview to reposition this item.":
-      "미리보기에서 이 요소를 드래그해 위치를 바꾸세요.",
+    "Drag on the preview to reposition this item.": "미리보기에서 이 요소를 드래그해 위치를 바꾸세요.",
     "Font color": "글자 색상",
     "Transparent background": "투명 배경",
     "Delete empty track": "빈 트랙 삭제",
@@ -1295,25 +1119,18 @@ export const nativeEditorAdditionalCopy: Record<
     "Saving name…": "이름 저장 중…",
     "Name saved": "이름 저장됨",
     "Name not saved": "이름을 저장하지 못함",
-    Retry: "다시 시도",
+    "Retry": "다시 시도",
     "Project name cannot be empty.": "프로젝트 이름은 비워 둘 수 없습니다.",
-    "Project name must be 120 characters or fewer.":
-      "프로젝트 이름은 120자 이하여야 합니다.",
-    "Enter to send · ⌘/Ctrl+Enter for a new line":
-      "Enter로 전송 · ⌘/Ctrl+Enter로 줄바꿈",
+    "Project name must be 120 characters or fewer.": "프로젝트 이름은 120자 이하여야 합니다.",
+    "Enter to send · ⌘/Ctrl+Enter for a new line": "Enter로 전송 · ⌘/Ctrl+Enter로 줄바꿈",
     Delete: "삭제",
-    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.":
-      "이 동영상은 일반 다운로드로 저장하기에 너무 큽니다. 프로젝트를 줄이거나 파일에 직접 저장할 수 있는 브라우저에서 다시 내보내세요.",
+    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.": "이 동영상은 일반 다운로드로 저장하기에 너무 큽니다. 프로젝트를 줄이거나 파일에 직접 저장할 수 있는 브라우저에서 다시 내보내세요.",
     "Add text": "텍스트 추가",
     "Your video starts here": "여기에서 동영상 만들기를 시작하세요",
-    "Import a video, image or audio file to start editing.":
-      "동영상, 이미지 또는 오디오 파일을 가져와 편집을 시작하세요.",
-    "Your imported media will appear here.":
-      "가져온 미디어가 여기에 표시됩니다.",
-    "Select a video or audio clip to generate captions.":
-      "자막을 생성할 동영상 또는 오디오 클립을 선택하세요.",
-    "Select a video or audio clip to add a music visualizer.":
-      "음악 시각화를 추가할 동영상 또는 오디오 클립을 선택하세요.",
+    "Import a video, image or audio file to start editing.": "동영상, 이미지 또는 오디오 파일을 가져와 편집을 시작하세요.",
+    "Your imported media will appear here.": "가져온 미디어가 여기에 표시됩니다.",
+    "Select a video or audio clip to generate captions.": "자막을 생성할 동영상 또는 오디오 클립을 선택하세요.",
+    "Select a video or audio clip to add a music visualizer.": "음악 시각화를 추가할 동영상 또는 오디오 클립을 선택하세요.",
     "Resize timeline": "타임라인 높이 조절",
     "What would you like to create?": "무엇을 만들고 싶으세요?",
     "Add an opening title": "오프닝 제목 추가",
@@ -1321,7 +1138,7 @@ export const nativeEditorAdditionalCopy: Record<
     "Help me edit this video": "이 동영상 편집 도와줘",
     "Text formatting": "텍스트 서식",
     "Text size": "텍스트 크기",
-    Bold: "굵게",
+    "Bold": "굵게",
     "Align left": "왼쪽 정렬",
     "Align center": "가운데 정렬",
     "Align right": "오른쪽 정렬",
@@ -1456,10 +1273,8 @@ export const nativeEditorAdditionalCopy: Record<
     "Plate corners": "배경 모서리",
   },
   ja: {
-    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.":
-      "ブラウザーの復元用ストレージを利用できません。未保存の変更が保存されるまで、このタブを開いたままにしてください。",
-    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.":
-      "別のタブでこのプロジェクトの復元データが変更されました。このタブの未保存の変更が保存されるまで、開いたままにしてください。",
+    "Browser recovery is unavailable. Keep this tab open until pending changes are saved.": "ブラウザーの復元用ストレージを利用できません。未保存の変更が保存されるまで、このタブを開いたままにしてください。",
+    "Another tab changed this project's recovery data. Keep this tab open until its pending changes are saved.": "別のタブでこのプロジェクトの復元データが変更されました。このタブの未保存の変更が保存されるまで、開いたままにしてください。",
     "Retry browser recovery": "ブラウザーの復元を再試行",
     "Select layer": "レイヤーを選択",
     "Move layer": "レイヤーを移動",
@@ -1472,89 +1287,60 @@ export const nativeEditorAdditionalCopy: Record<
     "Bottom left corner": "左下の角",
     "Left edge": "左辺",
     "Top left corner": "左上の角",
-    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.":
-      "矢印キーで1ピクセルずつ移動またはサイズ変更します。Shiftを押すと10ピクセルずつ変更します。矢印キーを離すと保存し、Escapeで取り消します。",
-    "Use the inspector to edit animated or transformed dimensions.":
-      "アニメーションや変形が適用されたサイズはインスペクターで編集してください。",
-    "More layers are available in the inspector.":
-      "インスペクターで他のレイヤーを選択できます。",
-    "The selection contains a clip that is no longer available.":
-      "選択したクリップの中に、利用できなくなったものがあります。",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "一括操作を行う前に、選択したすべてのクリップと関連トラックのロックを解除してください。",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "時間を一括編集するには、関連する字幕やグラフィックを除いてソースクリップを選択してください。",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "時間の変更や複製を行う前に、クリップのソースとのリンクを解除してください。",
-    "Select 500 clips or fewer for a single batch edit.":
-      "一度に編集するクリップは500個以下にしてください。",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "一度に複製するクリップは250個以下にしてください。",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "選択したすべてのクリップは、ロックされていない同じ種類のトラックに移動する必要があります。",
+    "Use arrow keys to move or resize by one pixel. Hold Shift for ten pixels. Release the arrow keys to save. Escape cancels.": "矢印キーで1ピクセルずつ移動またはサイズ変更します。Shiftを押すと10ピクセルずつ変更します。矢印キーを離すと保存し、Escapeで取り消します。",
+    "Use the inspector to edit animated or transformed dimensions.": "アニメーションや変形が適用されたサイズはインスペクターで編集してください。",
+    "More layers are available in the inspector.": "インスペクターで他のレイヤーを選択できます。",
+    "The selection contains a clip that is no longer available.": "選択したクリップの中に、利用できなくなったものがあります。",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "一括操作を行う前に、選択したすべてのクリップと関連トラックのロックを解除してください。",
+    "Select source clips without linked captions or graphics for batch timing edits.": "時間を一括編集するには、関連する字幕やグラフィックを除いてソースクリップを選択してください。",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "時間の変更や複製を行う前に、クリップのソースとのリンクを解除してください。",
+    "Select 500 clips or fewer for a single batch edit.": "一度に編集するクリップは500個以下にしてください。",
+    "Select 250 clips or fewer to duplicate in one step.": "一度に複製するクリップは250個以下にしてください。",
+    "Every selected clip must move to an unlocked track of the same type.": "選択したすべてのクリップは、ロックされていない同じ種類のトラックに移動する必要があります。",
     "Selected clips": "選択したクリップ",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "一括操作は選択したすべてのクリップに適用されます。インスペクターではメインのクリップを編集します。",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "一括操作は選択したすべてのクリップに適用されます。インスペクターではメインのクリップを編集します。",
     "Duplicate selected clips": "選択したクリップを複製",
     "Delete selected clips": "選択したクリップを削除",
-    "Select 24 clips or fewer before asking the video agent.":
-      "動画エージェントに依頼する前に、クリップを24個以下にしてください。",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "Shift-クリックで範囲を選択します。⌘/Ctrl-クリックでクリップの選択を切り替えます。⌘/Ctrl+Aで全選択、Escapeで選択を解除します。",
+    "Select 24 clips or fewer before asking the video agent.": "動画エージェントに依頼する前に、クリップを24個以下にしてください。",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "Shift-クリックで範囲を選択します。⌘/Ctrl-クリックでクリップの選択を切り替えます。⌘/Ctrl+Aで全選択、Escapeで選択を解除します。",
     "Select one clip to split.": "分割するクリップを1つ選択してください。",
-    "You're offline. Your pending edits are kept in this browser.":
-      "オフラインです。保存待ちの変更はこのブラウザーに保持されます。",
-    "Save interrupted. Retry will safely check the same edit.":
-      "保存が中断されました。再試行すると、同じ変更を安全に確認します。",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "保存するには再度ログインしてください。保存待ちの変更はこのブラウザーに保持されます。",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "このプロジェクトを保存する権限がありません。保存待ちの変更はこのブラウザーに保持されます。",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "サーバーが保存待ちの変更を拒否しました。未保存の変更を破棄する前に下書きをダウンロードしてください。",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "この変更は新しい変更と競合しています。保持するバージョンを選択してください。",
+    "You're offline. Your pending edits are kept in this browser.": "オフラインです。保存待ちの変更はこのブラウザーに保持されます。",
+    "Save interrupted. Retry will safely check the same edit.": "保存が中断されました。再試行すると、同じ変更を安全に確認します。",
+    "Sign in again to save. Your pending edits are kept in this browser.": "保存するには再度ログインしてください。保存待ちの変更はこのブラウザーに保持されます。",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "このプロジェクトを保存する権限がありません。保存待ちの変更はこのブラウザーに保持されます。",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "サーバーが保存待ちの変更を拒否しました。未保存の変更を破棄する前に下書きをダウンロードしてください。",
+    "This edit conflicts with a newer change. Choose which version to keep.": "この変更は新しい変更と競合しています。保持するバージョンを選択してください。",
     "Sign in again": "再度ログイン",
     "Retrying save…": "保存を再試行中…",
     "Retry save": "保存を再試行",
     "Discard unsaved changes": "未保存の変更を破棄",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "左右の矢印キーでクリップを移動するか、フォーカス中のトリムハンドルを1フレームずつ調整します。Shiftを押しながら操作すると1秒ずつ調整できます。Enterまたはスペースでクリップを選択します。",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "左右の矢印キーでクリップを移動するか、フォーカス中のトリムハンドルを1フレームずつ調整します。Shiftを押しながら操作すると1秒ずつ調整できます。Enterまたはスペースでクリップを選択します。",
     "Font family": "フォントファミリー",
     "Loading font\u2026": "フォントを読み込み中…",
     "Font preview unavailable": "フォントをプレビューできません",
     "Size & appearance": "サイズと外観",
-    "Drag on the preview to reposition this item.":
-      "プレビューでこの要素をドラッグして位置を調整します。",
+    "Drag on the preview to reposition this item.": "プレビューでこの要素をドラッグして位置を調整します。",
     "Font color": "文字色",
     "Transparent background": "透明な背景",
     "Delete empty track": "空のトラックを削除",
-    "Unlock the track to delete it":
-      "削除するにはトラックのロックを解除してください",
+    "Unlock the track to delete it": "削除するにはトラックのロックを解除してください",
     "Keep at least one track": "トラックを1つ以上残してください",
     "Press Enter to save": "Enterで保存",
     "Saving name…": "名前を保存中…",
     "Name saved": "名前を保存しました",
     "Name not saved": "名前を保存できませんでした",
-    Retry: "再試行",
+    "Retry": "再試行",
     "Project name cannot be empty.": "プロジェクト名を入力してください。",
-    "Project name must be 120 characters or fewer.":
-      "プロジェクト名は120文字以内で入力してください。",
-    "Enter to send · ⌘/Ctrl+Enter for a new line":
-      "Enterで送信 · ⌘/Ctrl+Enterで改行",
+    "Project name must be 120 characters or fewer.": "プロジェクト名は120文字以内で入力してください。",
+    "Enter to send · ⌘/Ctrl+Enter for a new line": "Enterで送信 · ⌘/Ctrl+Enterで改行",
     Delete: "削除",
-    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.":
-      "この動画は通常のダウンロードには大きすぎます。プロジェクトを短くするか、ファイルへの直接保存に対応したブラウザで再度書き出してください。",
+    "This video is too large for a standard download. Shorten the project or try exporting again in a browser that supports saving directly to a file.": "この動画は通常のダウンロードには大きすぎます。プロジェクトを短くするか、ファイルへの直接保存に対応したブラウザで再度書き出してください。",
     "Add text": "テキストを追加",
     "Your video starts here": "ここから動画づくりを始めましょう",
-    "Import a video, image or audio file to start editing.":
-      "動画、画像、音声ファイルを読み込んで編集を始めましょう。",
-    "Your imported media will appear here.":
-      "読み込んだメディアがここに表示されます。",
-    "Select a video or audio clip to generate captions.":
-      "字幕を生成する動画または音声クリップを選択してください。",
-    "Select a video or audio clip to add a music visualizer.":
-      "音楽ビジュアライザーを追加する動画または音声クリップを選択してください。",
+    "Import a video, image or audio file to start editing.": "動画、画像、音声ファイルを読み込んで編集を始めましょう。",
+    "Your imported media will appear here.": "読み込んだメディアがここに表示されます。",
+    "Select a video or audio clip to generate captions.": "字幕を生成する動画または音声クリップを選択してください。",
+    "Select a video or audio clip to add a music visualizer.": "音楽ビジュアライザーを追加する動画または音声クリップを選択してください。",
     "Resize timeline": "タイムラインの高さを変更",
     "What would you like to create?": "どんな動画を作りますか？",
     "Add an opening title": "オープニングタイトルを追加",
@@ -1562,7 +1348,7 @@ export const nativeEditorAdditionalCopy: Record<
     "Help me edit this video": "この動画の編集を手伝って",
     "Text formatting": "テキスト書式",
     "Text size": "文字サイズ",
-    Bold: "太字",
+    "Bold": "太字",
     "Align left": "左揃え",
     "Align center": "中央揃え",
     "Align right": "右揃え",
@@ -1698,54 +1484,36 @@ export const nativeEditorAdditionalCopy: Record<
     "Plate corners": "背景の角丸",
   },
   zh: {
-    "The selection contains a clip that is no longer available.":
-      "所选内容包含已不可用的片段。",
-    "Unlock every selected clip and its dependent tracks before using this batch action.":
-      "使用此批量操作前，请解锁所有选中片段及其关联轨道。",
-    "Select source clips without linked captions or graphics for batch timing edits.":
-      "批量调整时间时，请选择源片段，不要同时选择关联字幕或图形。",
-    "Unlink the source-bound clip before changing its timing or duplicating it.":
-      "更改时间或复制前，请先取消该片段与源素材的绑定。",
-    "Select 500 clips or fewer for a single batch edit.":
-      "一次批量编辑最多选择 500 个片段。",
-    "Select 250 clips or fewer to duplicate in one step.":
-      "一次复制最多选择 250 个片段。",
-    "Every selected clip must move to an unlocked track of the same type.":
-      "所有选中片段都必须移到已解锁的同类型轨道。",
+    "The selection contains a clip that is no longer available.": "所选内容包含已不可用的片段。",
+    "Unlock every selected clip and its dependent tracks before using this batch action.": "使用此批量操作前，请解锁所有选中片段及其关联轨道。",
+    "Select source clips without linked captions or graphics for batch timing edits.": "批量调整时间时，请选择源片段，不要同时选择关联字幕或图形。",
+    "Unlink the source-bound clip before changing its timing or duplicating it.": "更改时间或复制前，请先取消该片段与源素材的绑定。",
+    "Select 500 clips or fewer for a single batch edit.": "一次批量编辑最多选择 500 个片段。",
+    "Select 250 clips or fewer to duplicate in one step.": "一次复制最多选择 250 个片段。",
+    "Every selected clip must move to an unlocked track of the same type.": "所有选中片段都必须移到已解锁的同类型轨道。",
     "Selected clips": "选中片段",
-    "Batch actions affect all selected clips. The inspector edits the primary clip.":
-      "批量操作影响所有选中片段。检查器仅编辑主要片段。",
+    "Batch actions affect all selected clips. The inspector edits the primary clip.": "批量操作影响所有选中片段。检查器仅编辑主要片段。",
     "Duplicate selected clips": "复制选中片段",
     "Delete selected clips": "删除选中片段",
-    "Select 24 clips or fewer before asking the video agent.":
-      "向视频助手提问前，请将选择范围缩小到 24 个片段以内。",
-    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.":
-      "按住 Shift 单击选择连续范围。按住 ⌘/Ctrl 单击切换片段选择状态。⌘/Ctrl+A 全选，Escape 清除选择。",
+    "Select 24 clips or fewer before asking the video agent.": "向视频助手提问前，请将选择范围缩小到 24 个片段以内。",
+    "Shift-click selects a range. ⌘/Ctrl-click toggles clips. ⌘/Ctrl+A selects all. Escape clears selection.": "按住 Shift 单击选择连续范围。按住 ⌘/Ctrl 单击切换片段选择状态。⌘/Ctrl+A 全选，Escape 清除选择。",
     "Select one clip to split.": "请选择一个片段进行分割。",
-    "You're offline. Your pending edits are kept in this browser.":
-      "当前处于离线状态。待保存的修改会保留在此浏览器中。",
-    "Save interrupted. Retry will safely check the same edit.":
-      "保存中断。重试会安全核对此次修改。",
-    "Sign in again to save. Your pending edits are kept in this browser.":
-      "请重新登录以保存。待保存的修改会保留在此浏览器中。",
-    "You no longer have access to save this project. Your pending edits are kept in this browser.":
-      "你已无权保存此项目。待保存的修改会保留在此浏览器中。",
-    "The server rejected a pending edit. Download your draft before discarding unsaved changes.":
-      "服务器拒绝了一项待保存的修改。放弃未保存的修改前，请先下载草稿。",
-    "This edit conflicts with a newer change. Choose which version to keep.":
-      "此修改与较新的修改冲突。请选择要保留的版本。",
+    "You're offline. Your pending edits are kept in this browser.": "当前处于离线状态。待保存的修改会保留在此浏览器中。",
+    "Save interrupted. Retry will safely check the same edit.": "保存中断。重试会安全核对此次修改。",
+    "Sign in again to save. Your pending edits are kept in this browser.": "请重新登录以保存。待保存的修改会保留在此浏览器中。",
+    "You no longer have access to save this project. Your pending edits are kept in this browser.": "你已无权保存此项目。待保存的修改会保留在此浏览器中。",
+    "The server rejected a pending edit. Download your draft before discarding unsaved changes.": "服务器拒绝了一项待保存的修改。放弃未保存的修改前，请先下载草稿。",
+    "This edit conflicts with a newer change. Choose which version to keep.": "此修改与较新的修改冲突。请选择要保留的版本。",
     "Sign in again": "重新登录",
     "Retrying save…": "正在重试保存…",
     "Retry save": "重试保存",
     "Discard unsaved changes": "放弃未保存的修改",
-    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.":
-      "使用左右方向键移动片段，或将聚焦的裁剪手柄调整一帧。按住 Shift 可调整一秒。按 Enter 或空格键选择片段。",
+    "Use Left and Right to move a clip or adjust a focused trim handle by one frame. Hold Shift for one second. Enter or Space selects the clip.": "使用左右方向键移动片段，或将聚焦的裁剪手柄调整一帧。按住 Shift 可调整一秒。按 Enter 或空格键选择片段。",
     "Font family": "字体系列",
     "Loading font\u2026": "正在加载字体…",
     "Font preview unavailable": "字体预览不可用",
     "Size & appearance": "尺寸与外观",
-    "Drag on the preview to reposition this item.":
-      "在预览中拖动此元素来调整位置。",
+    "Drag on the preview to reposition this item.": "在预览中拖动此元素来调整位置。",
     "Font color": "字体颜色",
     "Transparent background": "透明背景",
     "Delete empty track": "删除空轨道",

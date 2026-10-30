@@ -5,7 +5,7 @@
   and DojoClip patches are listed in `vendor/dojo-video-engine/UPSTREAM.json` and
   `SAAS_COMPATIBILITY.md`. Additional harness packaging changes are documented
   in `docs/provenance.md`.
-- **Fonts**: Inter, Anton, Caveat, Fraunces, IBM Plex Mono, Lora, Nunito, Space
+- **Fonts**: Archivo, Inter, Anton, Caveat, Fraunces, IBM Plex Mono, Lora, Nunito, Space
   Grotesk, Noto Sans Arabic, SC, JP, and KR. Each font family's copyright and
   SIL Open Font License are retained beside its files in `public/fonts`.
   Inter's notice is `public/fonts/Inter-LICENSE`.

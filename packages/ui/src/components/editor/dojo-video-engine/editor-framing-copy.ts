@@ -1,107 +1,15 @@
-import type { Locale } from "@/lib/i18n/dictionary";
-const locales = ["zh", "es", "fr", "de", "it", "pt", "ja", "ko"] as const;
-type Row = readonly [
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-];
+import type { Locale } from '@/lib/i18n/dictionary';
+const locales = ['zh', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko'] as const;
+type Row = readonly [string, string, string, string, string, string, string, string];
 const rows = {
-  "Crop & focal point": [
-    "裁切与焦点",
-    "Recorte y punto focal",
-    "Recadrage et point focal",
-    "Zuschnitt und Fokuspunkt",
-    "Ritaglio e punto focale",
-    "Recorte e ponto focal",
-    "切り抜きと焦点",
-    "자르기 및 초점",
-  ],
-  "Crop to fill": [
-    "裁切以填满",
-    "Recortar para llenar",
-    "Recadrer pour remplir",
-    "Füllend zuschneiden",
-    "Ritaglia per riempire",
-    "Recortar para preencher",
-    "画面を埋めるように切り抜く",
-    "화면에 맞게 자르기",
-  ],
-  "Focal point X (%)": [
-    "焦点 X（%）",
-    "Punto focal X (%)",
-    "Point focal X (%)",
-    "Fokuspunkt X (%)",
-    "Punto focale X (%)",
-    "Ponto focal X (%)",
-    "焦点 X（%）",
-    "초점 X (%)",
-  ],
-  "Focal point Y (%)": [
-    "焦点 Y（%）",
-    "Punto focal Y (%)",
-    "Point focal Y (%)",
-    "Fokuspunkt Y (%)",
-    "Punto focale Y (%)",
-    "Ponto focal Y (%)",
-    "焦点 Y（%）",
-    "초점 Y (%)",
-  ],
-  "Center focal point": [
-    "焦点居中",
-    "Centrar punto focal",
-    "Centrer le point focal",
-    "Fokuspunkt zentrieren",
-    "Centra il punto focale",
-    "Centralizar ponto focal",
-    "焦点を中央に戻す",
-    "초점 가운데로",
-  ],
-  "Fill the frame, then move the visible area. Original media stays unchanged.":
-    [
-      "填满画面后调整可见区域。原始素材保持不变。",
-      "Llena el encuadre y mueve el área visible. El archivo original no cambia.",
-      "Remplissez le cadre, puis déplacez la zone visible. Le média original reste inchangé.",
-      "Fülle den Rahmen und verschiebe den sichtbaren Bereich. Das Originalmedium bleibt unverändert.",
-      "Riempi il fotogramma, poi sposta l’area visibile. Il file originale non cambia.",
-      "Preencha o quadro e mova a área visível. A mídia original permanece intacta.",
-      "画面を埋めてから表示範囲を移動します。元のメディアは変更されません。",
-      "화면을 채운 다음 보이는 영역을 이동하세요. 원본 미디어는 변경되지 않습니다.",
-    ],
-  "Custom framing animation is preserved. These controls are unavailable.": [
-    "保留自定义构图动画，无法使用这些控件。",
-    "Se conserva la animación de encuadre personalizada. Estos controles no están disponibles.",
-    "L’animation de cadrage personnalisée est conservée. Ces réglages ne sont pas disponibles.",
-    "Die benutzerdefinierte Bildausschnitt-Animation bleibt erhalten. Diese Regler sind nicht verfügbar.",
-    "L’animazione di inquadratura personalizzata viene mantenuta. Questi controlli non sono disponibili.",
-    "A animação de enquadramento personalizada é preservada. Estes controles estão indisponíveis.",
-    "カスタムのフレーミングアニメーションを保持するため、これらの操作は使えません。",
-    "사용자 지정 프레이밍 애니메이션을 유지하므로 이 컨트롤을 사용할 수 없습니다.",
-  ],
-  "This position uses custom units. Center the focal point to use percentage controls.":
-    [
-      "此位置使用自定义单位。将焦点居中后可使用百分比控件。",
-      "Esta posición usa unidades personalizadas. Centra el punto focal para usar porcentajes.",
-      "Cette position utilise des unités personnalisées. Centrez le point focal pour utiliser des pourcentages.",
-      "Diese Position verwendet benutzerdefinierte Einheiten. Zentriere den Fokuspunkt, um Prozentwerte zu nutzen.",
-      "Questa posizione usa unità personalizzate. Centra il punto focale per usare i controlli percentuali.",
-      "Esta posição usa unidades personalizadas. Centralize o ponto focal para usar porcentagens.",
-      "この位置にはカスタム単位が使われています。焦点を中央に戻すとパーセント指定が使えます。",
-      "이 위치는 사용자 지정 단위를 사용합니다. 초점을 가운데로 옮기면 백분율 컨트롤을 사용할 수 있습니다.",
-    ],
+  'Crop & focal point': ['裁切与焦点', 'Recorte y punto focal', 'Recadrage et point focal', 'Zuschnitt und Fokuspunkt', 'Ritaglio e punto focale', 'Recorte e ponto focal', '切り抜きと焦点', '자르기 및 초점'],
+  'Crop to fill': ['裁切以填满', 'Recortar para llenar', 'Recadrer pour remplir', 'Füllend zuschneiden', 'Ritaglia per riempire', 'Recortar para preencher', '画面を埋めるように切り抜く', '화면에 맞게 자르기'],
+  'Focal point X (%)': ['焦点 X（%）', 'Punto focal X (%)', 'Point focal X (%)', 'Fokuspunkt X (%)', 'Punto focale X (%)', 'Ponto focal X (%)', '焦点 X（%）', '초점 X (%)'],
+  'Focal point Y (%)': ['焦点 Y（%）', 'Punto focal Y (%)', 'Point focal Y (%)', 'Fokuspunkt Y (%)', 'Punto focale Y (%)', 'Ponto focal Y (%)', '焦点 Y（%）', '초점 Y (%)'],
+  'Center focal point': ['焦点居中', 'Centrar punto focal', 'Centrer le point focal', 'Fokuspunkt zentrieren', 'Centra il punto focale', 'Centralizar ponto focal', '焦点を中央に戻す', '초점 가운데로'],
+  'Fill the frame, then move the visible area. Original media stays unchanged.': ['填满画面后调整可见区域。原始素材保持不变。', 'Llena el encuadre y mueve el área visible. El archivo original no cambia.', 'Remplissez le cadre, puis déplacez la zone visible. Le média original reste inchangé.', 'Fülle den Rahmen und verschiebe den sichtbaren Bereich. Das Originalmedium bleibt unverändert.', 'Riempi il fotogramma, poi sposta l’area visibile. Il file originale non cambia.', 'Preencha o quadro e mova a área visível. A mídia original permanece intacta.', '画面を埋めてから表示範囲を移動します。元のメディアは変更されません。', '화면을 채운 다음 보이는 영역을 이동하세요. 원본 미디어는 변경되지 않습니다.'],
+  'Custom framing animation is preserved. These controls are unavailable.': ['保留自定义构图动画，无法使用这些控件。', 'Se conserva la animación de encuadre personalizada. Estos controles no están disponibles.', 'L’animation de cadrage personnalisée est conservée. Ces réglages ne sont pas disponibles.', 'Die benutzerdefinierte Bildausschnitt-Animation bleibt erhalten. Diese Regler sind nicht verfügbar.', 'L’animazione di inquadratura personalizzata viene mantenuta. Questi controlli non sono disponibili.', 'A animação de enquadramento personalizada é preservada. Estes controles estão indisponíveis.', 'カスタムのフレーミングアニメーションを保持するため、これらの操作は使えません。', '사용자 지정 프레이밍 애니메이션을 유지하므로 이 컨트롤을 사용할 수 없습니다.'],
+  'This position uses custom units. Center the focal point to use percentage controls.': ['此位置使用自定义单位。将焦点居中后可使用百分比控件。', 'Esta posición usa unidades personalizadas. Centra el punto focal para usar porcentajes.', 'Cette position utilise des unités personnalisées. Centrez le point focal pour utiliser des pourcentages.', 'Diese Position verwendet benutzerdefinierte Einheiten. Zentriere den Fokuspunkt, um Prozentwerte zu nutzen.', 'Questa posizione usa unità personalizzate. Centra il punto focale per usare i controlli percentuali.', 'Esta posição usa unidades personalizadas. Centralize o ponto focal para usar porcentagens.', 'この位置にはカスタム単位が使われています。焦点を中央に戻すとパーセント指定が使えます。', '이 위치는 사용자 지정 단위를 사용합니다. 초점을 가운데로 옮기면 백분율 컨트롤을 사용할 수 있습니다.'],
 } satisfies Record<string, Row>;
-export const EDITOR_FRAMING_LABELS = Object.keys(rows) as Array<
-  keyof typeof rows
->;
-export const editorFramingCopy = Object.fromEntries(
-  locales.map((locale, index) => [
-    locale,
-    Object.fromEntries(
-      Object.entries(rows).map(([key, values]) => [key, values[index]]),
-    ),
-  ]),
-) as Record<Exclude<Locale, "en">, Record<string, string>>;
+export const EDITOR_FRAMING_LABELS = Object.keys(rows) as Array<keyof typeof rows>;
+export const editorFramingCopy = Object.fromEntries(locales.map((locale, index) => [locale, Object.fromEntries(Object.entries(rows).map(([key, values]) => [key, values[index]]))])) as Record<Exclude<Locale, 'en'>, Record<string, string>>;

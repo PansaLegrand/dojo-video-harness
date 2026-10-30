@@ -1,6 +1,6 @@
 # Dojo Video Harness
 
-A local, open-source video editor with a small TypeScript editing agent.
+A local, open-source video editor with a small TypeScript editing agent. The UI uses the same Next.js App Router, React 18, Tailwind 3, components, and styles as DojoClip.
 Bring your own LLM and transcription providers. Edit the same timeline by hand
 or through chat, review the result, and export through [Dojo Video Engine](https://github.com/PansaLegrand/dojo-video-engine) in your browser.
 
@@ -10,7 +10,7 @@ The difficult video-specific rules live in the tested document and command kerne
 
 ![The local editor with a structured pending question](docs/assets/editor-question.png)
 
-*Browser-test screenshot with synthetic model responses.*
+_Browser-test screenshot with synthetic model responses._
 
 ## Run locally
 
@@ -37,6 +37,8 @@ ASR_BASE_URL=https://api.openai.com/v1
 ASR_MODEL=whisper-1
 ASR_API_KEY=your-asr-key
 ```
+
+The editor UI is synced from the product; authentication, local persistence, provider keys, and usage copy are isolated host adapters. See [syncing the product UI](docs/syncing-product-ui.md).
 
 The first provider adapters implement the **OpenAI-compatible Chat Completions
 tool-calling API** and **OpenAI-compatible audio transcription API**. Compatible
@@ -76,7 +78,7 @@ npm start
 - A framework-independent agent loop using real function calls. Inspect a project,
   read a skill, search transcript evidence, propose an edit, or ask a question.
 - Proposal review with synchronized before/after previews, explicit apply,
-  selective undo, structured questions, cancellation, and visible tool activity.
+  selective undo, structured questions, cancellation, and the product’s quick-edit controls. Tool events remain available through the local API.
 - Provider-backed captions and translation, with persisted source-bound receipts.
 
 This is a standalone extraction, not a claim of complete hosted-product parity.
@@ -89,18 +91,20 @@ directs users to the caption UI when new transcription is required.
 
 Start with [the guided walkthrough](docs/learn-the-harness.md), then follow:
 
-| Location                                         | Responsibility                                             |
-| ------------------------------------------------ | ---------------------------------------------------------- |
-| `packages/agent/src/loop.ts`                     | Bounded model → tool → observation loop                    |
-| `packages/agent/src/tools.ts`                    | Tool descriptions, runtime validation, effects             |
-| `skills/`                                        | Domain instructions loaded by the `read_skill` tool        |
-| `packages/adapters/src/`                         | LLM and ASR transports; no document mutation               |
-| `packages/core/src/lib/video-project/`           | Authoritative document, commands, scope, evidence, history |
-| `packages/ui/src/components/editor/dojo-video-engine/` | Real manual editor and chat/review UI                      |
-| `apps/server/src/agent-service.ts`               | Durable runs, questions, approvals, cancellation           |
-| `apps/server/src/store.ts`                       | Local transactions, receipts, revisions                    |
-| `apps/studio/`                                   | Runnable application shell                                 |
-| `vendor/dojo-video-engine/`                            | Pinned renderer source and patch provenance                |
+| Location                                               | Responsibility                                                    |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| `packages/agent/src/loop.ts`                           | Bounded model → tool → observation loop                           |
+| `packages/agent/src/tools.ts`                          | Tool descriptions, runtime validation, effects                    |
+| `skills/`                                              | Domain instructions loaded by the `read_skill` tool               |
+| `packages/adapters/src/`                               | LLM and ASR transports; no document mutation                      |
+| `packages/core/src/lib/video-project/`                 | Authoritative document, commands, scope, evidence, history        |
+| `packages/ui/src/components/editor/dojo-video-engine/` | Real manual editor and chat/review UI                             |
+| `app/`                                                 | Product-aligned localized App Router pages and API route handlers |
+| `packages/ui/src/host/`                                | Local user, copy, and provider-request adapters                   |
+| `apps/server/src/agent-service.ts`                     | Durable runs, questions, approvals, cancellation                  |
+| `apps/server/src/store.ts`                             | Local transactions, receipts, revisions                           |
+| `apps/server/src/local-api.ts`                         | Local services behind Next route handlers                         |
+| `vendor/dojo-video-engine/`                            | Pinned renderer source and patch provenance                       |
 
 There is no LangChain, Vercel agent runtime, Pi runtime, or coding-agent subprocess
 in the execution path. Pi inspired the small-core approach; a provider or runtime
@@ -108,7 +112,7 @@ adapter can be added without giving it authority over document commits.
 
 The packages are source workspaces in this repository. They are not published npm
 packages yet. There is no runtime dependency on a sibling checkout. Development
-currently uses a shared root TypeScript/Vite configuration; independently packaged
+uses the product’s Next.js 15.5 family, React 18.3, Tailwind 3.4, and shared TypeScript aliases; independently packaged
 embeddable SDK distributions are a subsequent release step.
 
 ## Verification
@@ -124,6 +128,8 @@ local server and synthetic LLM/ASR HTTP endpoints, uses actual browser storage a
 rendering, and decodes the exported MP4. It never uses `.env` provider credentials.
 Artifacts go to ignored `test-results/`. This verifies adapter and workflow behavior,
 not the quality or account compatibility of a live paid provider.
+
+The App Router serves the editor at `/en/applications/editor/:projectId` and the shared product home at `/en/applications/video-edit-ai`. Other supported locales use the same route structure.
 
 See [architecture](docs/architecture.md), [extension guide](docs/extending.md),
 [edge cases](docs/edge-cases.md), and [provenance](docs/provenance.md).

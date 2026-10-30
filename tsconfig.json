@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
@@ -9,15 +13,23 @@
     "noEmit": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "jsx": "react-jsx",
-    "types": ["node", "vite/client"],
+    "jsx": "preserve",
+    "types": [
+      "node"
+    ],
     "paths": {
-      "@dojo-video-engine/core": ["./vendor/dojo-video-engine/core/src/index.ts"],
+      "@dojo-video-engine/core": [
+        "./vendor/dojo-video-engine/core/src/index.ts"
+      ],
       "@dojo-video-engine/agent-tools": [
         "./vendor/dojo-video-engine/agent-tools/src/index.ts"
       ],
-      "@dojo-video-engine/commands": ["./vendor/dojo-video-engine/commands/src/index.ts"],
-      "@dojo-video-engine/export": ["./vendor/dojo-video-engine/export/src/index.ts"],
+      "@dojo-video-engine/commands": [
+        "./vendor/dojo-video-engine/commands/src/index.ts"
+      ],
+      "@dojo-video-engine/export": [
+        "./vendor/dojo-video-engine/export/src/index.ts"
+      ],
       "@dojo-video-engine/export/worker": [
         "./vendor/dojo-video-engine/export/src/worker.ts"
       ],
@@ -30,9 +42,15 @@
       "@dojo-video-engine/interchange": [
         "./vendor/dojo-video-engine/interchange/src/index.ts"
       ],
-      "@dojo-video-engine/layout": ["./vendor/dojo-video-engine/layout/src/index.ts"],
-      "@dojo-video-engine/player": ["./vendor/dojo-video-engine/player/src/index.ts"],
-      "@dojo-video-engine/presets": ["./vendor/dojo-video-engine/presets/src/index.ts"],
+      "@dojo-video-engine/layout": [
+        "./vendor/dojo-video-engine/layout/src/index.ts"
+      ],
+      "@dojo-video-engine/player": [
+        "./vendor/dojo-video-engine/player/src/index.ts"
+      ],
+      "@dojo-video-engine/presets": [
+        "./vendor/dojo-video-engine/presets/src/index.ts"
+      ],
       "@dojo-video-engine/presets/macros": [
         "./vendor/dojo-video-engine/presets/src/macros.ts"
       ],
@@ -42,29 +60,60 @@
       "@dojo-video-engine/renderer-canvas2d/runtime": [
         "./vendor/dojo-video-engine/renderer-canvas2d/src/runtime.ts"
       ],
-      "@dojo-video-engine/runtime": ["./vendor/dojo-video-engine/runtime/src/index.ts"],
-      "@dojo-video-engine/schema": ["./vendor/dojo-video-engine/schema/src/index.ts"],
+      "@dojo-video-engine/runtime": [
+        "./vendor/dojo-video-engine/runtime/src/index.ts"
+      ],
+      "@dojo-video-engine/schema": [
+        "./vendor/dojo-video-engine/schema/src/index.ts"
+      ],
       "@dojo-video-engine/schema/commands": [
         "./vendor/dojo-video-engine/schema/src/commands.ts"
       ],
-      "@dojo-video-engine/schema/patch": ["./vendor/dojo-video-engine/schema/src/patch.ts"],
+      "@dojo-video-engine/schema/patch": [
+        "./vendor/dojo-video-engine/schema/src/patch.ts"
+      ],
       "@dojo-video-engine/schema/values": [
         "./vendor/dojo-video-engine/schema/src/values.ts"
       ],
-      "@/lib/*": ["packages/core/src/lib/*"],
-      "@/types/*": ["packages/core/src/types/*"],
-      "@/components/*": ["packages/ui/src/components/*"],
-      "@/contexts/*": ["packages/ui/src/contexts/*"],
-      "next/link": ["packages/ui/src/link.tsx"]
+      "@/lib/*": [
+        "packages/core/src/lib/*"
+      ],
+      "@/types/*": [
+        "packages/core/src/types/*"
+      ],
+      "@/components/*": [
+        "packages/ui/src/components/*"
+      ],
+      "@/contexts/*": [
+        "packages/ui/src/contexts/*"
+      ],
+      "@/host/*": [
+        "packages/ui/src/host/*"
+      ]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "allowJs": true,
+    "incremental": true,
+    "isolatedModules": true
   },
   "include": [
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    ".next/types/**/*.ts",
     "packages",
-    "apps",
+    "apps/server",
     "tests",
-    "vite.config.ts",
+    "config",
     "vitest.config.ts"
   ],
-  "exclude": ["node_modules", "vendor"]
+  "exclude": [
+    "node_modules",
+    "vendor"
+  ]
 }

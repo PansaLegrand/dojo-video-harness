@@ -433,8 +433,17 @@ export class AgentService {
           })
           .parse(raw),
         r = runOf(p, id);
-      if (p.receipts[input.operationId])
-        return p.receipts[input.operationId].snapshot;
+      const fingerprint = canonicalSerialize({
+        action: "undo",
+        runId: id,
+        ...input,
+      });
+      const previous = p.receipts[input.operationId];
+      if (previous) {
+        if (previous.hash !== fingerprint)
+          throw new HttpError("Operation ID belongs to another undo.", 409);
+        return previous.snapshot;
+      }
       if (
         p.documentHash !== input.baseHash ||
         p.revision !== input.baseRevision
@@ -452,10 +461,54 @@ export class AgentService {
         commands,
       );
       if (!rebased.ok) throw new HttpError(rebased.reason, 409);
+      const before = p.document,
+        beforeHash = p.documentHash,
+        beforeRevision = p.revision;
       await commitDocument(p, rebased.document);
+      // The product chat derives per-card Undo state from acknowledged inverse runs.
+      const undoRun: StoredRun = {
+        ...structuredClone(r),
+        id: randomUUID(),
+        operationId: input.operationId,
+        instruction: `Undo: ${r.instruction}`,
+        undoOfRunId: r.id,
+        status: "applied",
+        phase: "applied",
+        baseRevision: beforeRevision,
+        baseHash: beforeHash,
+        scope: { kind: "project" },
+        request: {
+          ...r.request,
+          baseRevision: beforeRevision,
+          baseHash: beforeHash,
+          document: before,
+          authoring: { version: 1, scope: { kind: "project" } },
+        },
+        requestHash: fingerprint,
+        events: [],
+        error: null,
+        clarification: undefined,
+        replyState: undefined,
+        clarificationReply: undefined,
+        clarificationParentRunId: undefined,
+        answers: undefined,
+        proposal: {
+          summary: "Undid the selected edit",
+          commands: rebased.commands,
+          changedItemIds: rebased.changedItemIds,
+          impact: "review",
+          previewHash: p.documentHash,
+        },
+        appliedBefore: before,
+        appliedAfter: p.document,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      p.runs.push(undoRun);
+      message(p, undoRun.id, "assistant", undoRun.proposal!.summary);
       const result = snapshot(p);
       p.receipts[input.operationId] = {
-        hash: canonicalSerialize(input),
+        hash: fingerprint,
         snapshot: result,
       };
       return result;

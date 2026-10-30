@@ -1,3 +1,5 @@
+"use client";
+
 import type { EditorPropertyPreview } from "./editor-property-preview";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type {
@@ -12,19 +14,10 @@ import type {
   EditorItem,
 } from "@/lib/editor/document";
 import { MotionTemplateControls } from "@/components/motion-graphics/template-controls";
-import {
-  motionTemplateOf,
-  readMotionSettings,
-  updateMotionGraphic,
-} from "@/lib/motion-graphics/templates";
+import { motionTemplateOf, readMotionSettings, updateMotionGraphic } from "@/lib/motion-graphics/templates";
 import { EditorFraming } from "./editor-framing-controls";
 import { EditorFontPicker } from "./editor-font-picker";
-import {
-  EditorField,
-  EditorSelect,
-  EditorTextArea,
-  inputColor,
-} from "./editor-fields";
+import { EditorField, EditorSelect, EditorTextArea, inputColor } from "./editor-fields";
 export { EditorField, EditorSelect, EditorTextArea } from "./editor-fields";
 import { EditorCaptionContent } from "./editor-caption-content";
 import { useNativeEditorText } from "./native-editor-copy";
@@ -33,122 +26,31 @@ import { VisualizerTemplatePreview } from "@/components/music-visualizer/music-v
 import { getMusicVisualizerTemplateOptions } from "@/components/music-visualizer/music-visualizer-page-config";
 import { MUSIC_VISUALIZER_TEMPLATE_RENDER_CONFIG } from "@/components/music-visualizer/music-visualizer-template-config";
 import { getMusicVisualizerLayerTemplate } from "@/types/music-visualizer";
-import {
-  applyEditorVisualizerPreset,
-  editorVisualizerTemplateKey,
-} from "./editor-visualizers";
-import {
-  editorAspectRatios,
-  editorAspectRatioValue,
-} from "./editor-aspect-ratio";
+import { applyEditorVisualizerPreset, editorVisualizerTemplateKey } from "./editor-visualizers";
+import { editorAspectRatios, editorAspectRatioValue } from "./editor-aspect-ratio";
 import { EditorExportResolutionSelect } from "./editor-export-resolution";
 import type { EditorExportResolution } from "@/lib/editor/export-resolution";
 import { editorCanvasDimensionError } from "@/lib/editor/canvas-format";
-import {
-  editorMediaFilters,
-  editorTextStyles,
-  editorTextStylePatch,
-  updateEditorNodeStyle,
-  editorTextBackgroundProperty,
-} from "./editor-presets";
+import { editorMediaFilters, editorTextStyles, editorTextStylePatch, updateEditorNodeStyle, editorTextBackgroundProperty } from "./editor-presets";
 import { editorCaptionPresetEntries } from "./editor-caption-presets";
 import { editorFontWeights } from "@/lib/editor/fonts";
 import { parseShadowValue, parseColorValue } from "@dojo-video-engine/schema/values";
 
-function EditorShadowControls({
-  value,
-  onChange,
-  onPreview,
-}: {
-  value?: string;
-  onChange: (value: string | undefined) => void;
-  onPreview: (value: string | null) => void;
-}) {
+function EditorShadowControls({ value, onChange, onPreview }: { value?: string; onChange: (value: string | undefined) => void; onPreview: (value: string | null) => void }) {
   const shadow = value ? parseShadowValue(value) : null;
-  const color =
-    shadow?.color.kind === "rgba"
-      ? shadow.color
-      : { red: 0, green: 0, blue: 0, alpha: 1 };
-  const update = (
-    patch: Partial<{
-      x: number;
-      y: number;
-      blur: number;
-      color: string;
-      alpha: number;
-    }>,
-    preview = false,
-  ) => {
+  const color = shadow?.color.kind === "rgba" ? shadow.color : { red: 0, green: 0, blue: 0, alpha: 1 };
+  const update = (patch: Partial<{ x: number; y: number; blur: number; color: string; alpha: number }>, preview = false) => {
     const nextColor = patch.color ? parseColorValue(patch.color) : color;
     const rgb = nextColor && "red" in nextColor ? nextColor : color;
-    (preview ? onPreview : onChange)(
-      `${patch.x ?? shadow?.offsetX ?? 0}px ${patch.y ?? shadow?.offsetY ?? 2}px ${patch.blur ?? shadow?.blur ?? 4}px rgba(${rgb.red},${rgb.green},${rgb.blue},${patch.alpha ?? color.alpha})`,
-    );
+    (preview ? onPreview : onChange)(`${patch.x ?? shadow?.offsetX ?? 0}px ${patch.y ?? shadow?.offsetY ?? 2}px ${patch.blur ?? shadow?.blur ?? 4}px rgba(${rgb.red},${rgb.green},${rgb.blue},${patch.alpha ?? color.alpha})`);
   };
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <EditorField
-        label="Shadow X"
-        type="number"
-        value={shadow?.offsetX ?? 0}
-        min={-100}
-        max={100}
-        onCommit={(value) => update({ x: Number(value) })}
-        onPreview={(value) =>
-          value === null ? onPreview(null) : update({ x: Number(value) }, true)
-        }
-      />
-      <EditorField
-        label="Shadow Y"
-        type="number"
-        value={shadow?.offsetY ?? 0}
-        min={-100}
-        max={100}
-        onCommit={(value) => update({ y: Number(value) })}
-        onPreview={(value) =>
-          value === null ? onPreview(null) : update({ y: Number(value) }, true)
-        }
-      />
-      <EditorField
-        label="Shadow blur"
-        type="number"
-        value={shadow?.blur ?? 0}
-        min={0}
-        max={100}
-        onCommit={(value) => update({ blur: Number(value) })}
-        onPreview={(value) =>
-          value === null
-            ? onPreview(null)
-            : update({ blur: Number(value) }, true)
-        }
-      />
-      <EditorField
-        label="Shadow opacity"
-        type="number"
-        value={shadow ? color.alpha : 0}
-        min={0}
-        max={1}
-        step={0.05}
-        onCommit={(value) => update({ alpha: Number(value) })}
-        onPreview={(value) =>
-          value === null
-            ? onPreview(null)
-            : update({ alpha: Number(value) }, true)
-        }
-      />
-      <EditorField
-        label="Shadow color"
-        type="color"
-        value={
-          value ? inputColor(shadow?.color.source ?? "#000000") : "#000000"
-        }
-        onCommit={(value) => update({ color: value })}
-        onPreview={(value) =>
-          value === null ? onPreview(null) : update({ color: value }, true)
-        }
-      />
-    </div>
-  );
+  return <div className="grid grid-cols-2 gap-2">
+    <EditorField label="Shadow X" type="number" value={shadow?.offsetX ?? 0} min={-100} max={100} onCommit={value => update({ x: Number(value) })} onPreview={value => value === null ? onPreview(null) : update({ x: Number(value) }, true)} />
+    <EditorField label="Shadow Y" type="number" value={shadow?.offsetY ?? 0} min={-100} max={100} onCommit={value => update({ y: Number(value) })} onPreview={value => value === null ? onPreview(null) : update({ y: Number(value) }, true)} />
+    <EditorField label="Shadow blur" type="number" value={shadow?.blur ?? 0} min={0} max={100} onCommit={value => update({ blur: Number(value) })} onPreview={value => value === null ? onPreview(null) : update({ blur: Number(value) }, true)} />
+    <EditorField label="Shadow opacity" type="number" value={shadow ? color.alpha : 0} min={0} max={1} step={0.05} onCommit={value => update({ alpha: Number(value) })} onPreview={value => value === null ? onPreview(null) : update({ alpha: Number(value) }, true)} />
+    <EditorField label="Shadow color" type="color" value={value ? inputColor(shadow?.color.source ?? "#000000") : "#000000"} onCommit={value => update({ color: value })} onPreview={value => value === null ? onPreview(null) : update({ color: value }, true)} />
+  </div>;
 }
 
 function Section({
@@ -161,9 +63,7 @@ function Section({
   const t = useNativeEditorText();
   return (
     <div className="space-y-3 border-b border-[var(--editor-border)] p-4">
-      <h3 className="text-xs font-medium text-[var(--editor-text)]">
-        {t(title)}
-      </h3>
+      <h3 className="text-xs font-medium text-[var(--editor-text)]">{t(title)}</h3>
       {children}
     </div>
   );
@@ -293,73 +193,27 @@ export function EditorInspector({
       onUpdate(selected.id, { node: { ...selected.node, ...patch } });
   };
   const updateStyle = (patch: Partial<SceneStyle>) => {
-    if (selected)
-      onUpdate(selected.id, {
-        node: updateEditorNodeStyle(selected.node, patch),
-      });
+    if (selected) onUpdate(selected.id, { node: updateEditorNodeStyle(selected.node, patch) });
   };
-  const previewStyle = (patch: Partial<SceneStyle> | null) => {
-    if (selected) onPreviewStyle(selected, patch);
-  };
-  const liveStyle = (
-    change: (
-      value: string,
-      update: (patch: Partial<SceneStyle>) => void,
-    ) => void,
-  ) => ({
+  const previewStyle = (patch: Partial<SceneStyle> | null) => { if (selected) onPreviewStyle(selected, patch); };
+  const liveStyle = (change: (value: string, update: (patch: Partial<SceneStyle>) => void) => void) => ({
     onCommit: (value: string) => change(value, updateStyle),
-    onPreview: (value: string | null) =>
-      value === null ? previewStyle(null) : change(value, previewStyle),
+    onPreview: (value: string | null) => value === null ? previewStyle(null) : change(value, previewStyle),
   });
-  const liveSelect = (
-    change: (
-      value: string,
-      update: (patch: Partial<SceneStyle>) => void,
-    ) => void,
-  ) => {
-    const handlers = liveStyle(change);
-    return { onChange: handlers.onCommit, onPreview: handlers.onPreview };
+  const liveSelect = (change: (value: string, update: (patch: Partial<SceneStyle>) => void) => void) => {
+    const handlers = liveStyle(change); return { onChange: handlers.onCommit, onPreview: handlers.onPreview };
   };
 
-  const liveNode = (
-    change: (
-      value: string,
-      update: (
-        patch: Extract<EditorPropertyPreview, { kind: "node" }>["patch"],
-      ) => void,
-    ) => void,
-  ) => ({
+  const liveNode = (change: (value: string, update: (patch: Extract<EditorPropertyPreview, { kind: "node" }>["patch"]) => void) => void) => ({
     onCommit: (value: string) => change(value, updateNode),
     onPreview: (value: string | null) => {
       if (value === null) onPreviewProperty(null);
-      else if (selected)
-        change(value, (patch) =>
-          onPreviewProperty({
-            kind: "node",
-            itemId: selected.id,
-            nodeId: selected.node.id!,
-            patch,
-          }),
-        );
+      else if (selected) change(value, patch => onPreviewProperty({ kind: "node", itemId: selected.id, nodeId: selected.node.id!, patch }));
     },
   });
-  const liveCaption = (
-    patch: (
-      value: string,
-    ) => Extract<EditorPropertyPreview, { kind: "caption" }>["patch"],
-  ) => ({
-    onCommit: (value: string) => {
-      if (selected?.caption)
-        onUpdate(selected.id, {
-          caption: { ...selected.caption, ...patch(value) },
-        });
-    },
-    onPreview: (value: string | null) =>
-      onPreviewProperty(
-        value === null || !selected
-          ? null
-          : { kind: "caption", itemId: selected.id, patch: patch(value) },
-      ),
+  const liveCaption = (patch: (value: string) => Extract<EditorPropertyPreview, { kind: "caption" }>["patch"]) => ({
+    onCommit: (value: string) => { if (selected?.caption) onUpdate(selected.id, { caption: { ...selected.caption, ...patch(value) } }); },
+    onPreview: (value: string | null) => onPreviewProperty(value === null || !selected ? null : { kind: "caption", itemId: selected.id, patch: patch(value) }),
   });
 
   return (
@@ -381,34 +235,16 @@ export function EditorInspector({
               label="Aspect ratio"
               value={editorAspectRatioValue(document.format)}
               options={[
-                ...editorAspectRatios.map((preset) => ({
-                  value: preset.value,
-                  label: preset.label,
-                })),
+                ...editorAspectRatios.map(preset => ({ value: preset.value, label: preset.label })),
                 ...(editorAspectRatioValue(document.format) === "custom"
-                  ? [
-                      {
-                        value: "custom",
-                        label: `${t("Custom")} · ${document.format.width} × ${document.format.height}`,
-                      },
-                    ]
-                  : []),
+                  ? [{ value: "custom", label: `${t("Custom")} · ${document.format.width} × ${document.format.height}` }] : []),
               ]}
               onChange={(value) => {
-                const preset = editorAspectRatios.find(
-                  (preset) => preset.value === value,
-                );
-                if (preset)
-                  onFormat({ width: preset.width, height: preset.height });
+                const preset = editorAspectRatios.find(preset => preset.value === value);
+                if (preset) onFormat({ width: preset.width, height: preset.height });
               }}
             />
-            <EditorExportResolutionSelect
-              inspector
-              format={document.format}
-              value={exportResolution}
-              onChange={onExportResolution}
-              disabled={disabled}
-            />
+            <EditorExportResolutionSelect inspector format={document.format} value={exportResolution} onChange={onExportResolution} disabled={disabled} />
             <div className="grid grid-cols-2 gap-2">
               <EditorField
                 label="Width"
@@ -417,15 +253,9 @@ export function EditorInspector({
                 min={64}
                 max={4096}
                 step={2}
-                validate={(value) => editorCanvasDimensionError(Number(value))}
+                validate={value => editorCanvasDimensionError(Number(value))}
                 onCommit={(value) => onFormat({ width: Number(value) })}
-                onPreview={(value) =>
-                  onPreviewProperty(
-                    value === null
-                      ? null
-                      : { kind: "format", patch: { width: Number(value) } },
-                  )
-                }
+                onPreview={value => onPreviewProperty(value === null ? null : { kind: "format", patch: { width: Number(value) } })}
               />
               <EditorField
                 label="Height"
@@ -434,15 +264,9 @@ export function EditorInspector({
                 min={64}
                 max={4096}
                 step={2}
-                validate={(value) => editorCanvasDimensionError(Number(value))}
+                validate={value => editorCanvasDimensionError(Number(value))}
                 onCommit={(value) => onFormat({ height: Number(value) })}
-                onPreview={(value) =>
-                  onPreviewProperty(
-                    value === null
-                      ? null
-                      : { kind: "format", patch: { height: Number(value) } },
-                  )
-                }
+                onPreview={value => onPreviewProperty(value === null ? null : { kind: "format", patch: { height: Number(value) } })}
               />
             </div>
             <EditorField
@@ -450,13 +274,7 @@ export function EditorInspector({
               value={document.format.backgroundColor}
               type="color"
               onCommit={(value) => onFormat({ backgroundColor: value })}
-              onPreview={(value) =>
-                onPreviewProperty(
-                  value === null
-                    ? null
-                    : { kind: "format", patch: { backgroundColor: value } },
-                )
-              }
+              onPreview={value => onPreviewProperty(value === null ? null : { kind: "format", patch: { backgroundColor: value } })}
             />
             <EditorField
               label="Duration (seconds)"
@@ -480,91 +298,22 @@ export function EditorInspector({
         </Section>
       ) : (
         <fieldset disabled={locked}>
-          {!nestedSelection && motionTemplateOf(selected) && (
-            <div className="mb-4 rounded-lg bg-slate-50 p-3">
-              <MotionTemplateControls
-                locale={locale}
-                settings={readMotionSettings(selected, document.format)}
-                disabled={locked}
-                onChange={(patch) => {
-                  const next = updateMotionGraphic(
-                    selected,
-                    document.format,
-                    patch,
-                  );
-                  onUpdate(selected.id, {
-                    node: next.node,
-                    motionGraphic: next.motionGraphic,
-                  });
-                }}
-                images={Object.values(document.assets).filter(
-                  (asset) => asset.type === "image",
-                )}
-                imageId={
-                  selected.node.children?.find((node) =>
-                    node.id.endsWith(":media-frame"),
-                  )?.children?.[0]?.assetId
-                }
-                onImage={(id) =>
-                  onUpdate(selected.id, {
-                    node: updateMotionGraphic(
-                      selected,
-                      document.format,
-                      {},
-                      id ? document.assets[id] : null,
-                    ).node,
-                  })
-                }
-              />
-            </div>
-          )}
-          {selected.caption && (
-            <EditorCaptionContent
-              item={selected}
-              document={document}
-              frame={frame}
-              disabled={locked || busyCaption}
-              onUpdate={onUpdate}
-              onSelect={onSelect}
-              onSeek={onSeek}
-              onTranslate={(item) =>
-                onTranslate(item, item.caption?.language === "en" ? "es" : "en")
-              }
-              onStyle={onApplyCaptionPreset}
-              onPreviewCue={onPreviewCue}
-            />
-          )}
+          {!nestedSelection && motionTemplateOf(selected) && <div className="mb-4 rounded-lg bg-slate-50 p-3"><MotionTemplateControls locale={locale} settings={readMotionSettings(selected, document.format)} disabled={locked}
+            onChange={patch => { const next = updateMotionGraphic(selected, document.format, patch); onUpdate(selected.id, { node: next.node, motionGraphic: next.motionGraphic }); }}
+            images={Object.values(document.assets).filter(asset => asset.type === "image")}
+            imageId={selected.node.children?.find(node => node.id.endsWith(":media-frame"))?.children?.[0]?.assetId}
+            onImage={id => onUpdate(selected.id, { node: updateMotionGraphic(selected, document.format, {}, id ? document.assets[id] : null).node })} /></div>}
+          {selected.caption && <EditorCaptionContent item={selected} document={document} frame={frame} disabled={locked || busyCaption} onUpdate={onUpdate} onSelect={onSelect} onSeek={onSeek} onTranslate={item => onTranslate(item, item.caption?.language === "en" ? "es" : "en")} onStyle={onApplyCaptionPreset} onPreviewCue={onPreviewCue} />}
           {node?.type === "effect" && (
             <Section title="Visualizer">
-              {visualizerKey && (
-                <div
-                  className="editor-visualizer-current"
-                  data-visualizer-preview={visualizerKey}
-                >
-                  <VisualizerTemplatePreview
-                    template={getMusicVisualizerLayerTemplate(visualizerKey)}
-                  />
-                </div>
-              )}
+              {visualizerKey && <div className="editor-visualizer-current" data-visualizer-preview={visualizerKey}><VisualizerTemplatePreview template={getMusicVisualizerLayerTemplate(visualizerKey)} /></div>}
               <EditorSelect
                 label="Look"
                 value={node.effect ?? "spectrumBars"}
-                options={getMusicVisualizerTemplateOptions(translate).map(
-                  (option) => ({
-                    value:
-                      MUSIC_VISUALIZER_TEMPLATE_RENDER_CONFIG[option.value]
-                        .effect,
-                    label: option.label,
-                  }),
-                )}
-                onChange={(value) => {
-                  const key = editorVisualizerTemplateKey(
-                    value as SceneNodeInput["effect"],
-                  );
-                  if (key)
-                    onUpdate(selected.id, {
-                      node: applyEditorVisualizerPreset(selected.node, key),
-                    });
+                options={getMusicVisualizerTemplateOptions(translate).map(option => ({ value: MUSIC_VISUALIZER_TEMPLATE_RENDER_CONFIG[option.value].effect, label: option.label }))}
+                onChange={value => {
+                  const key = editorVisualizerTemplateKey(value as SceneNodeInput["effect"]);
+                  if (key) onUpdate(selected.id, { node: applyEditorVisualizerPreset(selected.node, key) });
                 }}
               />
               <EditorField
@@ -573,14 +322,8 @@ export function EditorInspector({
                 type="color"
                 {...liveNode((value, update) =>
                   update({
-                    params: {
-                      ...node.params,
-                      colors: [
-                        value,
-                        ...(node.params?.colors?.slice(1) ?? ["#22d3ee"]),
-                      ],
-                    },
-                  }),
+                    params: { ...node.params, colors: [value, ...(node.params?.colors?.slice(1) ?? ["#22d3ee"])] },
+                  })
                 )}
               />
               <EditorField
@@ -593,28 +336,20 @@ export function EditorInspector({
                 {...liveNode((value, update) =>
                   update({
                     params: { ...node.params, sensitivity: Number(value) },
-                  }),
+                  })
                 )}
               />
             </Section>
           )}
-          {isText && !selected.caption && (
-            <div className="editor-text-content">
-              <EditorTextArea
-                label="Text"
-                rows={4}
-                value={
-                  node?.text ??
-                  node?.runs?.map((run) => run.text).join("") ??
-                  ""
-                }
-                onPreview={(value) => onPreviewText(selected, value)}
-                onCommit={(value) =>
-                  updateNode({ text: value, runs: undefined })
-                }
-              />
-            </div>
-          )}
+          {isText && !selected.caption && <div className="editor-text-content">
+            <EditorTextArea
+              label="Text"
+              rows={4}
+              value={node?.text ?? node?.runs?.map(run => run.text).join("") ?? ""}
+              onPreview={value => onPreviewText(selected, value)}
+              onCommit={value => updateNode({ text: value, runs: undefined })}
+            />
+          </div>}
           <Section title={selected.caption ? "Captions" : selected.name}>
             {locked && (
               <p className="text-xs text-amber-400">
@@ -683,25 +418,21 @@ export function EditorInspector({
           </Section>
           {node?.type !== "audio" && (
             <Section title="Size & appearance">
-              <p className="text-[11px] text-[var(--editor-muted)]">
-                {t("Drag on the preview to reposition this item.")}
-              </p>
+              <p className="text-[11px] text-[var(--editor-muted)]">{t("Drag on the preview to reposition this item.")}</p>
               <div className="grid grid-cols-2 gap-2">
+
+
                 <EditorField
                   label="Width"
                   value={style.width ?? document.format.width}
-                  {...liveStyle((value, update) =>
-                    update({ width: Number(value) }),
-                  )}
+                  {...liveStyle((value, update) => update({ width: Number(value) }))}
                   type="number"
                   min={1}
                 />
                 <EditorField
                   label="Height"
                   value={style.height ?? document.format.height}
-                  {...liveStyle((value, update) =>
-                    update({ height: Number(value) }),
-                  )}
+                  {...liveStyle((value, update) => update({ height: Number(value) }))}
                   type="number"
                   min={1}
                 />
@@ -714,7 +445,7 @@ export function EditorInspector({
                   )}
                   type="number"
                   {...liveStyle((value, update) =>
-                    update({ transform: `rotate(${Number(value)}deg)` }),
+                    update({ transform: `rotate(${Number(value)}deg)` })
                   )}
                 />
                 <EditorField
@@ -724,9 +455,7 @@ export function EditorInspector({
                   min={0}
                   max={1}
                   step={0.1}
-                  {...liveStyle((value, update) =>
-                    update({ opacity: Number(value) }),
-                  )}
+                  {...liveStyle((value, update) => update({ opacity: Number(value) }))}
                 />
               </div>
               {["video", "img"].includes(node?.type ?? "") && (
@@ -741,15 +470,10 @@ export function EditorInspector({
                     {...liveSelect((value, update) =>
                       update({
                         objectFit: value as "contain" | "cover" | "fill",
-                      }),
+                      })
                     )}
                   />
-                  <EditorFraming
-                    node={node!}
-                    disabled={locked}
-                    onChange={updateStyle}
-                    onPreview={previewStyle}
-                  />
+                  <EditorFraming node={node!} disabled={locked} onChange={updateStyle} onPreview={previewStyle} />
                   <EditorSelect
                     label="Filter"
                     value={style.filter ?? "none"}
@@ -761,9 +485,7 @@ export function EditorInspector({
                         ? [{ value: style.filter!, label: "Custom" }]
                         : []),
                     ]}
-                    {...liveSelect((value, update) =>
-                      update({ filter: value }),
-                    )}
+                    {...liveSelect((value, update) => update({ filter: value }))}
                   />
                   <EditorField
                     label="Brightness (%)"
@@ -787,7 +509,7 @@ export function EditorInspector({
                           .replace(/brightness\([^)]*\)/g, "")
                           .replace(/none/g, "")
                           .trim()} brightness(${Number(value)}%)`.trim(),
-                      }),
+                      })
                     )}
                   />
                   <div className="grid grid-cols-2 gap-2">
@@ -797,7 +519,7 @@ export function EditorInspector({
                       type="number"
                       min={0}
                       {...liveStyle((value, update) =>
-                        update({ borderRadius: Number(value) }),
+                        update({ borderRadius: Number(value) })
                       )}
                     />
                     <EditorField
@@ -806,7 +528,7 @@ export function EditorInspector({
                       type="number"
                       min={0}
                       {...liveStyle((value, update) =>
-                        update({ padding: Number(value) }),
+                        update({ padding: Number(value) })
                       )}
                     />
                   </div>
@@ -815,7 +537,7 @@ export function EditorInspector({
                     value={style.backgroundColor ?? "#000000"}
                     type="color"
                     {...liveStyle((value, update) =>
-                      update({ backgroundColor: value }),
+                      update({ backgroundColor: value })
                     )}
                   />
                 </>
@@ -889,9 +611,7 @@ export function EditorInspector({
                   min={0}
                   max={1}
                   step={0.05}
-                  {...liveNode((value, update) =>
-                    update({ volume: Number(value) }),
-                  )}
+                  {...liveNode((value, update) => update({ volume: Number(value) }))}
                 />
                 <button
                   className="rounded border border-[var(--editor-border)] p-2 text-xs text-[var(--editor-text)]"
@@ -945,7 +665,7 @@ export function EditorInspector({
                 {t(
                   busyCaption
                     ? "Transcribing…"
-                    : "Generate captions · your ASR provider",
+                    : "Generate captions · uses credits",
                 )}
               </button>
             </Section>
@@ -963,31 +683,14 @@ export function EditorInspector({
                 ]}
                 onChange={(value) => {
                   const preset = editorTextStyles[value];
-                  if (preset && selected)
-                    onUpdate(selected.id, {
-                      node: updateEditorNodeStyle(
-                        selected.node,
-                        editorTextStylePatch(selected.node, value),
-                      ),
-                      ...(selected.caption
-                        ? {
-                            caption: {
-                              ...selected.caption,
-                              highlightColor: preset.captionHighlightColor,
-                              highlightStyle: undefined,
-                            },
-                          }
-                        : {}),
-                    });
+                  if (preset && selected) onUpdate(selected.id, { node: updateEditorNodeStyle(selected.node, editorTextStylePatch(selected.node, value)),
+                    ...(selected.caption ? { caption: { ...selected.caption, highlightColor: preset.captionHighlightColor, highlightStyle: undefined } } : {}) });
                 }}
               />
               <EditorFontPicker
-                value={style.fontFamily ?? "Inter"}
-                disabled={locked}
-                onChange={(family) => onFont(selected, family)}
-                onPreview={(family) =>
-                  previewStyle(family === null ? null : { fontFamily: family })
-                }
+                value={style.fontFamily ?? "Inter"} disabled={locked}
+                onChange={family => onFont(selected, family)}
+                onPreview={family => previewStyle(family === null ? null : { fontFamily: family })}
               />
               <div className="grid grid-cols-2 gap-2">
                 <EditorField
@@ -996,21 +699,17 @@ export function EditorInspector({
                   type="number"
                   min={1}
                   max={600}
-                  {...liveStyle((value, update) =>
-                    update({ fontSize: Number(value) }),
-                  )}
+                  {...liveStyle((value, update) => update({ fontSize: Number(value) }))}
                 />
                 <EditorSelect
                   label="Weight"
                   value={String(style.fontWeight ?? 600)}
-                  options={editorFontWeights(style.fontFamily ?? "Inter").map(
-                    (value) => ({
-                      value: String(value),
-                      label: String(value),
-                    }),
-                  )}
+                  options={editorFontWeights(style.fontFamily ?? "Inter").map((value) => ({
+                    value: String(value),
+                    label: String(value),
+                  }))}
                   {...liveSelect((value, update) =>
-                    update({ fontWeight: Number(value) }),
+                    update({ fontWeight: Number(value) })
                   )}
                 />
               </div>
@@ -1024,94 +723,19 @@ export function EditorInspector({
                 {...liveSelect((value, update) =>
                   update({
                     textAlign: value as "left" | "center" | "right",
-                  }),
+                  })
                 )}
               />
               <div className="grid grid-cols-2 gap-2">
-                <EditorField
-                  label="Letter spacing"
-                  value={style.letterSpacing ?? 0}
-                  type="number"
-                  step={0.25}
-                  min={-20}
-                  max={100}
-                  {...liveStyle((value, update) =>
-                    update({ letterSpacing: Number(value) }),
-                  )}
-                />
-                <EditorField
-                  label="Line height"
-                  value={style.lineHeight ?? 1.2}
-                  type="number"
-                  step={0.05}
-                  min={0.5}
-                  max={3}
-                  {...liveStyle((value, update) =>
-                    update({ lineHeight: Number(value) }),
-                  )}
-                />
+                <EditorField label="Letter spacing" value={style.letterSpacing ?? 0} type="number" step={0.25} min={-20} max={100} {...liveStyle((value, update) => update({ letterSpacing: Number(value) }))} />
+                <EditorField label="Line height" value={style.lineHeight ?? 1.2} type="number" step={0.05} min={0.5} max={3} {...liveStyle((value, update) => update({ lineHeight: Number(value) }))} />
               </div>
-              <EditorSelect
-                label="Text fit"
-                value={style.textFit ?? "wrap"}
-                options={[
-                  { value: "wrap", label: "Keep font size" },
-                  { value: "shrink", label: "Fit inside box" },
-                  { value: "truncate", label: "One line with ellipsis" },
-                ]}
-                {...liveSelect((value, update) =>
-                  update({
-                    textFit: value as "wrap" | "shrink" | "truncate",
-                    textOverflow: value === "truncate" ? "ellipsis" : undefined,
-                  }),
-                )}
-              />
-              {style.textFit === "shrink" && (
-                <EditorField
-                  label="Minimum font size"
-                  value={style.minFontSize ?? 12}
-                  type="number"
-                  min={1}
-                  max={
-                    typeof style.fontSize === "number" ? style.fontSize : 600
-                  }
-                  {...liveStyle((value, update) =>
-                    update({ minFontSize: Number(value) }),
-                  )}
-                />
-              )}
-              <EditorField
-                label="Maximum lines"
-                value={style.maxLines ?? 0}
-                type="number"
-                min={0}
-                max={20}
-                disabled={style.textFit === "truncate"}
-                {...liveStyle((value, update) =>
-                  update({ maxLines: Number(value) || undefined }),
-                )}
-              />
+              <EditorSelect label="Text fit" value={style.textFit ?? "wrap"} options={[{ value: "wrap", label: "Keep font size" }, { value: "shrink", label: "Fit inside box" }, { value: "truncate", label: "One line with ellipsis" }]} {...liveSelect((value, update) => update({ textFit: value as "wrap" | "shrink" | "truncate", textOverflow: value === "truncate" ? "ellipsis" : undefined }))} />
+              {style.textFit === "shrink" && <EditorField label="Minimum font size" value={style.minFontSize ?? 12} type="number" min={1} max={typeof style.fontSize === "number" ? style.fontSize : 600} {...liveStyle((value, update) => update({ minFontSize: Number(value) }))} />}
+              <EditorField label="Maximum lines" value={style.maxLines ?? 0} type="number" min={0} max={20} disabled={style.textFit === "truncate"} {...liveStyle((value, update) => update({ maxLines: Number(value) || undefined }))} />
               <div className="grid grid-cols-2 gap-2">
-                <EditorField
-                  label="Padding"
-                  value={style.padding ?? 0}
-                  type="number"
-                  min={0}
-                  max={200}
-                  {...liveStyle((value, update) =>
-                    update({ padding: Number(value) }),
-                  )}
-                />
-                <EditorField
-                  label="Corners"
-                  value={style.borderRadius ?? 0}
-                  type="number"
-                  min={0}
-                  max={200}
-                  {...liveStyle((value, update) =>
-                    update({ borderRadius: Number(value) }),
-                  )}
-                />
+                <EditorField label="Padding" value={style.padding ?? 0} type="number" min={0} max={200} {...liveStyle((value, update) => update({ padding: Number(value) }))} />
+                <EditorField label="Corners" value={style.borderRadius ?? 0} type="number" min={0} max={200} {...liveStyle((value, update) => update({ borderRadius: Number(value) }))} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <EditorField
@@ -1122,64 +746,22 @@ export function EditorInspector({
                 />
                 <EditorField
                   label="Background"
-                  value={
-                    style[editorTextBackgroundProperty(style)] ?? "#000000"
-                  }
+                  value={style[editorTextBackgroundProperty(style)] ?? "#000000"}
                   type="color"
-                  {...liveStyle((value, update) =>
-                    update({ [editorTextBackgroundProperty(style)]: value }),
-                  )}
+                  {...liveStyle((value, update) => update({ [editorTextBackgroundProperty(style)]: value }))}
                 />
               </div>
               <button
                 className="text-xs text-[var(--editor-muted)] underline"
-                onClick={() =>
-                  updateStyle({
-                    backgroundColor: "transparent",
-                    textBackgroundColor: undefined,
-                  })
-                }
+                onClick={() => updateStyle({ backgroundColor: "transparent", textBackgroundColor: undefined })}
               >
                 {t("Clear background")}
               </button>
-              {((style.textBackgroundColor &&
-                style.textBackgroundColor !== "transparent") ||
-                (selected.caption &&
-                  editorCaptionDisplayMode(selected.caption) === "karaoke" &&
-                  selected.caption.highlightStyle?.textBackgroundColor)) && (
-                <div className="grid grid-cols-2 gap-2">
-                  <EditorField
-                    label="Plate padding X"
-                    type="number"
-                    value={style.textBackgroundPaddingX ?? 0}
-                    min={0}
-                    max={100}
-                    {...liveStyle((value, update) =>
-                      update({ textBackgroundPaddingX: Number(value) }),
-                    )}
-                  />
-                  <EditorField
-                    label="Plate padding Y"
-                    type="number"
-                    value={style.textBackgroundPaddingY ?? 0}
-                    min={0}
-                    max={100}
-                    {...liveStyle((value, update) =>
-                      update({ textBackgroundPaddingY: Number(value) }),
-                    )}
-                  />
-                  <EditorField
-                    label="Plate corners"
-                    type="number"
-                    value={style.textBackgroundRadius ?? 0}
-                    min={0}
-                    max={999}
-                    {...liveStyle((value, update) =>
-                      update({ textBackgroundRadius: Number(value) }),
-                    )}
-                  />
-                </div>
-              )}
+              {(style.textBackgroundColor && style.textBackgroundColor !== "transparent" || selected.caption && editorCaptionDisplayMode(selected.caption) === "karaoke" && selected.caption.highlightStyle?.textBackgroundColor) && <div className="grid grid-cols-2 gap-2">
+                <EditorField label="Plate padding X" type="number" value={style.textBackgroundPaddingX ?? 0} min={0} max={100} {...liveStyle((value, update) => update({ textBackgroundPaddingX: Number(value) }))} />
+                <EditorField label="Plate padding Y" type="number" value={style.textBackgroundPaddingY ?? 0} min={0} max={100} {...liveStyle((value, update) => update({ textBackgroundPaddingY: Number(value) }))} />
+                <EditorField label="Plate corners" type="number" value={style.textBackgroundRadius ?? 0} min={0} max={999} {...liveStyle((value, update) => update({ textBackgroundRadius: Number(value) }))} />
+              </div>}
               <div className="grid grid-cols-2 gap-2">
                 <EditorField
                   label="Outline width"
@@ -1192,11 +774,8 @@ export function EditorInspector({
                   max={20}
                   {...liveStyle((value, update) =>
                     update({
-                      textStroke:
-                        Number(value) > 0
-                          ? `${Number(value)}px ${String(style.textStroke ?? "").replace(/^[\d.]+px\s*/, "") || "#000000"}`
-                          : undefined,
-                    }),
+                      textStroke: Number(value) > 0 ? `${Number(value)}px ${String(style.textStroke ?? "").replace(/^[\d.]+px\s*/, "") || "#000000"}` : undefined,
+                    })
                   )}
                 />
                 <EditorField
@@ -1211,7 +790,7 @@ export function EditorInspector({
                   {...liveStyle((value, update) =>
                     update({
                       textStroke: `${Number(String(style.textStroke ?? "").match(/^([\d.]+)px/)?.[1] ?? 2)}px ${value}`,
-                    }),
+                    })
                   )}
                 />
               </div>
@@ -1232,17 +811,9 @@ export function EditorInspector({
                     ? [{ value: style.textShadow!, label: "Custom" }]
                     : []),
                 ]}
-                {...liveSelect((value, update) =>
-                  update({ textShadow: value === "none" ? undefined : value }),
-                )}
+                {...liveSelect((value, update) => update({ textShadow: value === "none" ? undefined : value }))}
               />
-              <EditorShadowControls
-                value={style.textShadow}
-                onChange={(textShadow) => updateStyle({ textShadow })}
-                onPreview={(textShadow) =>
-                  previewStyle(textShadow === null ? null : { textShadow })
-                }
-              />
+              <EditorShadowControls value={style.textShadow} onChange={textShadow => updateStyle({ textShadow })} onPreview={textShadow => previewStyle(textShadow === null ? null : { textShadow })} />
               <button
                 className="rounded border border-[var(--editor-border)] px-3 py-1.5 text-xs italic"
                 aria-pressed={style.fontStyle === "italic"}
@@ -1260,112 +831,40 @@ export function EditorInspector({
           {selected.caption && (
             <>
               <Section title="Subtitle settings">
-                <EditorSelect
-                  label="Caption preset"
-                  value="custom"
-                  options={[
-                    { value: "custom", label: "Custom" },
-                    ...editorCaptionPresetEntries(
-                      selected.caption.role === "translation",
-                    ).map(([value, preset]) => ({
-                      value,
-                      label: preset.label,
-                    })),
-                  ]}
-                  onChange={(key) => onApplyCaptionPreset(selected, key)}
-                />
-                {selected.caption.role !== "translation" && (
-                  <label className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      aria-label={t("Lyric Pulse")}
-                      checked={selected.caption.motion === "lyricPulse"}
-                      disabled={
-                        disabled ||
-                        editorCaptionDisplayMode(selected.caption) ===
-                          "sentence"
-                      }
-                      onChange={(event) =>
-                        onUpdate(selected.id, {
-                          caption: {
-                            ...selected.caption!,
-                            motion: event.target.checked
-                              ? "lyricPulse"
-                              : undefined,
-                          },
-                        })
-                      }
-                    />
-                    {t("Lyric Pulse")}
-                  </label>
-                )}
+                <EditorSelect label="Caption preset" value="custom" options={[{ value: "custom", label: "Custom" }, ...editorCaptionPresetEntries(selected.caption.role === "translation").map(([value, preset]) => ({ value, label: preset.label }))]} onChange={key => onApplyCaptionPreset(selected, key)} />
+                {selected.caption.role !== "translation" && <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" aria-label={t("Lyric Pulse")} checked={selected.caption.motion === "lyricPulse"}
+                    disabled={disabled || editorCaptionDisplayMode(selected.caption) === "sentence"}
+                    onChange={event => onUpdate(selected.id, { caption: { ...selected.caption!, motion: event.target.checked ? "lyricPulse" : undefined } })} />
+                  {t("Lyric Pulse")}
+                </label>}
                 <EditorSelect
                   label="Caption style"
                   value={editorCaptionDisplayMode(selected.caption)}
                   disabled={selected.caption.role === "translation"}
                   options={[
                     { value: "sentence", label: "Sentence" },
-                    ...(selected.caption.role === "translation"
-                      ? []
-                      : [
-                          { value: "word", label: "One word" },
-                          { value: "karaoke", label: "Word highlight" },
-                        ]),
+                    ...(selected.caption.role === "translation" ? [] : [{ value: "word", label: "One word" }, { value: "karaoke", label: "Word highlight" }]),
                   ]}
                   onChange={(value) =>
                     onUpdate(selected.id, {
                       caption: {
                         ...selected.caption!,
-                        mode:
-                          selected.caption!.role === "translation"
-                            ? "sentence"
-                            : (value as "sentence" | "word" | "karaoke"),
+                        mode: selected.caption!.role === "translation" ? "sentence" : value as "sentence" | "word" | "karaoke",
                       },
                     })
                   }
                 />
-                {editorCaptionDisplayMode(selected.caption) === "karaoke" && (
-                  <EditorField
-                    label="Highlight"
-                    value={selected.caption.highlightColor}
-                    type="color"
-                    {...liveCaption((value) => ({ highlightColor: value }))}
-                  />
-                )}
-                {editorCaptionDisplayMode(selected.caption) === "karaoke" && (
-                  <>
-                    <EditorField
-                      label="Highlight background"
-                      type="color"
-                      value={
-                        selected.caption.highlightStyle?.textBackgroundColor ??
-                        "#facc15"
-                      }
-                      {...liveCaption((value) => ({
-                        highlightStyle: {
-                          ...selected.caption!.highlightStyle,
-                          textBackgroundColor: value,
-                        },
-                      }))}
-                    />
-                    <button
-                      className="text-xs text-[var(--editor-muted)] underline"
-                      onClick={() =>
-                        onUpdate(selected.id, {
-                          caption: {
-                            ...selected.caption!,
-                            highlightStyle: {
-                              ...selected.caption!.highlightStyle,
-                              textBackgroundColor: undefined,
-                            },
-                          },
-                        })
-                      }
-                    >
-                      {t("Clear highlight background")}
-                    </button>
-                  </>
-                )}
+                {editorCaptionDisplayMode(selected.caption) === "karaoke" && <EditorField
+                  label="Highlight"
+                  value={selected.caption.highlightColor}
+                  type="color"
+                  {...liveCaption(value => ({ highlightColor: value }))}
+                />}
+                {editorCaptionDisplayMode(selected.caption) === "karaoke" && <>
+                  <EditorField label="Highlight background" type="color" value={selected.caption.highlightStyle?.textBackgroundColor ?? "#facc15"} {...liveCaption(value => ({ highlightStyle: { ...selected.caption!.highlightStyle, textBackgroundColor: value } }))} />
+                  <button className="text-xs text-[var(--editor-muted)] underline" onClick={() => onUpdate(selected.id, { caption: { ...selected.caption!, highlightStyle: { ...selected.caption!.highlightStyle, textBackgroundColor: undefined } } })}>{t("Clear highlight background")}</button>
+                </>}
                 <EditorSelect
                   label="Text direction"
                   value={selected.caption.direction}
@@ -1402,7 +901,7 @@ export function EditorInspector({
                   className="w-full rounded bg-violet-600 py-2 text-xs disabled:opacity-50"
                   onClick={() => onTranslate(selected, translation)}
                 >
-                  {t("Add translated track · your LLM")}
+                  {t("Add translated track · uses credits")}
                 </button>
                 <button
                   className="w-full rounded border border-[var(--editor-border)] py-2 text-xs"

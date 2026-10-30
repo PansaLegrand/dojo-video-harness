@@ -112,25 +112,21 @@ await once(reserve, "listening");
 const port = reserve.address().port;
 await new Promise((r) => reserve.close(r));
 const base = `http://127.0.0.1:${port}`;
-const child = spawn(
-  process.execPath,
-  ["--import", "tsx", "apps/server/src/main.ts"],
-  {
-    cwd: root,
-    env: {
-      ...process.env,
-      NODE_ENV: "production",
-      PORT: String(port),
-      DATA_DIR: path.join(tmp, "data"),
-      LLM_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
-      LLM_API_KEY: "synthetic-test-key",
-      LLM_MODEL: "fixture",
-      ASR_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
-      ASR_API_KEY: "synthetic-asr-key",
-      ASR_MODEL: "fixture",
-    },
+const child = spawn(process.execPath, ["scripts/run-next.mjs", "start"], {
+  cwd: root,
+  env: {
+    ...process.env,
+    NODE_ENV: "production",
+    PORT: String(port),
+    DATA_DIR: path.join(tmp, "data"),
+    LLM_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
+    LLM_API_KEY: "synthetic-test-key",
+    LLM_MODEL: "fixture",
+    ASR_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
+    ASR_API_KEY: "synthetic-asr-key",
+    ASR_MODEL: "fixture",
   },
-);
+});
 let log = "";
 child.stdout.on("data", (d) => (log += d));
 child.stderr.on("data", (d) => (log += d));
@@ -186,14 +182,20 @@ try {
   });
   page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.route("https://www.youtube.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: '<html><body style="background:#000;color:#fff">Tutorial</body></html>',
+    }),
+  );
   await page.goto(base);
   await page.screenshot({
     path: path.join(output, "home.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Create a video" }).click();
+  await page.getByTestId("new-video-button").click();
   await page.getByTestId("dojo-video-engine-editor").waitFor();
-  const id = new URL(page.url()).searchParams.get("project");
+  const id = new URL(page.url()).pathname.split("/").at(-1);
   let state = await api(`/api/projects/${id}/document`);
   state = await api(`/api/projects/${id}/commands`, {
     operationId: "browser-fixture",
@@ -299,16 +301,16 @@ try {
     .getByRole("textbox", { name: "Message video agent", exact: true })
     .fill("Ask me which color");
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  const pending = page.getByRole("region", { name: "Pending question" });
+  const pending = page.locator(".editor-agent-question").last();
   await pending.waitFor();
   check(
-    "pending question owns the single composer",
+    "product clarification card and normal composer are preserved",
     (await page
       .getByRole("textbox", { name: "Your reply", exact: true })
       .isVisible()) &&
       (await page
         .getByRole("textbox", { name: "Message video agent", exact: true })
-        .count()) === 0,
+        .count()) === 1,
   );
   await page.screenshot({
     path: path.join(output, "question.png"),
@@ -439,6 +441,48 @@ try {
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("link", { name: "Projects", exact: true }).click();
+  await page.getByTestId("video-edit-ai-home").waitFor();
+  const card = page
+    .locator('section[aria-labelledby="video-edit-projects-heading"] article')
+    .first();
+  await card.waitFor();
+  check(
+    "product project home is reached through real Next navigation",
+    new URL(page.url()).pathname === "/en/applications/video-edit-ai",
+  );
+  await card.getByTitle("Edit").click();
+  await card.locator("input[type=text]").fill("Synced product project");
+  await card.locator("textarea").fill("Local host metadata");
+  await card.getByRole("button", { name: "Save", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Synced product project", exact: true })
+    .waitFor();
+  check(
+    "product project card edits name and description through the local adapter",
+    (await api(`/api/projects/${id}`)).description === "Local host metadata",
+  );
+  await page.goto(`${base}/en/applications/editor/${id}/outputs`);
+  await page
+    .getByRole("heading", { name: "Saved videos", exact: true })
+    .waitFor();
+  check(
+    "saved output page uses the pinned local video URL",
+    (await page.locator("video").getAttribute("src")) === stored.url,
+  );
+  await page.goto(`${base}/en/applications/video-edit-ai`);
+  const savedCard = page.locator("article").filter({
+    has: page.getByRole("heading", {
+      name: "Synced product project",
+      exact: true,
+    }),
+  });
+  await savedCard.waitFor();
+  page.once("dialog", (dialog) => dialog.accept());
+  await savedCard.getByTitle("Delete").click();
+  await until(async () => (await api("/api/projects")).length === 0);
+  check("product delete action archives the local project", true);
   check("no browser exceptions", errors.length === 0);
   await writeFile(
     path.join(output, "report.json"),

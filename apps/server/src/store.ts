@@ -63,6 +63,8 @@ export type StoredRun = VideoProjectAgentRun & {
 export type Project = {
   id: string;
   name: string;
+  description?: string;
+  updatedAt?: string;
   revision: number;
   documentHash: string;
   document: VideoProjectDocument;
@@ -122,7 +124,7 @@ export class ProjectStore {
         .filter((x) => x.endsWith(".json"))
         .map(async (x) => {
           const p = await this.read(x.slice(0, -5));
-          return { id: p.id, name: p.name };
+          return projectSummary(p);
         }),
     );
   }
@@ -151,7 +153,38 @@ export class ProjectStore {
     return p;
   }
   async save(p: Project) {
+    p.updatedAt = new Date().toISOString();
     await atomicJson(this.file(p.id), p);
+  }
+  async archive(id: string) {
+    const previous = this.queues.get(id) ?? Promise.resolve();
+    const work = previous
+      .catch(() => {})
+      .then(async () => {
+        const project = await this.read(id);
+        if (
+          project.runs.some((run) =>
+            ["queued", "running", "needs_evidence"].includes(run.status),
+          )
+        )
+          throw new HttpError(
+            "Cancel active edits before deleting this project.",
+            409,
+          );
+        const trash = path.join(this.directory, "trash");
+        await mkdir(trash, { recursive: true, mode: 0o700 });
+        await rename(
+          this.file(id),
+          path.join(trash, `${id}-${randomUUID()}.json`),
+        );
+        return { deleted: true };
+      });
+    this.queues.set(id, work);
+    try {
+      return await work;
+    } finally {
+      if (this.queues.get(id) === work) this.queues.delete(id);
+    }
   }
   /** Serialize read/validate/write, not model/network calls. Errors leave the file untouched. */
   async transaction<T>(
@@ -285,5 +318,26 @@ export function publicRun({
   answers: _answers,
   ...run
 }: StoredRun) {
-  return run;
+  return {
+    ...run,
+    ...(run.replyState
+      ? {
+          clarificationReply: {
+            remaining: run.replyState.available ? (1 as const) : (0 as const),
+            continuationRunId: run.replyState.continuationRunId,
+            options: run.replyState.options,
+          },
+        }
+      : {}),
+  };
+}
+
+export function projectSummary(p: Project) {
+  return {
+    id: p.id,
+    name: p.name,
+    description: p.description ?? null,
+    project_kind: "video" as const,
+    updated_at: p.updatedAt ?? new Date(0).toISOString(),
+  };
 }

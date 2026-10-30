@@ -5,105 +5,81 @@ export const canvasFormatCopy: Record<string, Record<string, string>> = {
   zh: {
     "Aspect ratio": "宽高比",
     "Export resolution": "导出分辨率",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "保持宽高比和布局。此设置保存在当前设备。",
+    "Keeps your aspect ratio and layout. Saved on this device.": "保持宽高比和布局。此设置保存在当前设备。",
     "DCI \u00b7 Cinema": "DCI · 影院",
     "Full HD": "全高清",
     "Canvas size": "画布尺寸",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "画布宽度和高度必须是 64 到 4096 像素之间的偶数整数。",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "此浏览器无法以当前分辨率导出 H.264 视频。请选择较低的导出分辨率，或使用支持 H.264 编码的浏览器和设备。",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "画布宽度和高度必须是 64 到 4096 像素之间的偶数整数。",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "此浏览器无法以当前分辨率导出 H.264 视频。请选择较低的导出分辨率，或使用支持 H.264 编码的浏览器和设备。",
   },
   es: {
     "Aspect ratio": "Relación de aspecto",
     "Export resolution": "Resolución de exportación",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "Conserva la proporción y el diseño. Se guarda en este dispositivo.",
+    "Keeps your aspect ratio and layout. Saved on this device.": "Conserva la proporción y el diseño. Se guarda en este dispositivo.",
     "DCI \u00b7 Cinema": "DCI · Cine",
     "Full HD": "Full HD",
     "Canvas size": "Tamaño del lienzo",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "El ancho y el alto del lienzo deben ser números enteros pares entre 64 y 4096 píxeles.",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "Este navegador no puede exportar video H.264 a esta resolución. Elige una resolución de exportación menor o usa un navegador y dispositivo compatibles con H.264.",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "El ancho y el alto del lienzo deben ser números enteros pares entre 64 y 4096 píxeles.",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "Este navegador no puede exportar video H.264 a esta resolución. Elige una resolución de exportación menor o usa un navegador y dispositivo compatibles con H.264.",
   },
   fr: {
     "Aspect ratio": "Format",
     "Export resolution": "Résolution d’export",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "Conserve le format et la mise en page. Enregistré sur cet appareil.",
+    "Keeps your aspect ratio and layout. Saved on this device.": "Conserve le format et la mise en page. Enregistré sur cet appareil.",
     "DCI \u00b7 Cinema": "DCI · Cinéma",
     "Full HD": "Full HD",
     "Canvas size": "Taille du canevas",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "La largeur et la hauteur du canevas doivent être des nombres entiers pairs entre 64 et 4096 pixels.",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "Ce navigateur ne peut pas exporter de vidéo H.264 à cette résolution. Choisissez une résolution d’export inférieure ou un navigateur et un appareil compatibles avec H.264.",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "La largeur et la hauteur du canevas doivent être des nombres entiers pairs entre 64 et 4096 pixels.",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "Ce navigateur ne peut pas exporter de vidéo H.264 à cette résolution. Choisissez une résolution d’export inférieure ou un navigateur et un appareil compatibles avec H.264.",
   },
   de: {
     "Aspect ratio": "Seitenverhältnis",
     "Export resolution": "Exportauflösung",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "Behält Seitenverhältnis und Layout bei. Auf diesem Gerät gespeichert.",
+    "Keeps your aspect ratio and layout. Saved on this device.": "Behält Seitenverhältnis und Layout bei. Auf diesem Gerät gespeichert.",
     "DCI \u00b7 Cinema": "DCI · Kino",
     "Full HD": "Full HD",
     "Canvas size": "Leinwandgröße",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "Breite und Höhe der Leinwand müssen gerade ganze Zahlen zwischen 64 und 4096 Pixeln sein.",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "Dieser Browser kann H.264-Videos in dieser Auflösung nicht exportieren. Wähle eine niedrigere Exportauflösung oder einen Browser und ein Gerät mit H.264-Encoder.",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "Breite und Höhe der Leinwand müssen gerade ganze Zahlen zwischen 64 und 4096 Pixeln sein.",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "Dieser Browser kann H.264-Videos in dieser Auflösung nicht exportieren. Wähle eine niedrigere Exportauflösung oder einen Browser und ein Gerät mit H.264-Encoder.",
   },
   pt: {
     "Aspect ratio": "Proporção",
     "Export resolution": "Resolução de exportação",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "Mantém a proporção e o layout. Salvo neste dispositivo.",
+    "Keeps your aspect ratio and layout. Saved on this device.": "Mantém a proporção e o layout. Salvo neste dispositivo.",
     "DCI \u00b7 Cinema": "DCI · Cinema",
     "Full HD": "Full HD",
     "Canvas size": "Tamanho da tela",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "A largura e a altura da tela devem ser números inteiros pares entre 64 e 4096 pixels.",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "Este navegador não pode exportar vídeo H.264 nesta resolução. Escolha uma resolução de exportação menor ou use um navegador e dispositivo com suporte a H.264.",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "A largura e a altura da tela devem ser números inteiros pares entre 64 e 4096 pixels.",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "Este navegador não pode exportar vídeo H.264 nesta resolução. Escolha uma resolução de exportação menor ou use um navegador e dispositivo com suporte a H.264.",
   },
   ar: {
     "Aspect ratio": "نسبة العرض إلى الارتفاع",
     "Export resolution": "دقة التصدير",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "يحافظ على النسبة والتخطيط. يُحفظ على هذا الجهاز.",
+    "Keeps your aspect ratio and layout. Saved on this device.": "يحافظ على النسبة والتخطيط. يُحفظ على هذا الجهاز.",
     "DCI \u00b7 Cinema": "DCI · سينما",
     "Full HD": "دقة عالية كاملة",
     "Canvas size": "حجم اللوحة",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "يجب أن يكون عرض اللوحة وارتفاعها عددين صحيحين زوجيين بين 64 و4096 بكسل.",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "لا يستطيع هذا المتصفح تصدير فيديو H.264 بهذه الدقة. اختر دقة تصدير أقل أو استخدم متصفحًا وجهازًا يدعمان ترميز H.264.",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "يجب أن يكون عرض اللوحة وارتفاعها عددين صحيحين زوجيين بين 64 و4096 بكسل.",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "لا يستطيع هذا المتصفح تصدير فيديو H.264 بهذه الدقة. اختر دقة تصدير أقل أو استخدم متصفحًا وجهازًا يدعمان ترميز H.264.",
   },
   ko: {
     "Aspect ratio": "화면 비율",
     "Export resolution": "내보내기 해상도",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "화면 비율과 배치를 유지합니다. 이 기기에 저장됩니다.",
+    "Keeps your aspect ratio and layout. Saved on this device.": "화면 비율과 배치를 유지합니다. 이 기기에 저장됩니다.",
     "DCI \u00b7 Cinema": "DCI · 시네마",
     "Full HD": "Full HD",
     "Canvas size": "캔버스 크기",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "캔버스 너비와 높이는 64~4096픽셀 사이의 짝수 정수여야 합니다.",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "이 브라우저는 현재 해상도로 H.264 동영상을 내보낼 수 없습니다. 더 낮은 내보내기 해상도를 선택하거나 H.264 인코딩을 지원하는 브라우저와 기기를 사용하세요.",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "캔버스 너비와 높이는 64~4096픽셀 사이의 짝수 정수여야 합니다.",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "이 브라우저는 현재 해상도로 H.264 동영상을 내보낼 수 없습니다. 더 낮은 내보내기 해상도를 선택하거나 H.264 인코딩을 지원하는 브라우저와 기기를 사용하세요.",
   },
   ja: {
     "Aspect ratio": "アスペクト比",
     "Export resolution": "書き出し解像度",
-    "Keeps your aspect ratio and layout. Saved on this device.":
-      "アスペクト比とレイアウトを維持します。この端末に保存されます。",
+    "Keeps your aspect ratio and layout. Saved on this device.": "アスペクト比とレイアウトを維持します。この端末に保存されます。",
     "DCI \u00b7 Cinema": "DCI · シネマ",
     "Full HD": "フルHD",
     "Canvas size": "キャンバスサイズ",
-    [EDITOR_CANVAS_DIMENSION_ERROR]:
-      "キャンバスの幅と高さは、64〜4096ピクセルの偶数の整数にしてください。",
-    [EDITOR_VIDEO_ENCODING_ERROR]:
-      "このブラウザーでは、この解像度でH.264動画を書き出せません。書き出し解像度を下げるか、H.264エンコード対応のブラウザーとデバイスを使用してください。",
+    [EDITOR_CANVAS_DIMENSION_ERROR]: "キャンバスの幅と高さは、64〜4096ピクセルの偶数の整数にしてください。",
+    [EDITOR_VIDEO_ENCODING_ERROR]: "このブラウザーでは、この解像度でH.264動画を書き出せません。書き出し解像度を下げるか、H.264エンコード対応のブラウザーとデバイスを使用してください。",
   },
 };

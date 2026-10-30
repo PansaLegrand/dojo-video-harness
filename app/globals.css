@@ -1,0 +1,315 @@
+@import "../node_modules/streamdown/styles.css";
+@import "@fontsource-variable/archivo";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+/* Noto Sans JP is loaded on demand for the ja locale via components/JapaneseFontLoader.tsx. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .rounded,
+  .rounded-sm,
+  .rounded-md,
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-3xl,
+  .rounded-full,
+  [class*="rounded-"],
+  [class*="rounded-["] {
+    border-radius: var(--radius) !important;
+  }
+
+  @keyframes mv-active-progress-fill {
+    0% {
+      opacity: 0.65;
+      transform: translateX(-101%);
+    }
+    55% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    100% {
+      opacity: 0.9;
+      transform: translateX(0);
+    }
+  }
+}
+
+@layer base {
+  :root {
+    --font-sans: "Archivo Variable", "Archivo", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+    --font-sans-ja: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    --font-display: var(--font-sans);
+    --background: 45 16% 98%;
+    --foreground: 60 17% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 60 17% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 17% 7%;
+    --primary: 221 66% 49%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 12% 94%;
+    --secondary-foreground: 60 17% 7%;
+    --muted: 210 12% 94%;
+    --muted-foreground: 53 6% 28%;
+    --accent: 221 66% 95%;
+    --accent-foreground: 221 66% 40%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 9% 84%;
+    --input: 220 8% 76%;
+    --ring: 221 66% 49%;
+    --chart-1: 212 92% 46%;
+    --chart-2: 188 88% 39%;
+    --chart-3: 36 94% 54%;
+    --chart-4: 157 72% 36%;
+    --chart-5: 339 82% 52%;
+    --brand-soft: 221 66% 95%;
+    --brand-strong: 222 70% 40%;
+    --surface-muted: 210 12% 96%;
+    --shadow-color: 220 53% 15%;
+    --radius: 0px;
+  }
+
+  .dark {
+    --background: 222 47% 9%;
+    --foreground: 210 40% 98%;
+    --card: 222 42% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 42% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 208 100% 65%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 218 23% 16%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 218 23% 16%;
+    --muted-foreground: 215 20% 72%;
+    --accent: 217 33% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 28% 20%;
+    --input: 217 28% 20%;
+    --ring: 208 100% 65%;
+    --chart-1: 208 100% 65%;
+    --chart-2: 188 88% 52%;
+    --chart-3: 36 94% 62%;
+    --chart-4: 157 72% 48%;
+    --chart-5: 339 82% 65%;
+    --brand-soft: 217 38% 16%;
+    --brand-strong: 208 100% 72%;
+    --surface-muted: 218 24% 13%;
+    --shadow-color: 222 80% 2%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  /* Use a Japanese-capable UI font and neutral tracking for CJK text. */
+  html:lang(ja) {
+    --font-sans: var(--font-sans-ja);
+    --font-display: var(--font-sans-ja);
+  }
+
+  body {
+    @apply overflow-x-hidden bg-background font-sans text-base text-foreground antialiased;
+    background-image: none;
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  main {
+    min-height: 100vh;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  a {
+    @apply transition-colors;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: hsl(var(--foreground));
+    font-family: var(--font-display);
+    letter-spacing: -0.035em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  html:lang(ja) h1,
+  html:lang(ja) h2,
+  html:lang(ja) h3,
+  html:lang(ja) h4,
+  html:lang(ja) .font-display {
+    letter-spacing: 0;
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .page-shell {
+    @apply mx-auto w-full max-w-[1200px] px-5 sm:px-10;
+  }
+
+  .section-space {
+    @apply mt-24 sm:mt-32;
+  }
+
+  .section-header {
+    @apply mx-auto max-w-3xl text-center;
+  }
+
+  .eyebrow {
+    color: hsl(var(--primary));
+    font-size: 0.9375rem;
+    font-weight: 700;
+  }
+
+  .display-title {
+    color: hsl(var(--foreground));
+    font-family: var(--font-display);
+    font-size: clamp(3.75rem, 7.2vw, 6rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  html:lang(ja) .display-title {
+    letter-spacing: 0;
+    line-height: 1.02;
+  }
+
+  .section-title {
+    color: hsl(var(--foreground));
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 4.25vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+  }
+
+  html:lang(ja) .section-title {
+    letter-spacing: 0;
+    line-height: 1.1;
+  }
+
+  .section-copy {
+    color: hsl(var(--muted-foreground));
+    font-size: clamp(1rem, 1.5vw, 1.19rem);
+    font-weight: 500;
+    line-height: 1.6;
+  }
+
+  .surface-panel {
+    @apply border border-border bg-white;
+  }
+
+  .feature-card {
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+    box-shadow: none;
+    padding: 1.5rem;
+    transition: border-color 0.2s;
+  }
+
+  .feature-card:hover {
+    border-color: hsl(var(--primary));
+    transform: none;
+  }
+
+  /* v5 signature: heavy editorial rule above each major section */
+  .rule-top {
+    border-top: 2px solid hsl(var(--foreground));
+  }
+
+  /* flagship/hero frames use the 2px ink border */
+  .frame-strong {
+    border: 2px solid hsl(var(--foreground));
+  }
+
+  .mono-label {
+    @apply font-mono text-[0.72rem] font-medium uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .text-link {
+    @apply font-semibold text-primary underline-offset-4 hover:underline;
+  }
+}
+
+@layer base {
+  .prose {
+    --tw-prose-body: hsl(var(--foreground) / 0.84);
+    --tw-prose-headings: hsl(var(--foreground));
+    --tw-prose-lead: hsl(var(--muted-foreground));
+    --tw-prose-links: hsl(var(--primary));
+    --tw-prose-bold: hsl(var(--foreground));
+    --tw-prose-counters: hsl(var(--muted-foreground));
+    --tw-prose-bullets: hsl(var(--border));
+    --tw-prose-hr: hsl(var(--border));
+    --tw-prose-quotes: hsl(var(--foreground));
+    --tw-prose-quote-borders: hsl(var(--border));
+    --tw-prose-captions: hsl(var(--muted-foreground));
+    --tw-prose-code: hsl(var(--foreground));
+    --tw-prose-pre-code: hsl(var(--foreground));
+    --tw-prose-pre-bg: hsl(var(--surface-muted));
+    --tw-prose-th-borders: hsl(var(--border));
+    --tw-prose-td-borders: hsl(var(--border));
+  }
+
+  .prose :where(h1, h2, h3, h4):not(:where(.not-prose, .not-prose *)) {
+    font-family: var(--font-display);
+    letter-spacing: -0.04em;
+  }
+
+  .prose :where(p, li):not(:where(.not-prose, .not-prose *)) {
+    line-height: 1.85;
+  }
+
+  .prose :where(a):not(:where(.not-prose, .not-prose *)) {
+    font-weight: 600;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.18em;
+  }
+}

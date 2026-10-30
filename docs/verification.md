@@ -1,3 +1,5 @@
+> Initial extraction record. Current Next.js/product UI evidence: [2026-10-31 alignment](ui-alignment-verification-2026-10-31.md).
+
 # Local verification — 2026-10-30
 
 Environment: Node 20.19.5, npm, macOS, Playwright Chromium 148, FFmpeg.

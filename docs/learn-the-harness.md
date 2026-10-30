@@ -64,13 +64,12 @@ the comparison is refreshed. A model's “done” text never constitutes a commi
 
 ## 6. Questions are durable state
 
-`ask_user` yields a structured question with stable option IDs. The UI switches
-its single composer into reply mode. An answer creates one linked continuation
+`ask_user` yields a structured question with stable option IDs. The shared product UI displays the question’s choices and reply field in its chat card. An answer creates one linked continuation
 under a project transaction. Repeating the same operation ID returns that same
 continuation; changing its payload with the same ID is rejected.
 
 Replies preserve the original scope unless a stored choice explicitly changes
-it. A changed project invalidates the question. The harness has no credit-based
+it. A changed project invalidates the question. The local host adapter maps continuation availability into the product UI contract. The harness has no credit-based
 limit on clarification rounds; each model continuation uses the configured provider.
 
 ## 7. Evidence is different from display text

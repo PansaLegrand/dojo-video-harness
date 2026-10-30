@@ -92,6 +92,8 @@ export type VideoProjectAgentRun = {
   reviewBasisRequired?: boolean;
   undoOfRunId?: string;
   clarificationParentRunId?: string;
+  /** Product UI view of local continuation availability; not a billing allowance. */
+  clarificationReply?: {remaining:0|1;continuationRunId?:string;options:Record<string,{scope:NativeAgentScope;itemCount:number;itemNames:string[];fps:number}>};
   replyState?: {
     available: boolean;
     continuationRunId?: string;
