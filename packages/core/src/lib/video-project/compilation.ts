@@ -1,5 +1,5 @@
 import type { CompositionNodeOrigin } from "@/lib/editor/composition-render";
-import type { SceneNodeInput } from "@motionforge/schema";
+import type { SceneNodeInput } from "@dojo-video-engine/schema";
 import {
   compileParsedEditorDocument,
   MissingEditorAssetsError,
@@ -55,7 +55,7 @@ export function compileParsedVideoProjectDocument(
   const native: EditorDocument = {
     ...editorFields,
     assets: { ...editorFields.assets },
-    kind: "motionforge-editor",
+    kind: "dojo-video-engine-editor",
   };
   const unresolved = new Set(
     Object.values(document.bindings)

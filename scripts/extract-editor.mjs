@@ -54,7 +54,7 @@ function visit(file) {
   file = resolve(file);
   const relative = path.relative(source, file);
   if (copied.has(relative)) return;
-  if (relative.startsWith("packages/motionforge/")) return;
+  if (relative.startsWith("packages/dojo-video-engine/")) return;
   if (overrides.has(relative.replace(/\.(tsx?|json)$/, ""))) return;
   const text = fs.readFileSync(file, "utf8");
   copied.set(relative, createHash("sha256").update(text).digest("hex"));
@@ -70,7 +70,7 @@ function visit(file) {
   ))
     imports.push(match[1]);
   for (const name of imports) {
-    if (name.startsWith("@motionforge/")) continue;
+    if (name.startsWith("@dojo-video-engine/")) continue;
     if (name.startsWith("@/")) {
       if (!overrides.has(name.slice(2)))
         visit(path.join(source, name.slice(2)));
@@ -85,14 +85,14 @@ function visit(file) {
   }
 }
 for (const entry of [
-  "components/editor/motionforge/motionforge-editor.tsx",
+  "components/editor/dojo-video-engine/dojo-video-engine-editor.tsx",
   "lib/video-project/agent-runtime.ts",
   "lib/video-project/agent-review.ts",
   "lib/video-project/revert.ts",
 ])
   visit(path.join(source, entry));
-const vendor = path.join(root, "vendor/motionforge");
-fs.cpSync(path.join(source, "packages/motionforge"), vendor, {
+const vendor = path.join(root, "vendor/dojo-video-engine");
+fs.cpSync(path.join(source, "packages/dojo-video-engine"), vendor, {
   recursive: true,
   filter: (p) => !/(\/node_modules|\/dist|\.test\.ts$)/.test(p),
 });

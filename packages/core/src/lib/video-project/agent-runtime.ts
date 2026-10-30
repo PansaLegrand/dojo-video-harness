@@ -1,5 +1,5 @@
 import { z } from "zod/v3";
-import { sceneNodeSchema, type SceneNodeInput } from "@motionforge/schema";
+import { sceneNodeSchema, type SceneNodeInput } from "@dojo-video-engine/schema";
 import { expandVideoAgentSceneMacros } from "@/lib/video-agent/scene-macros";
 import { expandAnimationPresets } from "@/lib/video-agent/animation-presets";
 import { extractVideoAgentModelJson } from "@/lib/video-agent/model-json";

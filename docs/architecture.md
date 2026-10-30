@@ -2,12 +2,12 @@
 
 ```text
 React manual controls ───────────┐
-                               ├─ typed commands ─ project document ─ MotionForge Scene
+                               ├─ typed commands ─ project document ─ Dojo Video Engine Scene
 Chat ─ agent loop ─ proposal ─ review/approval ───────┘                    │
                                                                           preview/export
 ```
 
-The project document is the sole editing authority. MotionForge Scene is a
+The project document is the sole editing authority. Dojo Video Engine Scene is a
 compiled rendering view, not another independently writable project.
 
 `core` contains the extracted domain and browser primitives; `ui` contains React

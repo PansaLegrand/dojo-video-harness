@@ -2,7 +2,7 @@ import type {
   SceneAnimation,
   SceneNodeInput,
   SceneStyle,
-} from "@motionforge/schema";
+} from "@dojo-video-engine/schema";
 import {
   createEditorDocument,
   compileEditorDocument,

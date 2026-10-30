@@ -1,4 +1,4 @@
-import type { SceneStyle, SceneNodeInput } from "@motionforge/schema";
+import type { SceneStyle, SceneNodeInput } from "@dojo-video-engine/schema";
 import { editorFontStyle } from "./fonts";
 
 const textTreatmentDefaults: Partial<SceneStyle> = {

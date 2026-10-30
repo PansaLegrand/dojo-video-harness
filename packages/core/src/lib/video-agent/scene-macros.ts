@@ -2,15 +2,15 @@ import {
   expandMacroNodeInput,
   expandMacroNodes,
   type MacroContext,
-} from "@motionforge/presets/macros";
-import type { Scene } from "@motionforge/schema";
+} from "@dojo-video-engine/presets/macros";
+import type { Scene } from "@dojo-video-engine/schema";
 
 export type VideoAgentMacroTranscripts = NonNullable<
   MacroContext["transcripts"]
 >;
 
 /**
- * Glue between raw model output and @motionforge/presets/macros: expands
+ * Glue between raw model output and @dojo-video-engine/presets/macros: expands
  * macro nodes and layout intents (place/textRole/look/layout) before the
  * normalize -> repair -> patch pipeline runs, so validation only ever sees
  * plain scene nodes. Errors are written for the model retry loop: every

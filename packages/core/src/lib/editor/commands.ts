@@ -6,8 +6,8 @@ import {
   type EditorItem,
   type EditorFormat,
 } from "./document";
-import type { SceneNodeInput } from "@motionforge/schema";
-import { evaluateKeyframes } from "@motionforge/core";
+import type { SceneNodeInput } from "@dojo-video-engine/schema";
+import { evaluateKeyframes } from "@dojo-video-engine/core";
 import { assertEditorCanvasDimensions } from "./canvas-format";
 
 export type EditorCommand =

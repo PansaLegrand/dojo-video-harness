@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { evaluateScene } from "@motionforge/core";
-import { mixSceneAudioData } from "@motionforge/export";
+import { evaluateScene } from "@dojo-video-engine/core";
+import { mixSceneAudioData } from "@dojo-video-engine/export";
 import {
   createVideoProjectDocument,
   parseVideoProjectDocument,

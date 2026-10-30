@@ -28,5 +28,4 @@ the harness serves only its bundled catalog through agent actions. The editor is
 lazy-loaded; the home shell is about 48 kB gzip. These are retained optimization
 items, not failed checks or universal performance guarantees.
 
-DojoClip and MotionForge source checkouts were unchanged. This repository has not
-been published to GitHub or npm, and DojoClip has not been switched to consume it.
+That initial extraction did not change the source checkouts. The subsequent 2026-10-31 engine rename is tracked separately. GitHub publication uses MIT; npm publication and DojoClip adoption remain separate steps.

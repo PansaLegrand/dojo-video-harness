@@ -32,5 +32,5 @@ validation, persistence, approvals, and media behavior; they do not establish li
 model editing quality or universal provider compatibility. Real provider acceptance
 must use explicit test credentials, a spend bound, and retained results.
 
-MotionForge's browser/device limits remain applicable. This extraction does not
+Dojo Video Engine's browser/device limits remain applicable. This extraction does not
 claim cross-device pixel identity, HDR support, or unrestricted long-form 4K editing.

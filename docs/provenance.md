@@ -5,10 +5,10 @@ checkout at web commit `dab4db60`. `extraction-manifest.json` records the origin
 file hashes. It is a source-origin record, not a claim that adapted files remain
 byte-identical. The source repositories were not modified by this extraction.
 
-The engine snapshot comes from DojoClip's declared MotionForge 1.1.0 vendor tree,
+The engine snapshot comes from DojoClip's declared Dojo Video Engine 1.1.0 vendor tree,
 based on upstream commit `8ef6e0228dbfa7ee486ac145d8cb5dd5e5ba24d2`. Its 12 downstream
 compatibility/performance/correctness patches remain described in
-`vendor/motionforge/UPSTREAM.json`. Runtime source is included so a clean clone
+`vendor/dojo-video-engine/UPSTREAM.json`. Runtime source is included so a clean clone
 does not need a sibling checkout, private registry, or unpublished engine package.
 
 Harness adaptations:
@@ -36,5 +36,8 @@ rerun it over the adapted working tree. Future engine updates should reconcile
 declared patches, run the core/browser checks, and update provenance together.
 
 The current workspace packages are private to the monorepo for release management;
-this is unrelated to the source license. npm publication, a public GitHub remote,
-and replacement of DojoClip's in-tree editor are separate release steps.
+this is unrelated to the source license. This repository is published publicly under MIT. npm publication and replacement of DojoClip's in-tree editor remain separate release steps.
+
+## Engine naming migration — 2026-10-31
+
+The engine repository, package scope, source paths, schema/tool identities, and API names now use `dojo-video-engine` / `@dojo-video-engine/*` / `DojoVideoEngine`. The extraction manifest retains original content hashes; its renamed path labels are navigation aids, not claims that the source bytes are unchanged. Historical paths remain available in Git history.

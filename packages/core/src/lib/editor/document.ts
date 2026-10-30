@@ -23,10 +23,10 @@ import {
   type SceneAsset,
   type SceneStyle,
   type SceneAnimation,
-} from "@motionforge/schema";
+} from "@dojo-video-engine/schema";
 
 /** Native authoring data. Runtime URLs and selection never enter persisted content. */
-export const EDITOR_DOCUMENT_KIND = "motionforge-editor" as const;
+export const EDITOR_DOCUMENT_KIND = "dojo-video-engine-editor" as const;
 export const EDITOR_DOCUMENT_VERSION = 1 as const;
 const id = z.string().min(1).max(191);
 const frame = z.number().int().min(0).max(2_592_000);

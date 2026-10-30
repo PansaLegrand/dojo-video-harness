@@ -1,4 +1,4 @@
-import type { SceneNode } from "@motionforge/schema";
+import type { SceneNode } from "@dojo-video-engine/schema";
 import type {
   TranscriptMomentKind,
   TranscriptMomentTone,

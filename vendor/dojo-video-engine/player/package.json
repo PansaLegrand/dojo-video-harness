@@ -1,0 +1,56 @@
+{
+  "name": "@dojo-video-engine/player",
+  "version": "1.1.0",
+  "description": "Real-time playback for dojo-video-engine scenes: a deterministic frame clock plus a canvas render loop with play/pause/seek/loop.",
+  "keywords": [
+    "dojo-video-engine",
+    "video",
+    "player",
+    "playback",
+    "canvas"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PansaLegrand/dojo-video-engine.git",
+    "directory": "packages/player"
+  },
+  "homepage": "https://github.com/PansaLegrand/dojo-video-engine#readme",
+  "bugs": "https://github.com/PansaLegrand/dojo-video-engine/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/.tsbuildinfo"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@dojo-video-engine/export": "workspace:*",
+    "@dojo-video-engine/renderer-canvas2d": "workspace:*",
+    "@dojo-video-engine/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@dojo-video-engine/core": "workspace:*",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "@dojo-video-engine/extensions",
+  "version": "1.1.0",
+  "description": "Versioned deterministic extension registry and lifecycle contracts for DojoVideoEngine.",
+  "keywords": [
+    "dojo-video-engine",
+    "video",
+    "extensions",
+    "plugins",
+    "registry",
+    "deterministic"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PansaLegrand/dojo-video-engine.git",
+    "directory": "packages/extensions"
+  },
+  "homepage": "https://github.com/PansaLegrand/dojo-video-engine#readme",
+  "bugs": "https://github.com/PansaLegrand/dojo-video-engine/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/.tsbuildinfo"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@dojo-video-engine/schema": "workspace:*",
+    "zod": "^3.25.67",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
+  }
+}

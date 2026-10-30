@@ -127,7 +127,7 @@ export function toEditorDocument(
     creativeContext: _context,
     ...native
   } = document;
-  return parseEditorDocument({ ...native, kind: "motionforge-editor" });
+  return parseEditorDocument({ ...native, kind: "dojo-video-engine-editor" });
 }
 export function fromEditorDocument(
   document: EditorDocument,
@@ -198,7 +198,7 @@ export function parseVideoProjectDocument(
     creativeContext: _context,
     ...native
   } = document;
-  assertEditorDocumentStructure({ ...native, kind: "motionforge-editor" });
+  assertEditorDocumentStructure({ ...native, kind: "dojo-video-engine-editor" });
   const unsafe = new Set(["__proto__", "prototype", "constructor"]);
   const inspectIds = (value: unknown): void => {
     if (!value || typeof value !== "object") return;

@@ -15,7 +15,7 @@ Skills are instructions, not permission grants. Tools are trusted code, not
 model-provided modules. Keys must never enter browser bundles or committed files.
 
 The extracted source layout is deliberate. Do not rerun the historical extraction
-script over the working tree: it would overwrite local adaptations. MotionForge
+script over the working tree: it would overwrite local adaptations. Dojo Video Engine
 changes belong upstream where practical; record any vendor patches and provenance.
 
 Do not claim live provider or production verification from synthetic tests.

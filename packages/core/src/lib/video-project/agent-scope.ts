@@ -1,4 +1,4 @@
-import type { SceneNodeInput } from "@motionforge/schema";
+import type { SceneNodeInput } from "@dojo-video-engine/schema";
 import { canonicalSerialize, type VideoProjectDocument } from "./document";
 import type { VideoProjectCommandResult } from "./commands";
 import {

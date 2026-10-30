@@ -192,7 +192,7 @@ try {
     fullPage: true,
   });
   await page.getByRole("button", { name: "Create a video" }).click();
-  await page.getByTestId("motionforge-editor").waitFor();
+  await page.getByTestId("dojo-video-engine-editor").waitFor();
   const id = new URL(page.url()).searchParams.get("project");
   let state = await api(`/api/projects/${id}/document`);
   state = await api(`/api/projects/${id}/commands`, {
@@ -289,7 +289,7 @@ try {
   );
   check("review commits through real local persistence", true);
   await page.reload();
-  await page.getByTestId("motionforge-editor").waitFor();
+  await page.getByTestId("dojo-video-engine-editor").waitFor();
   check(
     "document survives browser reload",
     (await api(`/api/projects/${id}/document`)).document.items[0].node.style
@@ -387,7 +387,7 @@ try {
     state.document.items.some((i) => i.caption?.sourceItemId === clip.id),
   );
   await page.reload();
-  await page.getByTestId("motionforge-editor").waitFor();
+  await page.getByTestId("dojo-video-engine-editor").waitFor();
   await page
     .getByRole("button", { name: "Export video", exact: true })
     .waitFor();
@@ -454,7 +454,7 @@ try {
           "HTTP model tool calls",
           "HTTP ASR adapter",
           "IndexedDB media",
-          "MotionForge preview and export",
+          "DojoVideoEngine preview and export",
           "FFmpeg decode",
         ],
         synthetic: ["model responses", "ASR responses", "audio fixture"],

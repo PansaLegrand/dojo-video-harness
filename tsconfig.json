@@ -12,44 +12,44 @@
     "jsx": "react-jsx",
     "types": ["node", "vite/client"],
     "paths": {
-      "@motionforge/core": ["./vendor/motionforge/core/src/index.ts"],
-      "@motionforge/agent-tools": [
-        "./vendor/motionforge/agent-tools/src/index.ts"
+      "@dojo-video-engine/core": ["./vendor/dojo-video-engine/core/src/index.ts"],
+      "@dojo-video-engine/agent-tools": [
+        "./vendor/dojo-video-engine/agent-tools/src/index.ts"
       ],
-      "@motionforge/commands": ["./vendor/motionforge/commands/src/index.ts"],
-      "@motionforge/export": ["./vendor/motionforge/export/src/index.ts"],
-      "@motionforge/export/worker": [
-        "./vendor/motionforge/export/src/worker.ts"
+      "@dojo-video-engine/commands": ["./vendor/dojo-video-engine/commands/src/index.ts"],
+      "@dojo-video-engine/export": ["./vendor/dojo-video-engine/export/src/index.ts"],
+      "@dojo-video-engine/export/worker": [
+        "./vendor/dojo-video-engine/export/src/worker.ts"
       ],
-      "@motionforge/extensions": [
-        "./vendor/motionforge/extensions/src/index.ts"
+      "@dojo-video-engine/extensions": [
+        "./vendor/dojo-video-engine/extensions/src/index.ts"
       ],
-      "@motionforge/inspection": [
-        "./vendor/motionforge/inspection/src/index.ts"
+      "@dojo-video-engine/inspection": [
+        "./vendor/dojo-video-engine/inspection/src/index.ts"
       ],
-      "@motionforge/interchange": [
-        "./vendor/motionforge/interchange/src/index.ts"
+      "@dojo-video-engine/interchange": [
+        "./vendor/dojo-video-engine/interchange/src/index.ts"
       ],
-      "@motionforge/layout": ["./vendor/motionforge/layout/src/index.ts"],
-      "@motionforge/player": ["./vendor/motionforge/player/src/index.ts"],
-      "@motionforge/presets": ["./vendor/motionforge/presets/src/index.ts"],
-      "@motionforge/presets/macros": [
-        "./vendor/motionforge/presets/src/macros.ts"
+      "@dojo-video-engine/layout": ["./vendor/dojo-video-engine/layout/src/index.ts"],
+      "@dojo-video-engine/player": ["./vendor/dojo-video-engine/player/src/index.ts"],
+      "@dojo-video-engine/presets": ["./vendor/dojo-video-engine/presets/src/index.ts"],
+      "@dojo-video-engine/presets/macros": [
+        "./vendor/dojo-video-engine/presets/src/macros.ts"
       ],
-      "@motionforge/renderer-canvas2d": [
-        "./vendor/motionforge/renderer-canvas2d/src/index.ts"
+      "@dojo-video-engine/renderer-canvas2d": [
+        "./vendor/dojo-video-engine/renderer-canvas2d/src/index.ts"
       ],
-      "@motionforge/renderer-canvas2d/runtime": [
-        "./vendor/motionforge/renderer-canvas2d/src/runtime.ts"
+      "@dojo-video-engine/renderer-canvas2d/runtime": [
+        "./vendor/dojo-video-engine/renderer-canvas2d/src/runtime.ts"
       ],
-      "@motionforge/runtime": ["./vendor/motionforge/runtime/src/index.ts"],
-      "@motionforge/schema": ["./vendor/motionforge/schema/src/index.ts"],
-      "@motionforge/schema/commands": [
-        "./vendor/motionforge/schema/src/commands.ts"
+      "@dojo-video-engine/runtime": ["./vendor/dojo-video-engine/runtime/src/index.ts"],
+      "@dojo-video-engine/schema": ["./vendor/dojo-video-engine/schema/src/index.ts"],
+      "@dojo-video-engine/schema/commands": [
+        "./vendor/dojo-video-engine/schema/src/commands.ts"
       ],
-      "@motionforge/schema/patch": ["./vendor/motionforge/schema/src/patch.ts"],
-      "@motionforge/schema/values": [
-        "./vendor/motionforge/schema/src/values.ts"
+      "@dojo-video-engine/schema/patch": ["./vendor/dojo-video-engine/schema/src/patch.ts"],
+      "@dojo-video-engine/schema/values": [
+        "./vendor/dojo-video-engine/schema/src/values.ts"
       ],
       "@/lib/*": ["packages/core/src/lib/*"],
       "@/types/*": ["packages/core/src/types/*"],

@@ -1,4 +1,4 @@
-import type { SceneNodeInput } from "@motionforge/schema";
+import type { SceneNodeInput } from "@dojo-video-engine/schema";
 import type { EditorItem } from "@/lib/editor/document";
 import type { VideoProjectAgentContext } from "./agent-types";
 import type { VideoProjectDocument, VideoTranscriptEvidence } from "./document";

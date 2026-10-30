@@ -2,7 +2,7 @@ import type {
   SceneNodeInput,
   SceneAnimation,
   VolumeEnvelope,
-} from "@motionforge/schema";
+} from "@dojo-video-engine/schema";
 import type { EditorDocument } from "./document";
 import {
   editorTransitionPlan,

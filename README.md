@@ -2,7 +2,7 @@
 
 A local, open-source video editor with a small TypeScript editing agent.
 Bring your own LLM and transcription providers. Edit the same timeline by hand
-or through chat, review the result, and export through MotionForge in your browser.
+or through chat, review the result, and export through [Dojo Video Engine](https://github.com/PansaLegrand/dojo-video-engine) in your browser.
 
 The agent is intentionally understandable: a model adapter, typed function calls,
 a tool registry, Markdown skills, bounded execution, and explicit user decisions.
@@ -69,7 +69,7 @@ npm start
 - The extracted DojoClip manual editor: multi-track timeline, selection, trim,
   split, text/graphics, captions, styles, transitions, linked groups, source ranges,
   quiet-section analysis, undo/redo, and browser recovery.
-- MotionForge preview, local proxies within admission limits, and browser MP4
+- Dojo Video Engine preview, local proxies within admission limits, and browser MP4
   export. The vendored engine includes the declared DojoClip correctness patches.
 - Local project persistence with serialized transactions, atomic file replacement,
   revisions, conflict detection, operation receipts, and history.
@@ -96,11 +96,11 @@ Start with [the guided walkthrough](docs/learn-the-harness.md), then follow:
 | `skills/`                                        | Domain instructions loaded by the `read_skill` tool        |
 | `packages/adapters/src/`                         | LLM and ASR transports; no document mutation               |
 | `packages/core/src/lib/video-project/`           | Authoritative document, commands, scope, evidence, history |
-| `packages/ui/src/components/editor/motionforge/` | Real manual editor and chat/review UI                      |
+| `packages/ui/src/components/editor/dojo-video-engine/` | Real manual editor and chat/review UI                      |
 | `apps/server/src/agent-service.ts`               | Durable runs, questions, approvals, cancellation           |
 | `apps/server/src/store.ts`                       | Local transactions, receipts, revisions                    |
 | `apps/studio/`                                   | Runnable application shell                                 |
-| `vendor/motionforge/`                            | Pinned renderer source and patch provenance                |
+| `vendor/dojo-video-engine/`                            | Pinned renderer source and patch provenance                |
 
 There is no LangChain, Vercel agent runtime, Pi runtime, or coding-agent subprocess
 in the execution path. Pi inspired the small-core approach; a provider or runtime
@@ -128,7 +128,11 @@ not the quality or account compatibility of a live paid provider.
 See [architecture](docs/architecture.md), [extension guide](docs/extending.md),
 [edge cases](docs/edge-cases.md), and [provenance](docs/provenance.md).
 
+## Engine and application ownership
+
+[dojo-video-engine](https://github.com/PansaLegrand/dojo-video-engine) owns rendering, playback, export, and low-level scene APIs. This repository owns the editor UI and agent harness. The engine no longer ships a competing editor or agent demo.
+
 ## License
 
-MIT for the harness and extracted editor code. MotionForge and third-party assets
+MIT for the harness and extracted editor code. Dojo Video Engine and third-party assets
 retain their own copyright notices. See [THIRD_PARTY.md](THIRD_PARTY.md).

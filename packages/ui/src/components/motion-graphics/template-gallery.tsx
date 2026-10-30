@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  MotionForgeCanvasPreview,
-  type MotionForgeCanvasPreviewHandle,
-} from "@/components/motionforge/motionforge-canvas-preview";
+  DojoVideoEngineCanvasPreview,
+  type DojoVideoEngineCanvasPreviewHandle,
+} from "@/components/dojo-video-engine/dojo-video-engine-canvas-preview";
 import {
   motionTemplates,
   defaultMotionSettings,
@@ -24,7 +24,7 @@ function Card({
   onSelect: () => void;
   disabled?: boolean;
 }) {
-  const player = useRef<MotionForgeCanvasPreviewHandle>(null),
+  const player = useRef<DojoVideoEngineCanvasPreviewHandle>(null),
     hovering = useRef(false);
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -68,7 +68,7 @@ function Card({
         className="pointer-events-none aspect-video overflow-hidden"
         aria-hidden="true"
       >
-        <MotionForgeCanvasPreview
+        <DojoVideoEngineCanvasPreview
           ref={player}
           scene={scene}
           title={title}

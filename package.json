@@ -51,5 +51,13 @@
     "typescript": "5.7.3",
     "vite": "7.3.7",
     "vitest": "4.1.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PansaLegrand/dojo-video-harness.git"
+  },
+  "homepage": "https://github.com/PansaLegrand/dojo-video-harness#readme",
+  "bugs": {
+    "url": "https://github.com/PansaLegrand/dojo-video-harness/issues"
   }
 }

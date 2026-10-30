@@ -17,7 +17,7 @@ import {
   speechCutCommands,
 } from "./semantic";
 import { videoAgentLottieLibrary } from "@/lib/video-agent/lottie-library";
-import { editorCaptionPresets } from "@/components/editor/motionforge/editor-caption-presets";
+import { editorCaptionPresets } from "@/components/editor/dojo-video-engine/editor-caption-presets";
 
 function fixture() {
   const document = createVideoProjectDocument({

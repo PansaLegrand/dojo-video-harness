@@ -1,8 +1,8 @@
-import { macroDefinitions } from "@motionforge/presets/macros";
-import type { SceneNodeInput } from "@motionforge/schema";
+import { macroDefinitions } from "@dojo-video-engine/presets/macros";
+import type { SceneNodeInput } from "@dojo-video-engine/schema";
 import { editorCaptionPresets } from "@/lib/editor/caption-presets";
 import { motionTemplates } from "@/lib/motion-graphics/catalog";
-import { getVideoAgentMotionforgeRuntimeCapabilities } from "@/lib/video-agent/motionforge-runtime";
+import { getVideoAgentDojoVideoEngineRuntimeCapabilities } from "@/lib/video-agent/dojo-video-engine-runtime";
 import { videoAgentLottieLibrary } from "@/lib/video-agent/lottie-library";
 import type { VideoProjectDocument } from "./document";
 import type { VideoProjectAgentContext } from "./agent-types";
@@ -109,7 +109,7 @@ export function selectNativeAgentPromptModules(input: {
   context: VideoProjectAgentContext;
 }) {
   const text = input.instruction.normalize("NFKC").toLowerCase();
-  const capabilities = getVideoAgentMotionforgeRuntimeCapabilities();
+  const capabilities = getVideoAgentDojoVideoEngineRuntimeCapabilities();
   const selected = new Set(input.context.selectedItemIds);
   const items = input.document.items.filter(
     (item) =>
@@ -221,7 +221,7 @@ export function selectNativeAgentPromptModules(input: {
 export function buildNativeAgentSystemPrompt(
   input: Parameters<typeof selectNativeAgentPromptModules>[0],
 ): string {
-  const capabilities = getVideoAgentMotionforgeRuntimeCapabilities();
+  const capabilities = getVideoAgentDojoVideoEngineRuntimeCapabilities();
   const modules = selectNativeAgentPromptModules(input);
   const insertable = macroDefinitions().filter(
     (macro) => !["captions", "subtitles"].includes(macro.name),
@@ -229,7 +229,7 @@ export function buildNativeAgentSystemPrompt(
   const sections = [
     CORE,
     nativeAgentDescriptorGuide(),
-    `Installed MotionForge Scene ${capabilities.sceneVersion}. Node types: ${capabilities.nodeTypes.join(", ")}. Supported style keys: ${capabilities.styleKeys.join(", ")}.`,
+    `Installed DojoVideoEngine Scene ${capabilities.sceneVersion}. Node types: ${capabilities.nodeTypes.join(", ")}. Supported style keys: ${capabilities.styleKeys.join(", ")}.`,
     `Insertable macro index: ${insertable.map((macro) => macro.name).join(", ")}. Caption macros are not native project operations; use captionSource for speech or native editable caption cues for supplied text.`,
   ];
   if (modules.creation)

@@ -1,6 +1,6 @@
 import type { EditorAsset } from "@/lib/editor/document";
 import { readLocalVideoSources, type LocalVideoSource } from "./local-assets";
-import { requiresLocalVideoProxy } from "@/lib/motionforge-browser/preview-proxy-policy";
+import { requiresLocalVideoProxy } from "@/lib/dojo-video-engine-browser/preview-proxy-policy";
 
 type RegisteredSource = {
   sourceId: string;

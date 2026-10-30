@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { editorCaptionPresets } from "@/components/editor/motionforge/editor-caption-presets";
+import { editorCaptionPresets } from "@/components/editor/dojo-video-engine/editor-caption-presets";
 import { compileEditorDocument } from "@/lib/editor/document";
 import {
   compileVideoProjectDocument,

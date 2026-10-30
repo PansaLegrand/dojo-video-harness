@@ -12,7 +12,7 @@ import {
   jsonValueSchema,
   sceneNodeSchema,
   type SceneNodeInput,
-} from "@motionforge/schema";
+} from "@dojo-video-engine/schema";
 import {
   applyEditorCommand,
   offsetEditorItem,
@@ -872,7 +872,7 @@ function independentMoves(
     creativeContext: _context,
     ...native
   } = document;
-  let bytes = JSON.stringify({ ...native, kind: "motionforge-editor" }).length;
+  let bytes = JSON.stringify({ ...native, kind: "dojo-video-engine-editor" }).length;
   return (command: Extract<VideoProjectCommand, { type: "moveItem" }>) => {
     const previous = items.get(command.id)!;
     const item = document.items[previous.index]!;

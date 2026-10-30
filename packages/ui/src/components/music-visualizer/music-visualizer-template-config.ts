@@ -1,4 +1,4 @@
-import type { SceneEffectName } from "@motionforge/schema";
+import type { SceneEffectName } from "@dojo-video-engine/schema";
 import type { MusicVisualizerLayerTemplateKey } from "@/types/music-visualizer";
 
 // Which canvas effect renders each template, plus where its box sits.

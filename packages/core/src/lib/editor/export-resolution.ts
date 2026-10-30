@@ -2,7 +2,7 @@ import {
   parseScene,
   type Scene,
   type SceneNodeInput,
-} from "@motionforge/schema";
+} from "@dojo-video-engine/schema";
 import { assertEditorCanvasDimensions } from "./canvas-format";
 
 export const editorExportResolutions = [

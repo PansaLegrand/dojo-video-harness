@@ -1,4 +1,4 @@
-import { parseScene, type Scene } from "@motionforge/schema";
+import { parseScene, type Scene } from "@dojo-video-engine/schema";
 
 export type Rotation = 0 | 90 | 180 | 270;
 export type LocalVideo = {

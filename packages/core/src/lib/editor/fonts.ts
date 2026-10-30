@@ -1,5 +1,5 @@
 import type { EditorAsset } from "@/lib/editor/document";
-import type { SceneStyle } from "@motionforge/schema";
+import type { SceneStyle } from "@dojo-video-engine/schema";
 
 const variableFonts: Record<string, { path: string; range: string }> = {
   Inter: { path: "/fonts/inter-latin-wght-normal.woff2", range: "100 900" },

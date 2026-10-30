@@ -1,5 +1,5 @@
 import { derivedCompositionId } from "@/lib/editor/composition-ids";
-import type { SceneNodeInput } from "@motionforge/schema";
+import type { SceneNodeInput } from "@dojo-video-engine/schema";
 import type { EditorCommand } from "@/lib/editor/commands";
 import type { EditorLinkedGroup } from "@/lib/editor/composition-schema";
 import type { VideoProjectDocument } from "./document";

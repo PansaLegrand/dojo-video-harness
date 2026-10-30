@@ -1,4 +1,4 @@
-import type { SceneAnimation } from "@motionforge/schema";
+import type { SceneAnimation } from "@dojo-video-engine/schema";
 import {
   compileMotionPreset,
   fadeUp,
@@ -7,7 +7,7 @@ import {
   pulse,
   slideIn,
   type MotionPresetName,
-} from "@motionforge/presets";
+} from "@dojo-video-engine/presets";
 
 /**
  * Server-side expansion of named animation presets emitted by the model.

@@ -1,6 +1,6 @@
 import { z } from "zod/v3";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { sceneNodeSchema, styleSchema } from "@motionforge/schema";
+import { sceneNodeSchema, styleSchema } from "@dojo-video-engine/schema";
 import { motionControlPatchSchema } from "@/lib/motion-graphics/catalog";
 import {
   captionCueSchema,

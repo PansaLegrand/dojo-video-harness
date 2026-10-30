@@ -1,0 +1,2584 @@
+{
+  "$ref": "#/definitions/DojoVideoEngineScene",
+  "definitions": {
+    "DojoVideoEngineScene": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "width": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "fps": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "duration": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "assets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "image",
+                  "video",
+                  "audio",
+                  "font",
+                  "lottie"
+                ]
+              },
+              "src": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sourceMode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "stream",
+                  "buffer"
+                ]
+              },
+              "proxy": {
+                "type": "object",
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "width": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "height": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "bitrate": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "src"
+                ],
+                "additionalProperties": false
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {
+                  "duration": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "width": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "height": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "byteLength": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "mimeType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 127
+                  },
+                  "fontFamily": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[^,;{}]+$"
+                  },
+                  "fontWeight": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 24,
+                        "description": "FontFace weight descriptor: normal, bold, fixed 1-1000 or ascending variable range.",
+                        "format": "dojo-video-engine-font-weight-descriptor"
+                      }
+                    ]
+                  },
+                  "fontStyle": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "italic",
+                      "oblique"
+                    ]
+                  },
+                  "codec": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "hasAudio": {
+                    "type": "boolean"
+                  },
+                  "audioCodec": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "audioSampleRate": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "audioChannels": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 32
+                  },
+                  "frameRate": {
+                    "type": "object",
+                    "properties": {
+                      "numerator": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "denominator": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "numerator",
+                      "denominator"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "variableFrameRate": {
+                    "type": "boolean"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "src"
+            ],
+            "additionalProperties": false
+          },
+          "default": {}
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "div",
+                  "text",
+                  "img",
+                  "video",
+                  "audio",
+                  "lottie",
+                  "effect",
+                  "extension",
+                  "shape"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "runs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "style": {
+                      "type": "object",
+                      "properties": {
+                        "color": {
+                          "type": "string",
+                          "maxLength": 8192,
+                          "description": "Expected a supported hex, legacy/modern rgb()/rgba()/hsl()/hsla(), transparent, or CSS named color.",
+                          "format": "dojo-video-engine-color"
+                        },
+                        "textStroke": {
+                          "type": "string",
+                          "maxLength": 8192,
+                          "description": "Expected a positive px width followed by a supported color, or none.",
+                          "format": "dojo-video-engine-text-stroke"
+                        },
+                        "textBackgroundColor": {
+                          "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/color",
+                          "description": "Expected a supported hex, legacy/modern rgb()/rgba()/hsl()/hsla(), transparent, or CSS named color.",
+                          "format": "dojo-video-engine-color"
+                        },
+                        "textBackgroundPadding": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "string",
+                              "maxLength": 128,
+                              "description": "Finite number string with optional px or % unit.",
+                              "format": "dojo-video-engine-length"
+                            }
+                          ]
+                        },
+                        "textBackgroundPaddingX": {
+                          "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                        },
+                        "textBackgroundPaddingY": {
+                          "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                        },
+                        "textBackgroundRadius": {
+                          "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                        },
+                        "opacity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 256
+              },
+              "assetId": {
+                "type": "string"
+              },
+              "effect": {
+                "type": "string",
+                "enum": [
+                  "cartoonBurst",
+                  "confettiBurst",
+                  "cloudPop",
+                  "speedLines",
+                  "neonAura",
+                  "scribbleCircle",
+                  "spectrumBars",
+                  "cassetteVuMeter",
+                  "waveformLine",
+                  "mirrorBars",
+                  "circularSpectrum",
+                  "neonWaveform",
+                  "pulseRings",
+                  "particleGalaxy",
+                  "albumCoverPulse",
+                  "audioBlob",
+                  "starfieldTunnel",
+                  "equalizerGrid",
+                  "liquidGradient",
+                  "kaleidoscope",
+                  "vinylRecord",
+                  "audioTerrain",
+                  "lightningArc",
+                  "minimalLineArt"
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "intensity": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  "seed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "colors": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/color"
+                    },
+                    "minItems": 1,
+                    "maxItems": 8
+                  },
+                  "particleCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 240
+                  },
+                  "shockwave": {
+                    "type": "boolean"
+                  },
+                  "emoji": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 12
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "right",
+                      "up",
+                      "down",
+                      "in",
+                      "out",
+                      "diagonal"
+                    ]
+                  },
+                  "density": {
+                    "type": "string",
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  "loops": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  },
+                  "strokeWidth": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 80
+                  },
+                  "radius": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "wobble": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "pulse": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "scale": {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 4
+                  },
+                  "spread": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "softness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "glow": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "frame"
+                    ]
+                  },
+                  "audioAssetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "audioStartTime": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "audioPlaybackRate": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 16
+                  },
+                  "coverAssetId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "barCount": {
+                    "type": "integer",
+                    "minimum": 8,
+                    "maximum": 128
+                  },
+                  "sensitivity": {
+                    "type": "number",
+                    "minimum": 0.2,
+                    "maximum": 10
+                  },
+                  "smoothing": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "extension": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 191,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+                  },
+                  "version": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-(?:0|[1-9]\\d*|[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9]\\d*|[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+                  },
+                  "params": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/extension/properties/params/additionalProperties"
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/extension/properties/params/additionalProperties"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "version",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              "shape": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "rect"
+                      },
+                      "radius": {
+                        "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "ellipse"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "points": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number",
+                                "minimum": -16,
+                                "maximum": 16
+                              },
+                              "y": {
+                                "type": "number",
+                                "minimum": -16,
+                                "maximum": 16
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/shape/anyOf/2/properties/points/items/0"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "points"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "polyline"
+                      },
+                      "points": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/shape/anyOf/2/properties/points/items/0"
+                        },
+                        "minItems": 2,
+                        "maxItems": 256
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "points"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "polygon"
+                      },
+                      "points": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/shape/anyOf/2/properties/points/items/0"
+                        },
+                        "minItems": 3,
+                        "maxItems": 256
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "points"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "path"
+                      },
+                      "d": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100000,
+                        "pattern": "^[MmZzLlHhVvCcSsQqTtAa0-9eE+.,\\s-]+$"
+                      },
+                      "viewBox": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          },
+                          "width": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "height": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y",
+                          "width",
+                          "height"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "fillRule": {
+                        "type": "string",
+                        "enum": [
+                          "nonzero",
+                          "evenodd"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "d",
+                      "viewBox"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "clip": {
+                "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/shape"
+              },
+              "mask": {
+                "type": "object",
+                "properties": {
+                  "shape": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/clip"
+                  },
+                  "inverted": {
+                    "type": "boolean"
+                  },
+                  "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "feather": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 256
+                  }
+                },
+                "required": [
+                  "shape"
+                ],
+                "additionalProperties": false
+              },
+              "videoStartTime": {
+                "type": "number",
+                "minimum": 0
+              },
+              "playbackRate": {
+                "type": "number",
+                "minimum": -16,
+                "maximum": 16
+              },
+              "audioStartTime": {
+                "type": "number",
+                "minimum": 0
+              },
+              "volume": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "volumeEnvelope": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "frame": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "value": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "easing": {
+                      "type": "string",
+                      "maxLength": 8192,
+                      "description": "Expected a named easing, cubic-bezier(), or spring().",
+                      "format": "dojo-video-engine-easing"
+                    }
+                  },
+                  "required": [
+                    "frame",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1
+              },
+              "audioBus": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "pan": {
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              },
+              "ducks": {
+                "type": "object",
+                "properties": {
+                  "bus": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "gain": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "attackFrames": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 600
+                  },
+                  "releaseFrames": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 600
+                  }
+                },
+                "required": [
+                  "bus",
+                  "gain"
+                ],
+                "additionalProperties": false
+              },
+              "videoEndBehavior": {
+                "type": "string",
+                "enum": [
+                  "hold",
+                  "loop"
+                ]
+              },
+              "loop": {
+                "type": "boolean"
+              },
+              "from": {
+                "type": "integer",
+                "default": 0
+              },
+              "duration": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "display": {
+                    "type": "string",
+                    "const": "flex"
+                  },
+                  "flexDirection": {
+                    "type": "string",
+                    "enum": [
+                      "row",
+                      "column"
+                    ]
+                  },
+                  "justifyContent": {
+                    "type": "string",
+                    "enum": [
+                      "flex-start",
+                      "center",
+                      "flex-end",
+                      "space-between"
+                    ]
+                  },
+                  "alignItems": {
+                    "type": "string",
+                    "enum": [
+                      "flex-start",
+                      "center",
+                      "flex-end",
+                      "stretch"
+                    ]
+                  },
+                  "gap": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "width": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "height": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "minWidth": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "minHeight": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "maxWidth": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "maxHeight": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "aspectRatio": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^\\s*\\d+(?:\\.\\d+)?\\s*\\/\\s*\\d+(?:\\.\\d+)?\\s*$",
+                        "format": "dojo-video-engine-aspect-ratio"
+                      }
+                    ]
+                  },
+                  "safeArea": {
+                    "type": "object",
+                    "properties": {
+                      "top": {
+                        "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                      },
+                      "right": {
+                        "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                      },
+                      "bottom": {
+                        "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                      },
+                      "left": {
+                        "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "padding": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "paddingTop": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "paddingRight": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "paddingBottom": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "paddingLeft": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "margin": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "marginTop": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "marginRight": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "marginBottom": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "marginLeft": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "position": {
+                    "type": "string",
+                    "enum": [
+                      "relative",
+                      "absolute"
+                    ]
+                  },
+                  "left": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "right": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "top": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "bottom": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "inset": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "background": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected a supported color or linear/radial/conic gradient.",
+                    "format": "dojo-video-engine-paint"
+                  },
+                  "backgroundColor": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/color",
+                    "description": "Expected a supported hex, legacy/modern rgb()/rgba()/hsl()/hsla(), transparent, or CSS named color.",
+                    "format": "dojo-video-engine-color"
+                  },
+                  "fill": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/style/properties/background",
+                    "description": "Expected a supported color or linear/radial/conic gradient.",
+                    "format": "dojo-video-engine-paint"
+                  },
+                  "stroke": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/style/properties/background",
+                    "description": "Expected a supported color or linear/radial/conic gradient.",
+                    "format": "dojo-video-engine-paint"
+                  },
+                  "strokeWidth": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1024
+                  },
+                  "strokeLineCap": {
+                    "type": "string",
+                    "enum": [
+                      "butt",
+                      "round",
+                      "square"
+                    ]
+                  },
+                  "strokeLineJoin": {
+                    "type": "string",
+                    "enum": [
+                      "bevel",
+                      "round",
+                      "miter"
+                    ]
+                  },
+                  "strokeDash": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "maxItems": 32
+                  },
+                  "border": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected a nonnegative px width, optional solid keyword, and color.",
+                    "format": "dojo-video-engine-border"
+                  },
+                  "borderRadius": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "borderTopLeftRadius": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "borderTopRightRadius": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "borderBottomRightRadius": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "borderBottomLeftRadius": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "boxShadow": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected comma-separated x/y/optional-blur/color shadows without spread or inset.",
+                    "format": "dojo-video-engine-shadow-list"
+                  },
+                  "overflow": {
+                    "type": "string",
+                    "enum": [
+                      "visible",
+                      "hidden"
+                    ]
+                  },
+                  "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "blendMode": {
+                    "type": "string",
+                    "enum": [
+                      "source-over",
+                      "lighter",
+                      "multiply",
+                      "screen",
+                      "overlay",
+                      "darken",
+                      "lighten",
+                      "color-dodge",
+                      "color-burn",
+                      "hard-light",
+                      "soft-light",
+                      "difference",
+                      "exclusion",
+                      "hue",
+                      "saturation",
+                      "color",
+                      "luminosity"
+                    ]
+                  },
+                  "isolation": {
+                    "type": "boolean"
+                  },
+                  "filter": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected none or a supported Canvas2D filter chain.",
+                    "format": "dojo-video-engine-filter"
+                  },
+                  "zIndex": {
+                    "type": "integer"
+                  },
+                  "transform": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected none or a translate()/scale()/rotate() transform list.",
+                    "format": "dojo-video-engine-transform"
+                  },
+                  "transformOrigin": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected horizontal left/center/right/px/% and optional vertical top/center/bottom/px/% origin components.",
+                    "format": "dojo-video-engine-transform-origin"
+                  },
+                  "fontFamily": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected a bounded comma-separated Canvas font-family list.",
+                    "format": "dojo-video-engine-font-family"
+                  },
+                  "fontSize": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "fontWeight": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 1000
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 8192,
+                        "description": "Expected normal/bold/bolder/lighter or a font weight from 1 to 1000.",
+                        "format": "dojo-video-engine-font-weight"
+                      }
+                    ]
+                  },
+                  "fontStyle": {
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "italic"
+                    ]
+                  },
+                  "color": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/color",
+                    "description": "Expected a supported hex, legacy/modern rgb()/rgba()/hsl()/hsla(), transparent, or CSS named color.",
+                    "format": "dojo-video-engine-color"
+                  },
+                  "lineHeight": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "letterSpacing": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "textAlign": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "center",
+                      "right"
+                    ]
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "ltr",
+                      "rtl",
+                      "inherit"
+                    ]
+                  },
+                  "textShadow": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected one x/y/optional-blur/color shadow without spread or inset, or none.",
+                    "format": "dojo-video-engine-single-shadow"
+                  },
+                  "textStroke": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textStroke",
+                    "description": "Expected a positive px width followed by a supported color, or none.",
+                    "format": "dojo-video-engine-text-stroke"
+                  },
+                  "maxLines": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "minFontSize": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "textFit": {
+                    "type": "string",
+                    "enum": [
+                      "wrap",
+                      "shrink",
+                      "truncate"
+                    ]
+                  },
+                  "textOverflow": {
+                    "type": "string",
+                    "enum": [
+                      "clip",
+                      "ellipsis"
+                    ]
+                  },
+                  "textBackgroundColor": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/color",
+                    "description": "Expected a supported hex, legacy/modern rgb()/rgba()/hsl()/hsla(), transparent, or CSS named color.",
+                    "format": "dojo-video-engine-color"
+                  },
+                  "textBackgroundPadding": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "textBackgroundPaddingX": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "textBackgroundPaddingY": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "textBackgroundRadius": {
+                    "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                  },
+                  "objectFit": {
+                    "type": "string",
+                    "enum": [
+                      "contain",
+                      "cover",
+                      "fill",
+                      "none",
+                      "scale-down"
+                    ]
+                  },
+                  "objectPosition": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "Expected one or two left/center/right/top/bottom/px/% object-position components.",
+                    "format": "dojo-video-engine-object-position"
+                  },
+                  "imageRendering": {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "pixelated"
+                    ]
+                  },
+                  "pixelSize": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 256
+                  }
+                },
+                "additionalProperties": false,
+                "default": {}
+              },
+              "animations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "keyframes"
+                    },
+                    "property": {
+                      "type": "string",
+                      "enum": [
+                        "display",
+                        "flexDirection",
+                        "justifyContent",
+                        "alignItems",
+                        "gap",
+                        "width",
+                        "height",
+                        "minWidth",
+                        "minHeight",
+                        "maxWidth",
+                        "maxHeight",
+                        "aspectRatio",
+                        "padding",
+                        "paddingTop",
+                        "paddingRight",
+                        "paddingBottom",
+                        "paddingLeft",
+                        "margin",
+                        "marginTop",
+                        "marginRight",
+                        "marginBottom",
+                        "marginLeft",
+                        "position",
+                        "left",
+                        "right",
+                        "top",
+                        "bottom",
+                        "inset",
+                        "background",
+                        "backgroundColor",
+                        "fill",
+                        "stroke",
+                        "strokeWidth",
+                        "strokeLineCap",
+                        "strokeLineJoin",
+                        "border",
+                        "borderRadius",
+                        "borderTopLeftRadius",
+                        "borderTopRightRadius",
+                        "borderBottomRightRadius",
+                        "borderBottomLeftRadius",
+                        "boxShadow",
+                        "overflow",
+                        "opacity",
+                        "blendMode",
+                        "filter",
+                        "zIndex",
+                        "transform",
+                        "transformOrigin",
+                        "fontFamily",
+                        "fontSize",
+                        "fontWeight",
+                        "fontStyle",
+                        "color",
+                        "lineHeight",
+                        "letterSpacing",
+                        "textAlign",
+                        "direction",
+                        "textShadow",
+                        "textStroke",
+                        "maxLines",
+                        "minFontSize",
+                        "textFit",
+                        "textOverflow",
+                        "textBackgroundColor",
+                        "textBackgroundPadding",
+                        "textBackgroundPaddingX",
+                        "textBackgroundPaddingY",
+                        "textBackgroundRadius",
+                        "objectFit",
+                        "objectPosition",
+                        "imageRendering",
+                        "pixelSize",
+                        "mask.opacity",
+                        "mask.feather",
+                        "mask.radius"
+                      ]
+                    },
+                    "frames": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "frame": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "value": {
+                            "type": [
+                              "number",
+                              "string"
+                            ]
+                          },
+                          "easing": {
+                            "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/volumeEnvelope/items/properties/easing",
+                            "description": "Expected a named easing, cubic-bezier(), or spring().",
+                            "format": "dojo-video-engine-easing"
+                          }
+                        },
+                        "required": [
+                          "frame",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    },
+                    "repeat": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000
+                        },
+                        {
+                          "type": "string",
+                          "const": "infinite"
+                        }
+                      ]
+                    },
+                    "yoyo": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "property",
+                    "frames"
+                  ],
+                  "additionalProperties": false,
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "display"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "const": "flex"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "flexDirection"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "row",
+                                    "column"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "justifyContent"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "flex-start",
+                                    "center",
+                                    "flex-end",
+                                    "space-between"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "alignItems"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "flex-start",
+                                    "center",
+                                    "flex-end",
+                                    "stretch"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "enum": [
+                              "gap",
+                              "width",
+                              "height",
+                              "minWidth",
+                              "minHeight",
+                              "maxWidth",
+                              "maxHeight",
+                              "padding",
+                              "paddingTop",
+                              "paddingRight",
+                              "paddingBottom",
+                              "paddingLeft",
+                              "margin",
+                              "marginTop",
+                              "marginRight",
+                              "marginBottom",
+                              "marginLeft",
+                              "left",
+                              "right",
+                              "top",
+                              "bottom",
+                              "inset",
+                              "borderRadius",
+                              "borderTopLeftRadius",
+                              "borderTopRightRadius",
+                              "borderBottomRightRadius",
+                              "borderBottomLeftRadius",
+                              "fontSize",
+                              "lineHeight",
+                              "letterSpacing",
+                              "minFontSize",
+                              "textBackgroundPadding",
+                              "textBackgroundPaddingX",
+                              "textBackgroundPaddingY",
+                              "textBackgroundRadius",
+                              "mask.radius"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textBackgroundPadding"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "aspectRatio"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number",
+                                      "exclusiveMinimum": 0
+                                    },
+                                    {
+                                      "type": "string",
+                                      "pattern": "^\\s*\\d+(?:\\.\\d+)?\\s*\\/\\s*\\d+(?:\\.\\d+)?\\s*$",
+                                      "format": "dojo-video-engine-aspect-ratio"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "position"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "relative",
+                                    "absolute"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "background"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected a supported color or linear/radial/conic gradient.",
+                                  "format": "dojo-video-engine-paint"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "enum": [
+                              "backgroundColor",
+                              "color",
+                              "textBackgroundColor"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/color",
+                                  "description": "Expected a supported hex, legacy/modern rgb()/rgba()/hsl()/hsla(), transparent, or CSS named color.",
+                                  "format": "dojo-video-engine-color"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "enum": [
+                              "fill",
+                              "stroke"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/style/properties/background",
+                                  "description": "Expected a supported color or linear/radial/conic gradient.",
+                                  "format": "dojo-video-engine-paint"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "strokeWidth"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1024
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "strokeLineCap"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "butt",
+                                    "round",
+                                    "square"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "strokeLineJoin"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "bevel",
+                                    "round",
+                                    "miter"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "border"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected a nonnegative px width, optional solid keyword, and color.",
+                                  "format": "dojo-video-engine-border"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "boxShadow"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected comma-separated x/y/optional-blur/color shadows without spread or inset.",
+                                  "format": "dojo-video-engine-shadow-list"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "overflow"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "visible",
+                                    "hidden"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "enum": [
+                              "opacity",
+                              "mask.opacity"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "blendMode"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "source-over",
+                                    "lighter",
+                                    "multiply",
+                                    "screen",
+                                    "overlay",
+                                    "darken",
+                                    "lighten",
+                                    "color-dodge",
+                                    "color-burn",
+                                    "hard-light",
+                                    "soft-light",
+                                    "difference",
+                                    "exclusion",
+                                    "hue",
+                                    "saturation",
+                                    "color",
+                                    "luminosity"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "filter"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected none or a supported Canvas2D filter chain.",
+                                  "format": "dojo-video-engine-filter"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "zIndex"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "transform"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected none or a translate()/scale()/rotate() transform list.",
+                                  "format": "dojo-video-engine-transform"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "transformOrigin"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected horizontal left/center/right/px/% and optional vertical top/center/bottom/px/% origin components.",
+                                  "format": "dojo-video-engine-transform-origin"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "fontFamily"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected a bounded comma-separated Canvas font-family list.",
+                                  "format": "dojo-video-engine-font-family"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "fontWeight"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number",
+                                      "minimum": 1,
+                                      "maximum": 1000
+                                    },
+                                    {
+                                      "type": "string",
+                                      "maxLength": 8192,
+                                      "description": "Expected normal/bold/bolder/lighter or a font weight from 1 to 1000.",
+                                      "format": "dojo-video-engine-font-weight"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "fontStyle"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "normal",
+                                    "italic"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "textAlign"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "center",
+                                    "right"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "direction"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ltr",
+                                    "rtl",
+                                    "inherit"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "textShadow"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected one x/y/optional-blur/color shadow without spread or inset, or none.",
+                                  "format": "dojo-video-engine-single-shadow"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "textStroke"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items/properties/runs/items/properties/style/properties/textStroke",
+                                  "description": "Expected a positive px width followed by a supported color, or none.",
+                                  "format": "dojo-video-engine-text-stroke"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "maxLines"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "textFit"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "wrap",
+                                    "shrink",
+                                    "truncate"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "textOverflow"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "clip",
+                                    "ellipsis"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "objectFit"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "contain",
+                                    "cover",
+                                    "fill",
+                                    "none",
+                                    "scale-down"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "objectPosition"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 8192,
+                                  "description": "Expected one or two left/center/right/top/bottom/px/% object-position components.",
+                                  "format": "dojo-video-engine-object-position"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "imageRendering"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "string",
+                                  "enum": [
+                                    "auto",
+                                    "pixelated"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "pixelSize"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "number",
+                                  "minimum": 1,
+                                  "maximum": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "property": {
+                            "const": "mask.feather"
+                          }
+                        },
+                        "required": [
+                          "property"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "frames": {
+                            "items": {
+                              "properties": {
+                                "value": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 256
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "default": []
+              },
+              "children": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/DojoVideoEngineScene/properties/nodes/items"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "id",
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "markers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "audioBuses": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "gain": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2
+              },
+              "pan": {
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              },
+              "limiter": {
+                "type": "boolean"
+              },
+              "limiterCeiling": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "width",
+        "height",
+        "fps",
+        "duration"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "x-dojo-video-engine-format-vocabulary": [
+    "dojo-video-engine-length",
+    "dojo-video-engine-aspect-ratio",
+    "dojo-video-engine-color",
+    "dojo-video-engine-paint",
+    "dojo-video-engine-transform",
+    "dojo-video-engine-transform-origin",
+    "dojo-video-engine-object-position",
+    "dojo-video-engine-filter",
+    "dojo-video-engine-font-family",
+    "dojo-video-engine-font-weight",
+    "dojo-video-engine-font-weight-descriptor",
+    "dojo-video-engine-border",
+    "dojo-video-engine-shadow-list",
+    "dojo-video-engine-single-shadow",
+    "dojo-video-engine-text-stroke",
+    "dojo-video-engine-easing"
+  ],
+  "$comment": "Register @dojo-video-engine/schema dojoVideoEngineJsonSchemaFormats before compiling this schema; unknown formats must not be ignored."
+}

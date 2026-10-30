@@ -1,4 +1,4 @@
-import { parseColorValue } from "@motionforge/schema/values";
+import { parseColorValue } from "@dojo-video-engine/schema/values";
 import type { EditorDocument, EditorItem } from "./document";
 import type { EditorTransition } from "./composition-schema";
 

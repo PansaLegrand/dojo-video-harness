@@ -1,4 +1,4 @@
-import type { SceneStyle, SceneTextRun } from "@motionforge/schema";
+import type { SceneStyle, SceneTextRun } from "@dojo-video-engine/schema";
 
 export type EditorCaptionPreset = {
   label: string;

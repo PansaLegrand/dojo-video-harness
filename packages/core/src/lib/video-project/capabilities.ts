@@ -4,7 +4,7 @@ import {
   styleSchema,
   type SceneNodeInput,
   type SceneStyle,
-} from "@motionforge/schema";
+} from "@dojo-video-engine/schema";
 import {
   editorMediaFilters,
   editorTextStyles,

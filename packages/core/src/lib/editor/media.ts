@@ -2,7 +2,7 @@ import {
   EDITOR_MEDIA_ADMISSION,
   inspectEditorVideo,
   type AdmittedEditorVideo,
-} from "@/lib/motionforge-browser/media-admission";
+} from "@/lib/dojo-video-engine-browser/media-admission";
 
 export const EDITOR_MEDIA_ACCEPT = "video/*,audio/*,image/*";
 export const EDITOR_MAX_FILE_BYTES = EDITOR_MEDIA_ADMISSION.maxFileBytes;

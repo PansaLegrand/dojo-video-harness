@@ -2,7 +2,7 @@ import {
   VIDEO_PROJECT_EDITABLE_FIELDS,
   type VideoProjectTarget,
 } from "./commands";
-import { supportedStyleKeys } from "@motionforge/schema";
+import { supportedStyleKeys } from "@dojo-video-engine/schema";
 import {
   NATIVE_AGENT_HOST_ONLY_OPERATIONS,
   nativeAgentPropertyUnit,

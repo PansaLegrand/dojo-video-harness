@@ -1,0 +1,55 @@
+{
+  "name": "@dojo-video-engine/authoring",
+  "version": "1.1.0",
+  "description": "Seconds-first TypeScript authoring helpers for DojoVideoEngine scenes.",
+  "keywords": [
+    "dojo-video-engine",
+    "video",
+    "authoring",
+    "typescript",
+    "animation"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PansaLegrand/dojo-video-engine.git",
+    "directory": "packages/authoring"
+  },
+  "homepage": "https://github.com/PansaLegrand/dojo-video-engine#readme",
+  "bugs": "https://github.com/PansaLegrand/dojo-video-engine/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/.tsbuildinfo"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@dojo-video-engine/core": "workspace:*",
+    "@dojo-video-engine/presets": "workspace:*",
+    "@dojo-video-engine/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
+  }
+}
