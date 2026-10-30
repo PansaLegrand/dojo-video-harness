@@ -1,3 +1,4 @@
+import { atomicReplace } from "./atomic-replace";
 import {
   mkdir,
   readFile,
@@ -173,7 +174,7 @@ export class ProjectStore {
           );
         const trash = path.join(this.directory, "trash");
         await mkdir(trash, { recursive: true, mode: 0o700 });
-        await rename(
+        await atomicReplace(
           this.file(id),
           path.join(trash, `${id}-${randomUUID()}.json`),
         );
@@ -288,7 +289,7 @@ export async function atomicJson(file: string, value: unknown) {
   } finally {
     await handle.close();
   }
-  await rename(temp, file);
+  await atomicReplace(temp, file);
 }
 export function message(
   p: Project,

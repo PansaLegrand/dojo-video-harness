@@ -123,36 +123,41 @@ export async function runAgent(input: {
       ids.add(call.id);
       await emit("tool.started", call.name);
       let observation: unknown;
+      let terminal: NativeAgentResult | undefined;
       try {
         const tool = registry.get(call.name);
         if (!tool)
           throw new Error("Unknown tool. Choose from the advertised registry.");
         const outcome = await tool.execute(JSON.parse(call.arguments), signal);
         signal.throwIfAborted();
-        if (outcome.kind === "terminal") {
-          await emit("tool.completed", call.name, "Validated");
-          await emit(
-            outcome.result.outcome === "proposal"
-              ? "proposal.ready"
-              : outcome.result.outcome === "needs_input"
-                ? "question.asked"
-                : "answer.ready",
-            undefined,
-            outcome.result.summary,
-          );
-          return outcome.result;
+        if (outcome.kind === "terminal") terminal = outcome.result;
+        else {
+          observation = outcome.value;
+          if (JSON.stringify(observation).length > 120_000)
+            throw new Error(
+              "Result exceeds context budget. Inspect fewer items.",
+            );
         }
-        observation = outcome.value;
-        if (JSON.stringify(observation).length > 120_000)
-          throw new Error(
-            "Result exceeds context budget. Inspect fewer items.",
-          );
       } catch (cause) {
         signal.throwIfAborted();
         observation = {
           error: cause instanceof Error ? cause.message : "Tool failed",
           hint: "Correct the input or ask a focused question.",
         };
+      }
+      // Host persistence failures must stop the run, not become prompts for another paid call.
+      if (terminal) {
+        await emit("tool.completed", call.name, "Validated");
+        await emit(
+          terminal.outcome === "proposal"
+            ? "proposal.ready"
+            : terminal.outcome === "needs_input"
+              ? "question.asked"
+              : "answer.ready",
+          undefined,
+          terminal.summary,
+        );
+        return terminal;
       }
       const content = JSON.stringify(observation);
       observationBytes += content.length;

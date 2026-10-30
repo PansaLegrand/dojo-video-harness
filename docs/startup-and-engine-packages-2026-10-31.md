@@ -39,3 +39,15 @@ the registry-backed harness check before pushing that dependency switch.
 
 The current harness stays runnable from its existing source copy while publication
 is pending. No registry dependency was introduced prematurely.
+
+
+## Windows storage follow-up
+
+The first Windows CI run exposed transient `EPERM` replacement errors during
+concurrent project reads. The host now retries only the same atomic filesystem
+rename on Windows, within a bounded window; it never deletes the destination or
+replays the transaction/model call. Terminal event persistence failures also stop
+the agent loop instead of asking the model to correct a host storage error.
+
+The follow-up passed 196 local tests, production build, and all 25 browser checks.
+The Windows scenario/clean-startup job is the acceptance gate for this fix.

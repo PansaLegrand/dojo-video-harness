@@ -1,3 +1,4 @@
+import { atomicReplace } from "./atomic-replace";
 import { type IncomingMessage, type ServerResponse } from "node:http";
 import { createReadStream } from "node:fs";
 import {
@@ -216,7 +217,7 @@ export async function createLocalApi() {
         throw new HttpError(
           "Uploaded bytes do not match the registered source.",
         );
-      await rename(tmp, file);
+      await atomicReplace(tmp, file);
       return { length, digest };
     } catch (cause) {
       await rm(tmp, { force: true });

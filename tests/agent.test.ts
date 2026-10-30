@@ -351,3 +351,23 @@ it("searches source-bound transcript evidence using real word IDs", async () => 
     endMs: 2000,
   });
 });
+
+it("does not turn a host persistence failure into another paid model call", async () => {
+  const model = scripted([
+    call("propose_edit", proposal),
+    call("propose_edit", proposal),
+  ]);
+  await expect(
+    runAgent({
+      request: await fixture(),
+      model,
+      skills: [],
+      signal: new AbortController().signal,
+      onEvent(event) {
+        if (event.type === "tool.completed")
+          throw new Error("Disk write unavailable");
+      },
+    }),
+  ).rejects.toThrow("Disk write unavailable");
+  expect(model.complete).toHaveBeenCalledTimes(1);
+});

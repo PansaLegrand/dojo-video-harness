@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { atomicReplace } from "./atomic-replace";
+import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod/v3";
@@ -126,7 +127,11 @@ export class ProviderSettings {
         await writeFile(temporary, JSON.stringify(next, null, 2) + "\n", {
           mode: 0o600,
         });
-        await rename(temporary, this.file);
+        try {
+          await atomicReplace(temporary, this.file);
+        } finally {
+          await rm(temporary, { force: true });
+        }
         this.saved = next;
         return this.public();
       });
