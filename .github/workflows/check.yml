@@ -34,6 +34,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm run setup
+      - run: npm run check:ui-sync
       - run: npm run test:agent:scenarios
       - run: npx playwright install chromium
       - run: npm run test:startup
