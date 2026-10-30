@@ -13,8 +13,15 @@ export type ChatMessage = {
     type: "function";
     function: { name: string; arguments: string };
   }>;
+  /** Opaque model output, including encrypted reasoning, for this run only. */
+  providerOutput?: Array<Record<string, unknown>>;
 };
-export type ModelReply = { text: string; calls: ToolCall[] };
+export type ModelReply = {
+  text: string;
+  calls: ToolCall[];
+  providerOutput?: Array<Record<string, unknown>>;
+  usage?: { inputTokens: number; outputTokens: number };
+};
 export interface LanguageModel {
   complete(
     messages: ChatMessage[],

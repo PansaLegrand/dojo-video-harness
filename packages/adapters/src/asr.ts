@@ -3,7 +3,7 @@ import {
   providerUrl,
   providerJson,
   type ProviderConfig,
-} from "./openai-compatible";
+} from "./provider-http";
 const transcript = z.object({
   text: z.string(),
   language: z.string().optional(),

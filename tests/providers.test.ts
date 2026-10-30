@@ -1,6 +1,6 @@
 import { it, expect } from "vitest";
 import { normalizeTranscript } from "../packages/adapters/src/asr";
-import { providerUrl } from "../packages/adapters/src/openai-compatible";
+import { providerUrl } from "../packages/adapters/src/provider-http";
 import { createVideoProjectDocument } from "../packages/core/src/lib/video-project/document";
 import { transcriptEvidenceFromAsr } from "../packages/core/src/lib/video-project/semantic";
 it("preserves real ASR word timing through the provider and evidence boundaries", async () => {

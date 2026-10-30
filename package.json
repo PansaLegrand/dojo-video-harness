@@ -21,7 +21,8 @@
     "format": "prettier --write packages/agent packages/adapters packages/ui/src/host apps/server tests scripts config/aliases.ts README.md docs/*.md",
     "check:ui-sync": "node scripts/sync-product-ui.mjs --verify",
     "sync:ui": "node scripts/sync-product-ui.mjs",
-    "test:ui-parity": "node scripts/verify-product-ui.mjs"
+    "test:ui-parity": "node scripts/verify-product-ui.mjs",
+    "test:live:gpt": "tsx scripts/test-live-gpt.ts"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "5.2.8",

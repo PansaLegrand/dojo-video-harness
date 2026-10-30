@@ -3,6 +3,8 @@
 This is a local-first educational video harness. Keep the model loop small and
 readable. Put video invariants in the command kernel, transports in adapters, and
 persistence/approval in the host. A model proposal never writes the document.
+The agent supports GPT models through the Responses API. Keep one model transport;
+do not add provider frameworks or silent model fallbacks. ASR is a separate adapter.
 The local UI is English-only. Reuse shared editor/chat components without requiring
 full hosted-product parity; do not reintroduce extra UI dictionaries or font loaders.
 

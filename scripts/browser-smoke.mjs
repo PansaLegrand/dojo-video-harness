@@ -41,7 +41,7 @@ const provider = createServer(async (req, res) => {
   }
   modelCalls++;
   const body = JSON.parse(bytes.toString());
-  const user = body.messages.filter((m) => m.role === "user").at(-1);
+  const user = body.input.filter((m) => m.role === "user").at(-1);
   const content =
     typeof user.content === "string" ? user.content : user.content[0].text;
   const context = JSON.parse(content);
@@ -62,7 +62,7 @@ const provider = createServer(async (req, res) => {
       allowText: true,
     };
   } else if (
-    body.tools?.some((t) => t.function.name === "translated_captions") &&
+    body.tools?.some((t) => t.name === "translated_captions") &&
     !context.instruction
   ) {
     name = "translated_captions";
@@ -85,19 +85,15 @@ const provider = createServer(async (req, res) => {
     };
   res.end(
     JSON.stringify({
-      choices: [
+      status: "completed",
+      output: [
         {
-          message: {
-            role: "assistant",
-            content: null,
-            tool_calls: [
-              {
-                id: "call-" + modelCalls,
-                type: "function",
-                function: { name, arguments: JSON.stringify(args) },
-              },
-            ],
-          },
+          type: "function_call",
+          status: "completed",
+          id: "fc-" + modelCalls,
+          call_id: "call-" + modelCalls,
+          name,
+          arguments: JSON.stringify(args),
         },
       ],
     }),
@@ -121,7 +117,7 @@ const child = spawn(process.execPath, ["scripts/run-next.mjs", "start"], {
     DATA_DIR: path.join(tmp, "data"),
     LLM_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
     LLM_API_KEY: "synthetic-test-key",
-    LLM_MODEL: "fixture",
+    LLM_MODEL: "gpt-test",
     ASR_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
     ASR_API_KEY: "synthetic-asr-key",
     ASR_MODEL: "fixture",

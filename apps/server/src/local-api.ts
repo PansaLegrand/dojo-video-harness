@@ -27,7 +27,7 @@ import {
 import { AgentService } from "./agent-service";
 import { prepareExport, claimExport, finishExport } from "./exports";
 import {
-  OpenAICompatibleModel,
+  GptResponsesModel,
   transcribe,
   type ProviderConfig,
 } from "../../../packages/adapters/src/index";
@@ -48,9 +48,9 @@ export async function createLocalApi() {
     apiKey: process.env[prefix + "_API_KEY"] ?? "",
     model: process.env[prefix + "_MODEL"] ?? model,
   });
-  const llm = config("LLM", "gpt-4.1-mini"),
+  const llm = config("LLM", "gpt-6-sol"),
     asr = config("ASR", "whisper-1"),
-    model = new OpenAICompatibleModel(llm);
+    model = new GptResponsesModel(llm);
   const skills: Skill[] = await Promise.all(
     (await readdir(path.join(root, "skills")))
       .filter((n) => n.endsWith(".md"))

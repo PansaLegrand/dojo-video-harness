@@ -29,13 +29,19 @@ the host after editing skills. The model can request details through `read_skill
 Skills should explain a method and its domain constraints, not contain hidden
 permissions, credentials, arbitrary executable snippets, or duplicated tool schemas.
 
-## Another model provider
+## A GPT endpoint
 
-Implement `LanguageModel.complete(messages, tools, signal)`. Preserve tool-call IDs,
-return tool arguments as data, cap response sizes, and redact provider errors.
-The existing adapter supports OpenAI-compatible endpoints. Native Anthropic/Gemini
-or a Pi SDK-backed adapter can implement the same boundary. Test the adapter against
-a synthetic HTTP server before choosing to run a paid acceptance test.
+The supported transport is `GptResponsesModel`, using the Responses API at
+`LLM_BASE_URL/responses`. OpenAI and Kie can use the same adapter with different
+base URLs and keys. `LLM_MODEL` must be a GPT model name; it is never silently
+rewritten. Other model families are outside the supported scope.
+
+`LanguageModel.complete(messages, tools, signal)` remains a small seam for tests.
+It preserves call IDs and opaque provider output, including encrypted reasoning,
+for the next tool-result request. The adapter bounds responses, rejects incomplete
+output and HTTP-200 error envelopes, redacts provider errors, and performs no
+retries. Keep these behaviors when changing the transport. Use synthetic HTTP
+fixtures first, then an explicitly authorized live test.
 
 ## Another ASR provider
 

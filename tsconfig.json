@@ -110,7 +110,8 @@
     "apps/server",
     "tests",
     "config",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "scripts/test-live-gpt.ts"
   ],
   "exclude": [
     "node_modules",

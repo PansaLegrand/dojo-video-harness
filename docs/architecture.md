@@ -12,7 +12,8 @@ compiled rendering view, not another independently writable project.
 
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
-transports. The root `app/` directory uses Next.js App Router, including the product editor route. `apps/server` provides local services through `app/api/[...path]/route.ts`; it no longer starts a separate HTTP/static server. The English-only host
+transports. The current agent transport supports GPT models through the Responses
+API, with no agent framework dependency. The root `app/` directory uses Next.js App Router, including the product editor route. `apps/server` provides local services through `app/api/[...path]/route.ts`; it no longer starts a separate HTTP/static server. The English-only host
 is replaceable; the current implementation intentionally needs no database.
 
 The inherited `lib/editor` and `lib/video-project` organization is retained to

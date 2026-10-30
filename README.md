@@ -31,7 +31,7 @@ For chat and transcription, edit `.env` and restart the server:
 
 ```dotenv
 LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4.1-mini
+LLM_MODEL=gpt-6-sol
 LLM_API_KEY=your-llm-key
 ASR_BASE_URL=https://api.openai.com/v1
 ASR_MODEL=whisper-1
@@ -40,12 +40,20 @@ ASR_API_KEY=your-asr-key
 
 Shared editor and chat components can be synced from the product when useful. The harness has its own smaller scope; full product parity is not a goal. Local persistence, provider keys, and usage copy live in host adapters. See [syncing the product UI](docs/syncing-product-ui.md).
 
-The first provider adapters implement the **OpenAI-compatible Chat Completions
-tool-calling API** and **OpenAI-compatible audio transcription API**. Compatible
-gateways and local servers can be configured through the base URLs. Use a model
-that supports function calling. A local provider may leave its key empty; for
-example, set `LLM_BASE_URL=http://127.0.0.1:11434/v1` and select an installed
-tool-capable model. Native Anthropic/Gemini APIs are not implemented in this adapter.
+The agent and caption translation support **GPT models through the Responses API**.
+The default model is `gpt-6-sol`. For Kie, use:
+
+```dotenv
+LLM_BASE_URL=https://api.kie.ai/codex/v1
+LLM_MODEL=gpt-6-sol
+LLM_API_KEY=your-kie-key
+```
+
+Use the key for the endpoint you configure. The model name is sent unchanged;
+there is no automatic model switching or retry. Non-GPT model names are rejected
+before a request. Other model families and Chat Completions are outside the
+supported scope. Speech recognition has a separate OpenAI-compatible audio
+transcription adapter and its own key; Kie chat access does not configure ASR.
 
 ASR must provide genuine word timestamps in `verbose_json`; segment-only output
 is rejected rather than converted into invented word timings. This adapter caps
@@ -56,8 +64,8 @@ exported videos are ignored by Git. Imported originals first live in browser
 IndexedDB. Choosing transcription explicitly copies the source to the local host
 and sends it to the configured ASR provider. Choosing chat sends project context;
 preview pixels are included only when you check the preview-image option. Provider
-usage is charged by your provider. Fully local operation requires local model and
-ASR endpoints as well as this local editor.
+usage is charged by your provider. The editor and rendering run locally; configured remote GPT and ASR providers
+receive only the context or media needed for the selected operation.
 
 To run the built application:
 
@@ -122,6 +130,18 @@ npm run check
 npx playwright install chromium
 npm run test:browser
 ```
+
+An optional live GPT acceptance test uses a temporary synthetic timeline and up to
+eight paid requests. Set `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` in the shell
+(or load your own `.env` before running); the script does not read another checkout:
+
+```sh
+npm run test:live:gpt -- --live
+```
+
+It verifies inspection/skill use, proposal review, explicit application, and a
+question/answer continuation. It is not part of CI and never uses customer media.
+See [the GPT core and live Kie verification](docs/gpt-agent-verification-2026-10-31.md).
 
 The browser test needs `ffmpeg` and `ffprobe` on PATH. It starts an isolated real
 local server and synthetic LLM/ASR HTTP endpoints, uses actual browser storage and

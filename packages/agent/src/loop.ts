@@ -93,6 +93,7 @@ export async function runAgent(input: {
     messages.push({
       role: "assistant",
       content: response.text || null,
+      providerOutput: response.providerOutput,
       ...(response.calls.length
         ? {
             tool_calls: response.calls.map((call) => ({

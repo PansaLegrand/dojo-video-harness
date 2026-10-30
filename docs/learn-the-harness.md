@@ -5,12 +5,14 @@ state, evidence, and effects. Read these concepts in order.
 
 ## 1. Model messages are not application commands
 
-The model adapter in `packages/adapters/src/openai-compatible.ts` sends messages
+The model adapter in `packages/adapters/src/gpt-responses.ts` sends messages
 and tool schemas. It returns text and function-call arguments. Those arguments
-are untrusted JSON, even when the model provider says they match a schema.
+are untrusted JSON, even when the model provider says they match a schema. The
+adapter explicitly uses non-strict tool schemas; the command kernel remains the
+authority for complex video operations and scope.
 
-The `LanguageModel` interface is small enough to implement with an SDK, a local
-HTTP endpoint, or a deterministic test double. It does not know about files,
+The supported model family is GPT, via the Responses API. The `LanguageModel`
+interface also accepts deterministic test doubles. No agent SDK is required. It does not know about files,
 project transactions, billing, approval, or video rendering.
 
 ## 2. A tool is a typed capability
@@ -29,6 +31,9 @@ turn with a proposal. It does not update the saved project.
 `packages/agent/src/loop.ts` validates the immutable input snapshot before the
 first model call. It publishes tool schemas, obtains a model response, dispatches
 each function call, appends the result with the original tool-call ID, and repeats.
+The adapter carries opaque provider output (including encrypted reasoning) back
+with each tool result, so GPT reasoning context is not lost between calls. This
+state lives only within the active run and is not part of project history.
 Validation failures become useful observations for correction. Transport failures
 stop the run: a lost response is not permission to repeat potentially paid work.
 
