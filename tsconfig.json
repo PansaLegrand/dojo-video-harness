@@ -111,7 +111,9 @@
     "tests",
     "config",
     "vitest.config.ts",
-    "scripts/test-live-gpt.ts"
+    "scripts/test-live-gpt.ts",
+    "evals/**/*.ts",
+    "scripts/evaluate-agent.ts"
   ],
   "exclude": [
     "node_modules",

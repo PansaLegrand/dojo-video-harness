@@ -220,3 +220,210 @@ it("rejects applying an obsolete review without losing the proposal", async () =
   ).rejects.toThrow(/Refresh/);
   expect((await store.read(p.id)).runs[0].status).toBe("awaiting_review");
 });
+
+it("keeps a pending review across restart and fails interrupted work without resubmitting", async () => {
+  const model = { complete: vi.fn(async () => propose()) };
+  const { store, p, input, agent } = await fixture(model);
+  const start = await agent.start(p.id, input);
+  await settle(store, p.id);
+  await store.transaction(p.id, (project) => {
+    project.runs.push({
+      ...structuredClone(project.runs[0]),
+      id: crypto.randomUUID(),
+      operationId: "interrupted",
+      status: "running",
+      proposal: null,
+    });
+  });
+  const restarted = new ProjectStore(store.directory);
+  await restarted.recoverInterrupted();
+  const saved = await restarted.read(p.id);
+  expect(saved.runs.map((r) => r.status)).toEqual([
+    "awaiting_review",
+    "failed",
+  ]);
+  expect(saved.runs[1].error?.code).toBe("INTERRUPTED");
+  expect(saved.documentHash).toBe(p.documentHash);
+  const host = new AgentService(restarted, model, []);
+  const review = await host.review(p.id, start.run.id);
+  await host.apply(p.id, start.run.id, {
+    operationId: "apply-after-restart",
+    baseRevision: p.revision,
+    baseHash: p.documentHash,
+    reviewBasis: review.review.basis,
+  });
+  expect(model.complete).toHaveBeenCalledTimes(1);
+});
+
+it("rejects stale questions and conflicting submission identities before further model work", async () => {
+  const model = {
+    complete: vi.fn(
+      async (): Promise<ModelReply> => ({
+        text: "",
+        calls: [
+          {
+            id: "question",
+            name: "ask_user",
+            arguments: JSON.stringify({
+              id: "color",
+              question: "Which color?",
+              allowText: true,
+            }),
+          },
+        ],
+      }),
+    ),
+  };
+  const { store, p, input, agent } = await fixture(model);
+  const start = await agent.start(p.id, input);
+  await settle(store, p.id);
+  await expect(
+    agent.start(p.id, { ...input, instruction: "A different request" }),
+  ).rejects.toThrow(/another request/);
+  await store.commit(p.id, {
+    operationId: "manual",
+    baseRevision: p.revision,
+    baseHash: p.documentHash,
+    commands: [
+      {
+        type: "set",
+        target: { kind: "node", itemId: "title", nodeId: "title" },
+        path: ["text"],
+        value: "Changed manually",
+      },
+    ],
+  });
+  const current = await store.read(p.id);
+  await expect(
+    agent.answer(p.id, start.run.id, {
+      operationId: "stale-answer",
+      questionId: "color",
+      text: "Blue",
+      baseRevision: current.revision,
+      baseHash: current.documentHash,
+    }),
+  ).rejects.toThrow(/project changed/i);
+  await expect(
+    agent.start(p.id, { ...input, operationId: "stale-start" }),
+  ).rejects.toThrow(/latest edits/);
+  expect((await store.read(p.id)).documentHash).toBe(current.documentHash);
+  expect(model.complete).toHaveBeenCalledTimes(1);
+});
+
+it("cancelled proposals cannot be applied or resurrected by replaying the request", async () => {
+  const model = { complete: vi.fn(async () => propose()) };
+  const { store, p, input, agent } = await fixture(model);
+  const start = await agent.start(p.id, input);
+  await settle(store, p.id);
+  const comparison = await agent.review(p.id, start.run.id);
+  await agent.cancel(p.id, start.run.id);
+  const replay = await agent.start(p.id, input);
+  expect(replay.run.status).toBe("cancelled");
+  await expect(
+    agent.apply(p.id, start.run.id, {
+      operationId: "cancelled-apply",
+      baseRevision: p.revision,
+      baseHash: p.documentHash,
+      reviewBasis: comparison.review.basis,
+    }),
+  ).rejects.toThrow(/no longer actionable/);
+  expect((await store.read(p.id)).documentHash).toBe(p.documentHash);
+  expect(model.complete).toHaveBeenCalledTimes(1);
+});
+
+it("reviews a late proposal against an unrelated manual edit without overwriting it", async () => {
+  let release!: (reply: ModelReply) => void;
+  const model = {
+    complete: vi.fn(
+      () =>
+        new Promise<ModelReply>((resolve) => {
+          release = resolve;
+        }),
+    ),
+  };
+  const { store, p, input, agent } = await fixture(model);
+  const start = await agent.start(p.id, input);
+  await vi.waitFor(() => expect(model.complete).toHaveBeenCalledTimes(1));
+  await store.commit(p.id, {
+    operationId: "manual-wording",
+    baseRevision: p.revision,
+    baseHash: p.documentHash,
+    commands: [
+      {
+        type: "set",
+        target: { kind: "node", itemId: "title", nodeId: "title" },
+        path: ["text"],
+        value: "Keep this wording",
+      },
+    ],
+  });
+  release(propose());
+  await settle(store, p.id);
+  const current = await store.read(p.id),
+    review = await agent.review(p.id, start.run.id);
+  expect(current.document.items[0].node.style?.color).toBe("#ffffff");
+  await agent.apply(p.id, start.run.id, {
+    operationId: "approve-current",
+    baseRevision: current.revision,
+    baseHash: current.documentHash,
+    reviewBasis: review.review.basis,
+  });
+  expect((await store.read(p.id)).document.items[0].node).toMatchObject({
+    text: "Keep this wording",
+    style: { color: "#2563eb" },
+  });
+});
+
+it("refuses a timing undo after the same target changed and preserves both edits", async () => {
+  const model = {
+    complete: async (): Promise<ModelReply> => ({
+      text: "",
+      calls: [
+        {
+          id: "move",
+          name: "propose_edit",
+          arguments: JSON.stringify({
+            summary: "Move title",
+            commands: [{ type: "moveItem", id: "title", from: 30 }],
+          }),
+        },
+      ],
+    }),
+  };
+  const { store, p, input, agent } = await fixture(model);
+  const start = await agent.start(p.id, {
+    ...input,
+    instruction: "Move the title to one second",
+  });
+  await settle(store, p.id);
+  const review = await agent.review(p.id, start.run.id);
+  await agent.apply(p.id, start.run.id, {
+    operationId: "apply-move",
+    baseRevision: p.revision,
+    baseHash: p.documentHash,
+    reviewBasis: review.review.basis,
+  });
+  const moved = await store.read(p.id);
+  await store.commit(p.id, {
+    operationId: "manual",
+    baseRevision: moved.revision,
+    baseHash: moved.documentHash,
+    commands: [
+      {
+        type: "set",
+        target: { kind: "node", itemId: "title", nodeId: "title" },
+        path: ["text"],
+        value: "Manual wording",
+      },
+    ],
+  });
+  const changed = await store.read(p.id);
+  await expect(
+    agent.undo(p.id, start.run.id, {
+      operationId: "undo-move",
+      baseRevision: changed.revision,
+      baseHash: changed.documentHash,
+    }),
+  ).rejects.toThrow(/changed properties/);
+  expect((await store.read(p.id)).documentHash).toBe(changed.documentHash);
+});

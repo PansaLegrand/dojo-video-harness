@@ -9,7 +9,8 @@ import path from "node:path";
 import assert from "node:assert/strict";
 const root = process.cwd(),
   tmp = await mkdtemp(path.join(os.tmpdir(), "dojo-harness-browser-")),
-  output = path.join(root, "test-results");
+  output =
+    process.env.BROWSER_TEST_OUTPUT_DIR ?? path.join(root, "test-results");
 await mkdir(output, { recursive: true });
 const checks = [],
   check = (name, value) => {
@@ -18,7 +19,8 @@ const checks = [],
     console.log("PASS", name);
   };
 let modelCalls = 0,
-  asrCalls = 0;
+  asrCalls = 0,
+  followupReceivedContext = false;
 const provider = createServer(async (req, res) => {
   const chunks = [];
   for await (const c of req) chunks.push(c);
@@ -83,6 +85,28 @@ const provider = createServer(async (req, res) => {
         },
       ],
     };
+  if (
+    context.instruction ===
+    "Change the title words to Launch Day, keeping the current blue."
+  ) {
+    followupReceivedContext =
+      context.document.items.some(
+        (i) => i.id === "title" && i.node.style?.color === "#2563eb",
+      ) && context.conversation.some((m) => m.text === "Ask me which color");
+    name = "propose_edit";
+    args = {
+      outcome: "proposal",
+      summary: "Update title wording",
+      commands: [
+        {
+          type: "set",
+          target: { kind: "node", itemId: "title", nodeId: "title" },
+          path: ["text"],
+          value: "Launch Day",
+        },
+      ],
+    };
+  }
   res.end(
     JSON.stringify({
       status: "completed",
@@ -324,6 +348,12 @@ try {
     path: path.join(output, "question.png"),
     fullPage: true,
   });
+  await page.reload();
+  await pending.waitFor();
+  check(
+    "pending question survives a page reload",
+    await pending.getByRole("button", { name: /Green/ }).isVisible(),
+  );
   await pending.getByRole("button", { name: /Green/ }).click();
   await page
     .getByRole("button", { name: "Review changes", exact: true })
@@ -337,6 +367,39 @@ try {
       !(await api(`/api/projects/${id}/agent-runs`)).runs.some(
         (r) => r.status === "awaiting_review",
       ),
+  );
+  check(
+    "cancelled review leaves the prior applied color intact",
+    (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+      .color === "#2563eb",
+  );
+  await page
+    .getByRole("textbox", { name: "Message video agent", exact: true })
+    .fill("Change the title words to Launch Day, keeping the current blue.");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Review changes", exact: true })
+    .waitFor();
+  check(
+    "follow-up chat receives current document and prior conversation",
+    followupReceivedContext,
+  );
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Review changes", exact: true })
+    .click();
+  await review
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await until(
+    async () =>
+      (await api(`/api/projects/${id}/document`)).document.items[0].node
+        .text === "Launch Day",
+  );
+  check(
+    "follow-up review survives reload and preserves earlier edits",
+    (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+      .color === "#2563eb",
   );
   const audio = path.join(tmp, "speech.wav");
   execFileSync("ffmpeg", [
@@ -384,8 +447,8 @@ try {
     "ASR receipt produces source-bound evidence through real server",
     asrCalls === 1,
   );
-  if (await captions.isVisible())
-    await captions.getByRole("button", { name: "Close caption setup" }).click();
+  // Successful placement closes setup via the product onResult callback.
+  await captions.waitFor({ state: "hidden" });
   state = await api(`/api/projects/${id}/document`);
   const evidence = Object.values(state.document.evidence)[0];
   check(

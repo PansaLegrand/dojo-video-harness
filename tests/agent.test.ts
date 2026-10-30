@@ -227,3 +227,127 @@ describe("readable bounded agent loop", () => {
     ).toEqual(["title", "other"]);
   });
 });
+
+it("returns unknown tools as bounded observations without executing arbitrary code", async () => {
+  const model = scripted([
+    call("execute_shell", { command: "not executable" }),
+    call("propose_edit", proposal),
+  ]);
+  const result = await runAgent({
+    request: await fixture(),
+    model,
+    skills: [],
+    signal: new AbortController().signal,
+  });
+  expect(result.outcome).toBe("proposal");
+  const observation = model.complete.mock.calls[1][0].find(
+    (m) => m.role === "tool",
+  );
+  expect(JSON.parse(observation!.content as string).error).toMatch(
+    /Unknown tool/,
+  );
+});
+it("rejects reused tool-call identities and stops after the first terminal tool", async () => {
+  const duplicate = scripted([
+    call("inspect_project", {}, "same"),
+    call("inspect_project", {}, "same"),
+  ]);
+  await expect(
+    runAgent({
+      request: await fixture(),
+      model: duplicate,
+      skills: [],
+      signal: new AbortController().signal,
+    }),
+  ).rejects.toThrow(/reused/);
+  const later = vi.fn(async () => ({
+    kind: "observation" as const,
+    value: "should not execute",
+  }));
+  const terminal = call("propose_edit", proposal);
+  terminal.calls.push({ id: "later", name: "late_tool", arguments: "{}" });
+  await runAgent({
+    request: await fixture(),
+    model: scripted([terminal]),
+    skills: [],
+    signal: new AbortController().signal,
+    extraTools: [
+      {
+        name: "late_tool",
+        description: "Test",
+        parameters: { type: "object" },
+        effect: "read",
+        execute: later,
+      },
+    ],
+  });
+  expect(later).not.toHaveBeenCalled();
+});
+
+it("searches source-bound transcript evidence using real word IDs", async () => {
+  const request = await fixture();
+  const document = request.document as ReturnType<
+    typeof createVideoProjectDocument
+  >;
+  document.assets.video = {
+    id: "video",
+    name: "Speech",
+    type: "video",
+    source: "local",
+  };
+  document.sources.video = { assetId: "video", revision: "source-v1" };
+  document.items.push({
+    id: "clip",
+    name: "Speech",
+    trackId: "visual",
+    node: {
+      id: "clip",
+      type: "video",
+      assetId: "video",
+      from: 0,
+      duration: 120,
+    },
+  });
+  document.evidence.speech = {
+    id: "speech",
+    sourceAssetId: "video",
+    sourceRevision: "source-v1",
+    transcriptHash: "fixture-transcript",
+    text: "launch now",
+    words: [
+      { id: "w1", text: "launch", startMs: 1000, endMs: 1400 },
+      { id: "w2", text: "now", startMs: 1400, endMs: 2000 },
+    ],
+  };
+  request.context.selectedItemIds = ["clip"];
+  request.authoring = {
+    version: 1,
+    scope: { kind: "selection", itemIds: ["clip"] },
+  };
+  request.instruction =
+    "Find launch now in the existing transcript without editing.";
+  request.baseHash = await hashVideoProjectDocument(document);
+  const model = scripted([
+    call("search_transcript", {
+      snapshotHash: request.baseHash,
+      query: "launch now",
+      sourceItemIds: ["clip"],
+    }),
+    { text: "Found the phrase.", calls: [] },
+  ]);
+  await runAgent({
+    request,
+    model,
+    skills: [],
+    signal: new AbortController().signal,
+  });
+  const observation = model.complete.mock.calls[1][0].find(
+    (m) => m.role === "tool",
+  );
+  expect(JSON.parse(observation!.content as string).matches[0]).toMatchObject({
+    wordIds: ["w1", "w2"],
+    sourceRevision: "source-v1",
+    startMs: 1000,
+    endMs: 2000,
+  });
+});

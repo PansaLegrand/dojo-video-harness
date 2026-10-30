@@ -154,6 +154,15 @@ The App Router serves the editor at `/en/applications/editor/:projectId` and the
 See [architecture](docs/architecture.md), [extension guide](docs/extending.md),
 [edge cases](docs/edge-cases.md), and [provenance](docs/provenance.md).
 
+## Milestone launch checks
+
+Use `npm run verify:milestone` for the complete local gate. Before a launch, use
+`npm run verify:milestone -- --live` on a clean committed candidate with your GPT
+provider configured. The paid gate repeats 18 scenarios three times, including an
+eight-turn conversation, pending questions/restarts, basic edits, and hard boundaries.
+It records complete reports and requires a separate human visual/audio review.
+See [the coverage matrix, launch criteria, and commands](docs/agent-milestone-testing.md).
+
 ## Engine and application ownership
 
 [dojo-video-engine](https://github.com/PansaLegrand/dojo-video-engine) owns rendering, playback, export, and low-level scene APIs. This repository owns the editor UI and agent harness. The engine no longer ships a competing editor or agent demo.

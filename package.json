@@ -22,7 +22,10 @@
     "check:ui-sync": "node scripts/sync-product-ui.mjs --verify",
     "sync:ui": "node scripts/sync-product-ui.mjs",
     "test:ui-parity": "node scripts/verify-product-ui.mjs",
-    "test:live:gpt": "tsx scripts/test-live-gpt.ts"
+    "test:live:gpt": "tsx scripts/test-live-gpt.ts",
+    "test:agent:scenarios": "vitest run tests/agent-scenarios.test.ts tests/agent-service.test.ts tests/agent.test.ts tests/gpt-responses.test.ts",
+    "eval:agent": "tsx scripts/evaluate-agent.ts",
+    "verify:milestone": "node scripts/verify-milestone.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "5.2.8",
