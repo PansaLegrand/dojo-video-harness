@@ -1,6 +1,6 @@
 # Dojo Video Harness
 
-A local, open-source video editor with a small TypeScript editing agent. The UI uses the same Next.js App Router, React 18, Tailwind 3, components, and styles as DojoClip.
+A local, English-only open-source video editor with a small TypeScript editing agent. It shares DojoClip’s Next.js App Router, React 18, Tailwind 3, and editor components, with a simpler local host.
 Bring your own LLM and transcription providers. Edit the same timeline by hand
 or through chat, review the result, and export through [Dojo Video Engine](https://github.com/PansaLegrand/dojo-video-engine) in your browser.
 
@@ -38,7 +38,7 @@ ASR_MODEL=whisper-1
 ASR_API_KEY=your-asr-key
 ```
 
-The editor UI is synced from the product; authentication, local persistence, provider keys, and usage copy are isolated host adapters. See [syncing the product UI](docs/syncing-product-ui.md).
+Shared editor and chat components can be synced from the product when useful. The harness has its own smaller scope; full product parity is not a goal. Local persistence, provider keys, and usage copy live in host adapters. See [syncing the product UI](docs/syncing-product-ui.md).
 
 The first provider adapters implement the **OpenAI-compatible Chat Completions
 tool-calling API** and **OpenAI-compatible audio transcription API**. Compatible
@@ -99,7 +99,7 @@ Start with [the guided walkthrough](docs/learn-the-harness.md), then follow:
 | `packages/adapters/src/`                               | LLM and ASR transports; no document mutation                      |
 | `packages/core/src/lib/video-project/`                 | Authoritative document, commands, scope, evidence, history        |
 | `packages/ui/src/components/editor/dojo-video-engine/` | Real manual editor and chat/review UI                             |
-| `app/`                                                 | Product-aligned localized App Router pages and API route handlers |
+| `app/`                                                 | English App Router pages and local API route handlers |
 | `packages/ui/src/host/`                                | Local user, copy, and provider-request adapters                   |
 | `apps/server/src/agent-service.ts`                     | Durable runs, questions, approvals, cancellation                  |
 | `apps/server/src/store.ts`                             | Local transactions, receipts, revisions                           |
@@ -129,7 +129,7 @@ rendering, and decodes the exported MP4. It never uses `.env` provider credentia
 Artifacts go to ignored `test-results/`. This verifies adapter and workflow behavior,
 not the quality or account compatibility of a live paid provider.
 
-The App Router serves the editor at `/en/applications/editor/:projectId` and the shared product home at `/en/applications/video-edit-ai`. Other supported locales use the same route structure.
+The App Router serves the editor at `/en/applications/editor/:projectId` and the shared product home at `/en/applications/video-edit-ai`. Only English UI routes are enabled. The `/en` prefix keeps shared navigation easy to sync. Video text, speech recognition, and caption translation can still use other languages supported by your providers.
 
 See [architecture](docs/architecture.md), [extension guide](docs/extending.md),
 [edge cases](docs/edge-cases.md), and [provenance](docs/provenance.md).

@@ -28,7 +28,6 @@ export function transform(source, text) {
 }
 const prefixes = ["components/editor/motionforge/", "components/motionforge/"];
 const extras = [
-  "components/JapaneseFontLoader.tsx",
   "lib/i18n/dictionary.ts",
   "components/motion-graphics/template-controls.tsx",
   "components/motion-graphics/template-gallery.tsx",
@@ -57,8 +56,9 @@ export async function inventory(source) {
     }
   }
   for (const prefix of prefixes) await walk(prefix);
-  for (const locale of ["en", "zh", "es", "fr", "de", "it", "pt", "ja", "ko"])
-    sources.push(`lib/i18n/locales/${locale}.json`);
+  // English-only host. Keep shared components intact instead of rewriting their
+  // locale branches; additional product dictionaries and font loaders stay out.
+  sources.push("lib/i18n/locales/en.json");
   return sources.sort().map((source) => {
     let target = engineNames(source);
     if (source.startsWith("components/")) target = "packages/ui/src/" + target;

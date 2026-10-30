@@ -42,4 +42,4 @@ The engine repository, package scope, source paths, schema/tool identities, and 
 
 ## Product UI alignment — 2026-10-31
 
-The custom application/chat presentation was superseded by the product components. `config/product-ui.manifest.json` records 84 managed UI, style, locale, and route files. The new conflict-aware sync command and explicit host wrappers replace the one-time extraction workflow for UI upkeep.
+The custom application/chat presentation was superseded by the product components. The initial `config/product-ui.manifest.json` recorded 84 managed UI, style, locale, and route files. The English-only simplification reduces this to 75 by excluding eight language dictionaries and the Japanese UI font loader; shared editor/chat components are unchanged. The new conflict-aware sync command and explicit host wrappers replace the one-time extraction workflow for UI upkeep.

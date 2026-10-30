@@ -12,7 +12,7 @@ compiled rendering view, not another independently writable project.
 
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
-transports. The root `app/` directory uses Next.js App Router, including the product editor route. `apps/server` provides local services through `app/api/[...path]/route.ts`; it no longer starts a separate HTTP/static server. The host
+transports. The root `app/` directory uses Next.js App Router, including the product editor route. `apps/server` provides local services through `app/api/[...path]/route.ts`; it no longer starts a separate HTTP/static server. The English-only host
 is replaceable; the current implementation intentionally needs no database.
 
 The inherited `lib/editor` and `lib/video-project` organization is retained to
@@ -40,7 +40,7 @@ requests, and requires JSON for mutation routes. It is a single-user local serve
 not an authenticated internet deployment. API keys remain server-side environment
 variables and are omitted from configuration responses and project files.
 
-Managed UI files are checked against `config/product-ui.manifest.json`. Product changes are pulled explicitly through `npm run sync:ui`; host adapters are excluded from that managed set. Source components retain their markup, Tailwind classes, CSS, and interactions. The local application header, provider settings, and stored-output page are host-owned. See `syncing-product-ui.md`.
+Managed UI files are checked against `config/product-ui.manifest.json`. Product changes are pulled explicitly through `npm run sync:ui`; host adapters are excluded from that managed set. Source components retain their markup, Tailwind classes, CSS, and interactions. The local application header, English-only language policy, provider settings, and stored-output page are host-owned. Shared component reuse does not require full hosted-product parity. See `syncing-product-ui.md`.
 
 The engine source is vendored to make this checkout independently runnable while
 preserving the required downstream corrections. It is not a new renderer fork.

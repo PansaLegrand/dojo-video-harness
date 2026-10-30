@@ -1,15 +1,16 @@
-# Keep the open-source UI aligned with DojoClip
+# Share editor components with DojoClip
 
-DojoClip is the visual source of truth. This repository uses **Next.js App Router,
-React 18, Tailwind 3**, the same global styles/fonts, and the product editor/home
-components. It does not maintain a second editor layout or chat design.
+This repository reuses DojoClip’s **Next.js App Router, React 18, Tailwind 3**,
+editor/chat components, and shared styles. It is an English-only local editor,
+with a smaller scope than the hosted product. Full product parity is not a goal.
+Keep useful shared components intact so updates remain straightforward.
 
 ## What is shared
 
 The sync manifest manages the editor, timeline, inspector, media panels, preview,
 chat, clarification and review cards, motion graphics controls, project home/cards,
-locale dictionaries, Japanese font loading, shared global CSS, Tailwind theme, and
-localized editor page. It records both source hashes and generated target hashes.
+the English dictionary, shared global CSS, Tailwind theme, and editor page.
+It currently manages 75 files. It records both source hashes and generated target hashes.
 
 Allowed transformations are explicit and mechanical:
 
@@ -49,6 +50,25 @@ a new product dependency may require a corresponding core or host adapter update
 Do not run Prettier over managed files as part of a general formatting sweep. Their
 source formatting is intentionally retained so synchronization remains reviewable.
 
+## English-only scope
+
+The host serves only `/en` UI routes. It does not copy the other eight product
+language dictionaries or the Japanese UI font loader. The sync inventory enforces
+this boundary, so a later sync will not restore them. The root document language
+is English; the old `?lang=` query no longer changes it.
+
+The `/en` route prefix, translation hook/type contracts, and dormant translations
+inside shared components/CSS stay intact. Removing those branches from every
+component would make syncing harder for little benefit. There is no separate
+translation-maintenance requirement for the harness. Fonts used to render video
+text, ASR language selection, and caption translation remain available: an English
+interface does not limit the language of the media.
+
+Accounts, billing, marketing/SEO pages, and hosted worker infrastructure are outside
+the local app. Shared home components may contain optional product props; the host
+only enables the features it implements. Sync shared UI when useful, not to match
+every product feature or release.
+
 ## Where local differences belong
 
 | Boundary                  | Local implementation                                                                                                  |
@@ -85,5 +105,6 @@ node scripts/verify-product-ui.mjs --source ../dojo-video-web
 
 That comparison uses an isolated Vite reference fixture only for testing the product
 source; Vite is not the application host. It covers desktop light/dark and narrow
-Italian layouts. Provider/billing text and local navigation are intentional host
+English layouts. This optional diagnostic helps spot accidental layout drift;
+pixel-for-pixel product parity is not a release requirement. Provider/billing text and local navigation are intentional host
 policy differences, not forks of product UI components.

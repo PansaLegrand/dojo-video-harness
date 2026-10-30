@@ -8,6 +8,7 @@ import {
   planSync,
   verifyManaged,
   transform,
+  digest,
 } from "../scripts/lib/product-ui-sync.mjs";
 const directories: string[] = [];
 afterEach(async () => {
@@ -37,6 +38,48 @@ async function fixture() {
   return { source, target, previous: { files: first.files } };
 }
 describe("product UI synchronization", () => {
+  it("does not pull extra product locales or their font loader back into the host", async () => {
+    const f = await fixture();
+    for (const source of [
+      "lib/i18n/locales/ja.json",
+      "components/JapaneseFontLoader.tsx",
+    ]) {
+      const p = path.join(f.source, source);
+      await mkdir(path.dirname(p), { recursive: true });
+      await writeFile(p, "upstream language support");
+    }
+    const next = await planSync({
+      sourceRoot: f.source,
+      targetRoot: f.target,
+      previous: f.previous,
+    });
+    expect(next.changes).toEqual([]);
+    expect(next.conflicts).toEqual([]);
+  });
+  it("prunes a previously synced locale only if it has no local edits", async () => {
+    const f = await fixture();
+    const source = "lib/i18n/locales/ja.json";
+    const target = "packages/core/src/" + source;
+    const p = path.join(f.target, target);
+    const original = '{"title":"Japanese UI"}';
+    await writeFile(p, original);
+    const previous = {
+      files: [
+        ...f.previous.files,
+        { source, target, outputHash: digest(original) },
+      ],
+    };
+    const plan = () =>
+      planSync({ sourceRoot: f.source, targetRoot: f.target, previous });
+    expect((await plan()).changes).toEqual([
+      { source, target, action: "remove" },
+    ]);
+    await writeFile(p, "local edits to preserve");
+    const conflict = await plan();
+    expect(conflict.changes).toEqual([]);
+    expect(conflict.conflicts).toEqual([target]);
+    expect(await readFile(p, "utf8")).toBe("local edits to preserve");
+  });
   it("recognizes a clean sync and preserves local host-only files", async () => {
     const f = await fixture();
     await writeFile(path.join(f.target, "host.ts"), "local policy");

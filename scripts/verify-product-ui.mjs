@@ -141,7 +141,7 @@ try {
   );
   await fs.writeFile(
     path.join(temp, "main.tsx"),
-    `import React from 'react';import {createRoot} from 'react-dom/client';import Editor from '${source}/components/editor/motionforge/motionforge-editor.tsx';import {ProjectProvider} from '${root}/packages/ui/src/contexts/ProjectContext.tsx';import {TranslationProvider} from '${root}/packages/core/src/lib/i18n/index.tsx';import en from '${source}/lib/i18n/locales/en.json';import it from '${source}/lib/i18n/locales/it.json';import '${source}/app/globals.css';const locale=new URLSearchParams(location.search).get('lang')||'en';createRoot(document.getElementById('root')).render(<TranslationProvider locale={locale} dictionary={locale==='it'?it:en}><ProjectProvider><Editor projectId='${id}' chatInitiallyOpen/></ProjectProvider></TranslationProvider>);`,
+    `import React from 'react';import {createRoot} from 'react-dom/client';import Editor from '${source}/components/editor/motionforge/motionforge-editor.tsx';import {ProjectProvider} from '${root}/packages/ui/src/contexts/ProjectContext.tsx';import {TranslationProvider} from '${root}/packages/core/src/lib/i18n/index.tsx';import en from '${source}/lib/i18n/locales/en.json';import '${source}/app/globals.css';const locale='en';createRoot(document.getElementById('root')).render(<TranslationProvider locale={locale} dictionary={en}><ProjectProvider><Editor projectId='${id}' chatInitiallyOpen/></ProjectProvider></TranslationProvider>);`,
   );
   const paths = JSON.parse(
     await fs.readFile(path.join(source, "tsconfig.json"), "utf8"),
@@ -262,7 +262,7 @@ try {
   for (const [locale, width, height, dark] of [
     ["en", 1440, 1000, false],
     ["en", 1440, 1000, true],
-    ["it", 390, 844, false],
+    ["en", 390, 844, false],
   ]) {
     const pages = await Promise.all([
       browser.newPage({ viewport: { width, height }, colorScheme: "light" }),

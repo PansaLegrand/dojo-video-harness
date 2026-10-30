@@ -13,15 +13,7 @@ export function middleware(request: NextRequest) {
     return new NextResponse("Cross-site requests are not allowed", {
       status: 403,
     });
-  const headers = new Headers(request.headers),
-    locale = request.nextUrl.pathname.split("/")[1];
-  headers.set(
-    "x-harness-locale",
-    ["en", "zh", "es", "fr", "de", "it", "pt", "ja", "ko"].includes(locale)
-      ? locale
-      : "en",
-  );
-  return NextResponse.next({ request: { headers } });
+  return NextResponse.next();
 }
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],

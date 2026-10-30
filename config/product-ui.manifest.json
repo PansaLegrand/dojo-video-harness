@@ -22,12 +22,6 @@
       "outputHash": "43d486b6a96d50e32380d4ab888b276ec3a1cb20381fec36fe55b4777101b1d0"
     },
     {
-      "source": "components/JapaneseFontLoader.tsx",
-      "target": "packages/ui/src/components/JapaneseFontLoader.tsx",
-      "sourceHash": "2bb4fd840a0c129197a3eac969a9610588213f07e067b372a7d1519de7244472",
-      "outputHash": "2bb4fd840a0c129197a3eac969a9610588213f07e067b372a7d1519de7244472"
-    },
-    {
       "source": "components/applications/generator-seo-section.tsx",
       "target": "packages/ui/src/components/applications/generator-seo-section.tsx",
       "sourceHash": "35260c83f4899d1dd530df32d44899c5230659d3848e74121f742cd0054b0f9d",
@@ -454,58 +448,10 @@
       "outputHash": "c5e047ee78d3db115617e917f2891042cc5508ef52d77b401ac76bfae4fc53b7"
     },
     {
-      "source": "lib/i18n/locales/de.json",
-      "target": "packages/core/src/lib/i18n/locales/de.json",
-      "sourceHash": "76bd243663f690b72ceb7992f82e935dba42b888011036a3ac9bf15bd5ef2280",
-      "outputHash": "ea2ff74d365287a6287637bbe3b987f5f794c1f3e6ec45912fc490b1525e25ca"
-    },
-    {
       "source": "lib/i18n/locales/en.json",
       "target": "packages/core/src/lib/i18n/locales/en.json",
       "sourceHash": "407ded5b2e95b66d3eff60d69aae7b3a6109d579c0004c8143f1f39b33b023d6",
       "outputHash": "3cfde8c2263867fc98f38f95e1c82c44f44118456327c60829b468dca45d34be"
-    },
-    {
-      "source": "lib/i18n/locales/es.json",
-      "target": "packages/core/src/lib/i18n/locales/es.json",
-      "sourceHash": "ca23525c5b6d01f13e88364d19ef91357cca3ec84b1513390204ebafabe5417b",
-      "outputHash": "14c317cb4928c13e57e838af38118201bdf82e4d8200e416fb9c78863bb1f1c4"
-    },
-    {
-      "source": "lib/i18n/locales/fr.json",
-      "target": "packages/core/src/lib/i18n/locales/fr.json",
-      "sourceHash": "d14fee79671322a818fc514ce0e01a80582f2a996c77356ec59acdb4f1d5c0c5",
-      "outputHash": "af46bd75b6b2a4ac3295450d251ef42bf513f51f8e1432af68ec5bda38808916"
-    },
-    {
-      "source": "lib/i18n/locales/it.json",
-      "target": "packages/core/src/lib/i18n/locales/it.json",
-      "sourceHash": "89f48d677da8206d347f9c35d8e7c624ce4970555f115f73edb317d106c52fb8",
-      "outputHash": "0f24eaa11bcc9c1e0307bdd7426629b2755b111fcfc8da29dbdd7ee4ccda309d"
-    },
-    {
-      "source": "lib/i18n/locales/ja.json",
-      "target": "packages/core/src/lib/i18n/locales/ja.json",
-      "sourceHash": "32191855ad40e315034e9404bf8ae28ceda76a73ca8730e835246b0b927f4a62",
-      "outputHash": "a6db97063cb769f9db1b35421f6b21bfc98bcc1e4b88897e48feb870b0cdb4b1"
-    },
-    {
-      "source": "lib/i18n/locales/ko.json",
-      "target": "packages/core/src/lib/i18n/locales/ko.json",
-      "sourceHash": "6d296e927bfd16bb0e7bb74969bd228966fefca03dc6ae976ee907b49a5a5e25",
-      "outputHash": "d0e86006dffba7b56298fe8d02a7777f6bbdbfc9ce8381b56fc4b022ba75cf00"
-    },
-    {
-      "source": "lib/i18n/locales/pt.json",
-      "target": "packages/core/src/lib/i18n/locales/pt.json",
-      "sourceHash": "ef5374946840fc65971fa75511f2ff6341ce7c318d91e603deb6a9e5bad65254",
-      "outputHash": "d7b911c2fa53fb6418c111cc353def68bae809e1436708649eb733d57c6e8e0f"
-    },
-    {
-      "source": "lib/i18n/locales/zh.json",
-      "target": "packages/core/src/lib/i18n/locales/zh.json",
-      "sourceHash": "3333b107cbfa1fe4c0b13b6e9acb623a277dce87df121bad539e527a02040104",
-      "outputHash": "11b13d45d04813c303935d4926c0d5e169bd77b0e7cd65c0f20b0e21827bac10"
     },
     {
       "source": "tailwind.config.js",

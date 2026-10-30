@@ -3,6 +3,8 @@
 This is a local-first educational video harness. Keep the model loop small and
 readable. Put video invariants in the command kernel, transports in adapters, and
 persistence/approval in the host. A model proposal never writes the document.
+The local UI is English-only. Reuse shared editor/chat components without requiring
+full hosted-product parity; do not reintroduce extra UI dictionaries or font loaders.
 
 Use npm and retain package-lock.json. Run `npm run check` after code changes.
 Run `npm run test:browser` for UI, provider-contract, or persistence changes; it

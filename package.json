@@ -26,7 +26,6 @@
   "dependencies": {
     "@fontsource-variable/archivo": "5.2.8",
     "@fontsource/ibm-plex-mono": "5.2.7",
-    "@fontsource/noto-sans-jp": "5.2.9",
     "@mediabunny/mp3-encoder": "1.50.3",
     "@radix-ui/react-select": "2.2.4",
     "@radix-ui/react-slot": "1.2.2",

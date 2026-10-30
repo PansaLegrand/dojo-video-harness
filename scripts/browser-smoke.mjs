@@ -188,7 +188,19 @@ try {
       body: '<html><body style="background:#000;color:#fff">Tutorial</body></html>',
     }),
   );
-  await page.goto(base);
+  await page.goto(`${base}/ja/applications/video-edit-ai`);
+  await page.getByRole("heading", { name: "404", exact: true }).waitFor();
+  check(
+    "non-English UI routes are unavailable",
+    (await page.getByTestId("video-edit-ai-home").count()) === 0,
+  );
+  await page.goto(`${base}?lang=ja`);
+  await page.getByTestId("video-edit-ai-home").waitFor();
+  check(
+    "home uses English even with an old locale query",
+    new URL(page.url()).pathname === "/en/applications/video-edit-ai" &&
+      (await page.locator("html").getAttribute("lang")) === "en",
+  );
   await page.screenshot({
     path: path.join(output, "home.png"),
     fullPage: true,
