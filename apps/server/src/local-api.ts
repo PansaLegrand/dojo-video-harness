@@ -25,6 +25,7 @@ import {
   identifier,
 } from "./store";
 import { AgentService } from "./agent-service";
+import { ProviderSettings } from "./provider-settings";
 import { prepareExport, claimExport, finishExport } from "./exports";
 import {
   GptResponsesModel,
@@ -48,9 +49,11 @@ export async function createLocalApi() {
     apiKey: process.env[prefix + "_API_KEY"] ?? "",
     model: process.env[prefix + "_MODEL"] ?? model,
   });
-  const llm = config("LLM", "gpt-6-sol"),
-    asr = config("ASR", "whisper-1"),
-    model = new GptResponsesModel(llm);
+  const providers = new ProviderSettings(data, {
+    llm: config("LLM", "gpt-6-sol"),
+    asr: config("ASR", "whisper-1"),
+  });
+  await providers.load();
   const skills: Skill[] = await Promise.all(
     (await readdir(path.join(root, "skills")))
       .filter((n) => n.endsWith(".md"))
@@ -64,7 +67,11 @@ export async function createLocalApi() {
         };
       }),
   );
-  const agent = new AgentService(store, model, skills);
+  const agent = new AgentService(
+    store,
+    () => new GptResponsesModel(providers.get("llm")),
+    skills,
+  );
   type Task = {
     id: string;
     project_id: string;
@@ -231,24 +238,15 @@ export async function createLocalApi() {
       method = req.method;
     if (parts[1] === "config" && method === "GET")
       return json(res, {
-        llm: {
-          baseUrl: llm.baseUrl,
-          model: llm.model,
-          configured:
-            !!llm.apiKey ||
-            llm.baseUrl.includes("localhost") ||
-            llm.baseUrl.includes("127.0.0.1"),
-        },
-        asr: {
-          baseUrl: asr.baseUrl,
-          model: asr.model,
-          configured:
-            !!asr.apiKey ||
-            asr.baseUrl.includes("localhost") ||
-            asr.baseUrl.includes("127.0.0.1"),
-        },
+        ...providers.public(),
         skills: skills.map(({ name, description }) => ({ name, description })),
       });
+    if (
+      parts[1] === "provider-settings" &&
+      parts.length === 2 &&
+      method === "POST"
+    )
+      return json(res, await providers.save(await input(req)));
     if (parts[1] === "projects" && parts.length === 2) {
       if (method === "GET") return json(res, await store.list());
       if (method === "POST") {
@@ -301,6 +299,7 @@ export async function createLocalApi() {
           throw new HttpError(
             "This transcription adapter accepts up to 25 MiB. Import a smaller audio copy.",
           );
+        const asr = providers.get("asr");
         const requestHash = canonicalSerialize({
           project: p.id,
           source: source.fingerprint,
@@ -383,6 +382,8 @@ export async function createLocalApi() {
         .passthrough()
         .parse(await input(req));
       await store.read(v.project_id);
+      const llm = providers.get("llm"),
+        model = new GptResponsesModel(llm);
       const hash = canonicalSerialize({
         v,
         model: llm.model,

@@ -25,7 +25,12 @@
     "test:live:gpt": "tsx scripts/test-live-gpt.ts",
     "test:agent:scenarios": "vitest run tests/agent-scenarios.test.ts tests/agent-service.test.ts tests/agent.test.ts tests/gpt-responses.test.ts",
     "eval:agent": "tsx scripts/evaluate-agent.ts",
-    "verify:milestone": "node scripts/verify-milestone.mjs"
+    "verify:milestone": "node scripts/verify-milestone.mjs",
+    "setup": "node scripts/setup.mjs",
+    "launch": "node scripts/setup.mjs --start",
+    "doctor": "node scripts/doctor.mjs",
+    "test:startup": "node scripts/startup-smoke.mjs",
+    "test:engine-packages": "node scripts/test-engine-packages.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "5.2.8",

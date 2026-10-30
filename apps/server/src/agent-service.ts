@@ -43,7 +43,7 @@ export class AgentService {
   private active = new Map<string, AbortController>();
   constructor(
     private store: ProjectStore,
-    private model: LanguageModel,
+    private model: LanguageModel | (() => LanguageModel),
     private skills: Skill[],
   ) {}
   async start(projectId: string, raw: unknown) {
@@ -134,7 +134,8 @@ export class AgentService {
       () => controller.abort(new Error("Agent deadline reached.")),
       180_000,
     );
-    void this.execute(projectId, id, controller.signal)
+    const model = typeof this.model === "function" ? this.model() : this.model;
+    void this.execute(projectId, id, controller.signal, model)
       .catch(async (cause) => {
         await this.store
           .transaction(projectId, (p) => {
@@ -156,7 +157,12 @@ export class AgentService {
         this.active.delete(id);
       });
   }
-  private async execute(projectId: string, id: string, signal: AbortSignal) {
+  private async execute(
+    projectId: string,
+    id: string,
+    signal: AbortSignal,
+    model: LanguageModel,
+  ) {
     const run = await this.store.transaction(projectId, (p) => {
       const run = runOf(p, id);
       if (run.status === "cancelled") throw new Error("Cancelled");
@@ -167,7 +173,7 @@ export class AgentService {
     const project = await this.store.read(projectId);
     const result = await runAgent({
       request: run.request,
-      model: this.model,
+      model,
       skills: this.skills,
       signal,
       messages: project.messages.slice(-12),

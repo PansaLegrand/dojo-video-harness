@@ -19,24 +19,40 @@ Requirements: Node **20.19+**, npm, and a desktop browser with WebCodecs support
 is needed. FFmpeg is required only for the browser acceptance test, not the app.
 
 ```sh
-npm ci
-cp .env.example .env
-npm run dev
+git clone https://github.com/PansaLegrand/dojo-video-harness.git
+cd dojo-video-harness
+npm run launch
 ```
 
-Open **http://127.0.0.1:4310**. Create a project and import media. Manual editing,
-subtitle import, preview, motion graphics, and MP4 export work without API keys.
+`launch` installs locked dependencies when missing, creates `.env` without
+overwriting an existing file, checks the local environment, and starts the editor.
+It opens the browser automatically from an interactive terminal. Otherwise open
+**http://127.0.0.1:4310**. Node 22 is recommended and pinned in `.nvmrc`.
 
-For chat and transcription, edit `.env` and restart the server:
+Create a project and import media. Manual editing, subtitle import, preview,
+motion graphics, and MP4 export work without API keys. In **Provider settings**,
+choose OpenAI or Kie and enter your GPT key. Speech recognition has its own provider
+settings. Saves apply to new requests immediately; running jobs keep their original
+configuration. Saved keys are never returned to the browser.
 
-```dotenv
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-6-sol
-LLM_API_KEY=your-llm-key
-ASR_BASE_URL=https://api.openai.com/v1
-ASR_MODEL=whisper-1
-ASR_API_KEY=your-asr-key
+For later starts, use `npm run dev`. Other useful commands:
+
+```sh
+npm run setup        # Install/check without starting; preserves .env
+npm run setup -- --install  # Reinstall locked dependencies
+npm run doctor       # Check Node, local storage, and port availability
+npm run dev -- --no-open    # Start without opening the browser
 ```
+
+The setup and launcher work in PowerShell as well as macOS/Linux terminals. The
+startup CI runs on Windows, macOS, and Linux. If the port is occupied, the launcher
+explains how to open the existing editor or change `PORT` in `.env`. It does not
+silently switch addresses, because imported browser media belongs to its origin.
+
+Advanced configuration can still use `.env` (copied from `.env.example`). Settings
+saved in the app override its provider values and are stored in the private local
+data directory as `provider-settings.json`. Keep that directory private and out
+of Git when changing `DATA_DIR`.
 
 Shared editor and chat components can be synced from the product when useful. The harness has its own smaller scope; full product parity is not a goal. Local persistence, provider keys, and usage copy live in host adapters. See [syncing the product UI](docs/syncing-product-ui.md).
 
@@ -59,7 +75,7 @@ ASR must provide genuine word timestamps in `verbose_json`; segment-only output
 is rejected rather than converted into invented word timings. This adapter caps
 transcription uploads at 25 MiB. Choose a smaller audio source when needed.
 
-Keys stay in the local Node process. `.env`, project data, uploaded sources, and
+Saved keys stay in the local data directory and server process. `.env`, project data, uploaded sources, and
 exported videos are ignored by Git. Imported originals first live in browser
 IndexedDB. Choosing transcription explicitly copies the source to the local host
 and sends it to the configured ASR provider. Choosing chat sends project context;

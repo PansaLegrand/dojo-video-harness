@@ -38,8 +38,10 @@ remove the source receipt or repeat an external operation.
 
 The Next.js launcher binds to 127.0.0.1. Middleware and the API adapter check Host and Origin and reject cross-site
 requests, and requires JSON for mutation routes. It is a single-user local server,
-not an authenticated internet deployment. API keys remain server-side environment
-variables and are omitted from configuration responses and project files.
+not an authenticated internet deployment. Provider defaults come from environment variables. In-app settings are stored in
+`.data/provider-settings.json` with private file permissions and override those
+defaults. Keys are omitted from configuration responses and project files. Agent
+runs and ASR/translation jobs snapshot their provider so updates affect only new work.
 
 Managed UI files are checked against `config/product-ui.manifest.json`. Product changes are pulled explicitly through `npm run sync:ui`; host adapters are excluded from that managed set. Source components retain their markup, Tailwind classes, CSS, and interactions. The local application header, English-only language policy, provider settings, and stored-output page are host-owned. Shared component reuse does not require full hosted-product parity. See `syncing-product-ui.md`.
 

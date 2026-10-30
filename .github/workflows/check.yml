@@ -20,3 +20,25 @@ jobs:
         with:
           name: browser-proof
           path: test-results
+
+  clean-startup:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm run setup
+      - run: npm run test:agent:scenarios
+      - run: npx playwright install chromium
+      - run: npm run test:startup
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: startup-${{ matrix.os }}
+          path: test-results/startup

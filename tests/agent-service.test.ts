@@ -427,3 +427,35 @@ it("refuses a timing undo after the same target changed and preserves both edits
   ).rejects.toThrow(/changed properties/);
   expect((await store.read(p.id)).documentHash).toBe(changed.documentHash);
 });
+
+it("captures one model instance per run even when provider settings change between tool calls", async () => {
+  let release!: (reply: ModelReply) => void;
+  let steps = 0;
+  const oldModel = {
+    complete: vi.fn(
+      async (): Promise<ModelReply> =>
+        ++steps === 1
+          ? await new Promise((resolve) => {
+              release = resolve;
+            })
+          : propose(),
+    ),
+  };
+  const newModel = { complete: vi.fn(async () => propose("#16a34a")) };
+  let current = oldModel;
+  const { store, p, input } = await fixture(oldModel);
+  const host = new AgentService(store, () => current, []);
+  const started = await host.start(p.id, input);
+  await vi.waitFor(() => expect(oldModel.complete).toHaveBeenCalledTimes(1));
+  current = newModel;
+  release({
+    text: "",
+    calls: [{ id: "inspect", name: "inspect_project", arguments: "{}" }],
+  });
+  const result = await settle(store, p.id);
+  expect(result.runs.find((r) => r.id === started.run.id)?.status).toBe(
+    "awaiting_review",
+  );
+  expect(oldModel.complete).toHaveBeenCalledTimes(2);
+  expect(newModel.complete).not.toHaveBeenCalled();
+});

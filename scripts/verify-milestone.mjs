@@ -2,6 +2,7 @@
 import { spawn, execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import path from "node:path";
+import { npmInvocation } from "./lib/local-launch.mjs";
 const args = process.argv.slice(2);
 if (args.some((a) => !["--live"].includes(a)))
   throw new Error(
@@ -61,7 +62,8 @@ async function run(name, command, params, env = {}) {
     throw new Error(`${name} failed. Remaining phases were not run.`);
 }
 try {
-  await run("typecheck-tests-build", "npm", ["run", "check"]);
+  const npm = npmInvocation(["run", "check"]);
+  await run("typecheck-tests-build", npm.command, npm.args);
   await run(
     "browser-workflows-export",
     process.execPath,
