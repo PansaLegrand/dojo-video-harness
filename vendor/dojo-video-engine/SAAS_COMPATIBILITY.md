@@ -1,5 +1,12 @@
 # DojoClip compatibility patches
 
+> Runtime patch update (2026-10-31): the rendering, playback, and export patches
+> described below have landed in the public engine at `bfc849a`, reviewed through
+> `b31baf3`. Built-package harness acceptance passed. The source copy remains in
+> use until the npm release is published and its registry bytes are verified.
+> The legacy command facade and source-resolution transform remain host-specific.
+
+
 The vendored package source uses Dojo Video Engine 1.1.0 commit
 `8ef6e0228dbfa7ee486ac145d8cb5dd5e5ba24d2`. The engine packages are copied
 from that exact upstream tree, then relative NodeNext `.js` suffixes are

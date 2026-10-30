@@ -1,5 +1,12 @@
 # Vendored Dojo Video Engine
 
+> Runtime patch update (2026-10-31): the rendering, playback, and export patches
+> described below have landed in the public engine at `bfc849a`, reviewed through
+> `b31baf3`. Built-package harness acceptance passed. The source copy remains in
+> use until the npm release is published and its registry bytes are verified.
+> The legacy command facade and source-resolution transform remain host-specific.
+
+
 This directory contains a source copy of the public runtime packages used by
 DojoClip from the local Dojo Video Engine project:
 

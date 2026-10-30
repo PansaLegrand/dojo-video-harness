@@ -5,17 +5,19 @@
   "upstreamBaseCommit": "8ef6e0228dbfa7ee486ac145d8cb5dd5e5ba24d2",
   "syncedAt": "2026-09-12",
   "sourceState": "upstream-1.1-with-declared-compatibility-patches",
-  "upstreamHeadReviewed": "8ef6e0228dbfa7ee486ac145d8cb5dd5e5ba24d2",
+  "upstreamHeadReviewed": "b31baf3381ffd85c3de43927502d8d7af7ab19e4",
   "vendorLastChangeCommit": null,
   "vendorLastChangeTracking": "git-history",
   "localPatches": [
     {
       "id": "original-audio-for-picture-proxies",
-      "status": "downstream-browser-media-compatibility",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "An opt-in resolver mode owns original soundtrack Inputs independently from picture proxies, with combined descriptor identity, reuse and cleanup. Defaults and original-media export remain unchanged."
     },
     {
@@ -40,83 +42,101 @@
     },
     {
       "id": "bounded-export-render-cache-reuse",
-      "status": "downstream-performance",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "The shared export frame loop owns bounded scratch and static caches across frames, disposing only resources it created."
     },
     {
       "id": "bounded-preview-audio-lookahead",
-      "status": "downstream-performance",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "Preview audio prefetches one successor and schedules AudioContext boundaries while preserving seek cancellation and bounded memory."
     },
     {
       "id": "host-owned-preview-frame-renderer",
-      "status": "downstream-performance",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "An optional cancellable host frame renderer lets compatible silent previews render in a worker without opening duplicate main-thread media."
     },
     {
       "id": "prepared-frame-text-resource-reuse",
-      "status": "downstream-performance",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "Trusted internal rendering reuses evaluated frames and bounded exact text metrics, invalidating font-dependent widths/rasters when resources change."
     },
     {
       "id": "bounded-export-audio-pipeline",
-      "status": "downstream-performance",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "Export reuses audio placement plans, bounded sample copies and one-chunk lookahead when audio/video media Inputs are independent."
     },
     {
       "id": "bounded-asset-preparation-native-blob",
-      "status": "downstream-performance",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "Asset preparation caps actual resource creators at four and consumes policy-bounded responses as native Blobs without whole-file JavaScript buffer copies."
     },
     {
       "id": "bounded-audio-decoder-preroll",
-      "status": "downstream-correctness",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "Ranged audio decoding warms up at most 100 ms before a trim/chunk boundary to restore compressed-codec overlap state, while copying only the exact requested PCM window and preserving cancellation and cache budgets."
     },
     {
       "id": "exact-audio-envelope-boundaries",
-      "status": "downstream-correctness",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "Audio envelope interpolation blocks stop at keyframe sample boundaries, preserving exact piecewise-linear gains at integer/fractional knots and chunk offsets without increasing the 128-sample maximum or allocating a boundary list."
     },
     {
       "id": "bounded-aac-presentation-timing",
-      "status": "downstream-correctness",
+      "status": "merged-upstream",
       "owner": "dojo-video-web",
-      "upstream": false,
-      "reconciliationMilestone": "next-upstream-sync",
-      "commits": [],
+      "upstream": true,
+      "reconciliationMilestone": "consume-published-engine-1.1.0",
+      "commits": [
+        "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
+      ],
       "summary": "Measures the actual AAC encoder profile using bounded synthetic audio, then repairs only MP4 presentation/tail metadata before Blob verification or stream close. Encoded media bytes remain unchanged and file rollback stays owned by the original writer."
     }
   ],
@@ -140,5 +160,6 @@
     "dist",
     "node_modules",
     ".DS_Store"
-  ]
+  ],
+  "runtimePatchMergeCommit": "bfc849a9bd6ff923a740f83e6e230a52ab15e28b"
 }
