@@ -1,0 +1,12 @@
+/* Generated from @fontsource-variable/nunito for Design Agent preview/export. */
+
+/* Nunito Variable latin coverage. */
+
+/* Nunito Variable variable weight 200 1000 */
+@font-face {
+  font-family: "Nunito Variable";
+  font-style: normal;
+  font-display: block;
+  font-weight: 200 1000;
+  src: url("/fonts/nunito/nunito-latin-wght-normal.woff2") format("woff2-variations");
+}

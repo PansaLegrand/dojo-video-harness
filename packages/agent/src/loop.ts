@@ -1,0 +1,165 @@
+import {
+  buildNativeAgentPrompts,
+  compileNativeAgentResult,
+  type NativeAgentRequest,
+  type NativeAgentResult,
+} from "../../core/src/lib/video-project/agent-runtime";
+import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
+import { skillIndex, type Skill } from "./skills";
+import { createVideoTools, type AgentTool } from "./tools";
+import type { LanguageModel, ChatMessage, AgentEvent } from "./types";
+
+/** Model -> function call -> validated tool -> observation -> repeat.
+ * Persistence, user decisions, and final commits belong to the host. */
+export async function runAgent(input: {
+  request: NativeAgentRequest;
+  model: LanguageModel;
+  skills: Skill[];
+  signal: AbortSignal;
+  onEvent?: (event: AgentEvent) => void | Promise<void>;
+  messages?: Array<{ role: string; text: string }>;
+  maxSteps?: number;
+  maxToolCalls?: number;
+  extraTools?: AgentTool[];
+}): Promise<NativeAgentResult> {
+  const { request, model, skills, signal } = input;
+  signal.throwIfAborted();
+  await compileNativeAgentResult(request, {
+    outcome: "answer",
+    summary: "Snapshot validation",
+    commands: [],
+  });
+  const document = parseVideoProjectDocument(request.document);
+  const prompts = buildNativeAgentPrompts({
+    ...request,
+    document,
+    instruction: request.instruction ?? "",
+    messages: input.messages ?? [],
+  });
+  const system =
+    prompts.systemPrompt.replace(
+      "Return ONLY JSON:",
+      "The propose_edit tool accepts:",
+    ) +
+    "\nUse function calls to inspect, read skills, and propose edits. Do not output edit JSON as ordinary text. Ask_user pauses this run. A successful propose_edit pauses for review. Tool validation errors are observations: correct them without broadening scope. Never claim a proposal is applied.\nAvailable skills: " +
+    JSON.stringify(skillIndex(skills));
+  const tools = [
+    ...createVideoTools(request, skills),
+    ...(input.extraTools ?? []),
+  ];
+  const registry = new Map(tools.map((tool) => [tool.name, tool]));
+  if (registry.size !== tools.length)
+    throw new Error("Tool names must be unique.");
+  const specs = tools.map(
+    ({ execute: _execute, effect: _effect, ...spec }) => spec,
+  );
+  const messages: ChatMessage[] = [
+    { role: "system", content: system },
+    {
+      role: "user",
+      content: request.context.visualWitness
+        ? [
+            { type: "text", text: prompts.userPrompt },
+            {
+              type: "image_url",
+              image_url: { url: request.context.visualWitness.imageDataUrl },
+            },
+          ]
+        : prompts.userPrompt,
+    },
+  ];
+  let sequence = 0,
+    toolCalls = 0,
+    observationBytes = 0;
+  const ids = new Set<string>();
+  const emit = async (
+    type: AgentEvent["type"],
+    name?: string,
+    summary?: string,
+  ) => {
+    signal.throwIfAborted();
+    await input.onEvent?.({
+      sequence: sequence++,
+      type,
+      ...(name ? { name } : {}),
+      ...(summary ? { summary } : {}),
+    });
+  };
+  for (let step = 0; step < (input.maxSteps ?? 8); step++) {
+    signal.throwIfAborted();
+    await emit("model.started");
+    const response = await model.complete(messages, specs, signal);
+    signal.throwIfAborted();
+    messages.push({
+      role: "assistant",
+      content: response.text || null,
+      ...(response.calls.length
+        ? {
+            tool_calls: response.calls.map((call) => ({
+              id: call.id,
+              type: "function" as const,
+              function: { name: call.name, arguments: call.arguments },
+            })),
+          }
+        : {}),
+    });
+    if (!response.calls.length) {
+      if (!response.text.trim())
+        throw new Error("The model returned no answer or tool calls.");
+      await emit("answer.ready", undefined, response.text.slice(0, 500));
+      return compileNativeAgentResult(request, {
+        outcome: "answer",
+        summary: response.text.slice(0, 4000),
+        commands: [],
+      });
+    }
+    for (const call of response.calls) {
+      signal.throwIfAborted();
+      if (++toolCalls > (input.maxToolCalls ?? 24))
+        throw new Error("Tool-call budget reached. Narrow the request.");
+      if (ids.has(call.id))
+        throw new Error("The model reused a tool-call identity.");
+      ids.add(call.id);
+      await emit("tool.started", call.name);
+      let observation: unknown;
+      try {
+        const tool = registry.get(call.name);
+        if (!tool)
+          throw new Error("Unknown tool. Choose from the advertised registry.");
+        const outcome = await tool.execute(JSON.parse(call.arguments), signal);
+        signal.throwIfAborted();
+        if (outcome.kind === "terminal") {
+          await emit("tool.completed", call.name, "Validated");
+          await emit(
+            outcome.result.outcome === "proposal"
+              ? "proposal.ready"
+              : outcome.result.outcome === "needs_input"
+                ? "question.asked"
+                : "answer.ready",
+            undefined,
+            outcome.result.summary,
+          );
+          return outcome.result;
+        }
+        observation = outcome.value;
+        if (JSON.stringify(observation).length > 120_000)
+          throw new Error(
+            "Result exceeds context budget. Inspect fewer items.",
+          );
+      } catch (cause) {
+        signal.throwIfAborted();
+        observation = {
+          error: cause instanceof Error ? cause.message : "Tool failed",
+          hint: "Correct the input or ask a focused question.",
+        };
+      }
+      const content = JSON.stringify(observation);
+      observationBytes += content.length;
+      if (observationBytes > 240_000)
+        throw new Error("Observation budget reached. Narrow the request.");
+      messages.push({ role: "tool", tool_call_id: call.id, content });
+      await emit("tool.completed", call.name);
+    }
+  }
+  throw new Error("Model-step budget reached. Narrow the request.");
+}

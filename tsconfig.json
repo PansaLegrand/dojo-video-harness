@@ -1,0 +1,70 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@motionforge/core": ["./vendor/motionforge/core/src/index.ts"],
+      "@motionforge/agent-tools": [
+        "./vendor/motionforge/agent-tools/src/index.ts"
+      ],
+      "@motionforge/commands": ["./vendor/motionforge/commands/src/index.ts"],
+      "@motionforge/export": ["./vendor/motionforge/export/src/index.ts"],
+      "@motionforge/export/worker": [
+        "./vendor/motionforge/export/src/worker.ts"
+      ],
+      "@motionforge/extensions": [
+        "./vendor/motionforge/extensions/src/index.ts"
+      ],
+      "@motionforge/inspection": [
+        "./vendor/motionforge/inspection/src/index.ts"
+      ],
+      "@motionforge/interchange": [
+        "./vendor/motionforge/interchange/src/index.ts"
+      ],
+      "@motionforge/layout": ["./vendor/motionforge/layout/src/index.ts"],
+      "@motionforge/player": ["./vendor/motionforge/player/src/index.ts"],
+      "@motionforge/presets": ["./vendor/motionforge/presets/src/index.ts"],
+      "@motionforge/presets/macros": [
+        "./vendor/motionforge/presets/src/macros.ts"
+      ],
+      "@motionforge/renderer-canvas2d": [
+        "./vendor/motionforge/renderer-canvas2d/src/index.ts"
+      ],
+      "@motionforge/renderer-canvas2d/runtime": [
+        "./vendor/motionforge/renderer-canvas2d/src/runtime.ts"
+      ],
+      "@motionforge/runtime": ["./vendor/motionforge/runtime/src/index.ts"],
+      "@motionforge/schema": ["./vendor/motionforge/schema/src/index.ts"],
+      "@motionforge/schema/commands": [
+        "./vendor/motionforge/schema/src/commands.ts"
+      ],
+      "@motionforge/schema/patch": ["./vendor/motionforge/schema/src/patch.ts"],
+      "@motionforge/schema/values": [
+        "./vendor/motionforge/schema/src/values.ts"
+      ],
+      "@/lib/*": ["packages/core/src/lib/*"],
+      "@/types/*": ["packages/core/src/types/*"],
+      "@/components/*": ["packages/ui/src/components/*"],
+      "@/contexts/*": ["packages/ui/src/contexts/*"],
+      "next/link": ["packages/ui/src/link.tsx"]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "packages",
+    "apps",
+    "tests",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "vendor"]
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@motionforge/export",
+  "version": "1.1.0",
+  "description": "Browser-native video export surface (WebCodecs) for motionforge scenes.",
+  "keywords": [
+    "motionforge",
+    "video",
+    "export",
+    "webcodecs",
+    "encoder"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PansaLegrand/motionforge.git",
+    "directory": "packages/export"
+  },
+  "homepage": "https://github.com/PansaLegrand/motionforge#readme",
+  "bugs": "https://github.com/PansaLegrand/motionforge/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/.tsbuildinfo"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@motionforge/core": "workspace:*",
+    "@motionforge/renderer-canvas2d": "workspace:*",
+    "@motionforge/schema": "workspace:*",
+    "mediabunny": "^1.46.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
+  }
+}

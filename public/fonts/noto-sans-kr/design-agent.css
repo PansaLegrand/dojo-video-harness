@@ -1,0 +1,30 @@
+/* Generated from @fontsource/noto-sans-kr for Design Agent preview/export. */
+
+/* Noto Sans KR korean coverage. */
+
+/* Noto Sans KR weight 400 */
+@font-face {
+  font-family: "Noto Sans KR";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url("/fonts/noto-sans-kr/noto-sans-kr-korean-400-normal.woff2") format("woff2");
+}
+
+/* Noto Sans KR weight 500 */
+@font-face {
+  font-family: "Noto Sans KR";
+  font-style: normal;
+  font-display: block;
+  font-weight: 500;
+  src: url("/fonts/noto-sans-kr/noto-sans-kr-korean-500-normal.woff2") format("woff2");
+}
+
+/* Noto Sans KR weight 700 */
+@font-face {
+  font-family: "Noto Sans KR";
+  font-style: normal;
+  font-display: block;
+  font-weight: 700;
+  src: url("/fonts/noto-sans-kr/noto-sans-kr-korean-700-normal.woff2") format("woff2");
+}

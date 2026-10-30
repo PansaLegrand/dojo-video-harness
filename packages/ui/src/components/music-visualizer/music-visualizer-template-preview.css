@@ -1,0 +1,7 @@
+.music-visualizer-template-preview {
+  display: block;
+}
+/* These are drawing primitives, not rounded application controls. */
+.music-visualizer-template-preview .rounded-full {
+  border-radius: 9999px !important;
+}

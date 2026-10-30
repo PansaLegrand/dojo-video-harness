@@ -1,0 +1,295 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@font-face {
+  font-family: Inter;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #232633;
+  background: #f5f6f8;
+  font-synthesis: none;
+}
+body {
+  margin: 0;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #6d28d9;
+  outline-offset: 3px;
+}
+.harness-home {
+  max-width: 1120px;
+  margin: auto;
+  padding: 32px 38px 80px;
+}
+.harness-home-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+.harness-home-top button {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  border: 1px solid #d9dce3;
+  background: #fff;
+  padding: 10px 15px;
+  border-radius: 9px;
+}
+.harness-home > section:first-of-type {
+  padding: 92px 0 64px;
+  border-bottom: 1px solid #d9dce3;
+}
+.harness-eyebrow {
+  color: #6d28d9;
+  letter-spacing: 0.15em;
+  font-size: 11px;
+  font-weight: 700;
+}
+.harness-home h1 {
+  font-size: clamp(48px, 7vw, 82px);
+  line-height: 1.05;
+  letter-spacing: -0.065em;
+  font-weight: 650;
+  margin: 22px 0;
+}
+.harness-intro {
+  font-size: 18px;
+  line-height: 1.7;
+  max-width: 530px;
+  color: #646a7a;
+}
+.harness-create {
+  margin: 27px 0 12px;
+  background: #25213d;
+  color: white;
+  border-radius: 9px;
+  padding: 16px 20px;
+  display: flex;
+  gap: 55px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.harness-home-note {
+  font-size: 12px;
+  color: #737889;
+  line-height: 1.7;
+}
+.harness-projects h2 {
+  margin: 32px 0 20px;
+  font-weight: 600;
+  font-size: 18px;
+}
+.harness-projects > p {
+  font-size: 14px;
+  color: #737889;
+}
+.harness-projects > button {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  padding: 20px 0;
+  border-bottom: 1px solid #e0e3e9;
+  font-size: 14px;
+}
+.harness-projects > button > span:last-child {
+  margin-left: auto;
+  color: #737889;
+  font-size: 12px;
+}
+.harness-project-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #e8e3f5;
+  color: #6d28d9;
+}
+.harness-settings-float {
+  position: fixed;
+  bottom: 8px;
+  left: 10px;
+  z-index: 40;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 10px;
+}
+.harness-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #14152299;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.harness-settings {
+  background: #fff;
+  border-radius: 14px;
+  width: min(560px, 100%);
+  padding: 28px;
+  max-height: 90dvh;
+  overflow: auto;
+  font-size: 14px;
+  line-height: 1.7;
+  box-shadow: 0 24px 100px #0003;
+}
+.harness-settings header {
+  display: flex;
+  justify-content: space-between;
+}
+.harness-settings h2 {
+  font-weight: 650;
+  font-size: 22px;
+  margin: 0 0 16px;
+}
+.harness-settings p {
+  margin: 12px 0;
+  color: #5f6675;
+}
+.harness-settings dt {
+  font-weight: 600;
+  margin-top: 20px;
+}
+.harness-settings dd small {
+  display: block;
+  font-size: 11px;
+  color: #777;
+  overflow-wrap: anywhere;
+}
+.harness-settings pre {
+  background: #f3f2f7;
+  padding: 16px;
+  border-radius: 7px;
+  font-size: 12px;
+  overflow: auto;
+}
+.harness-settings code {
+  background: #f3f2f7;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.harness-user-message {
+  background: #eee8fb;
+  border-radius: 9px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  margin: 0 0 12px 20px;
+}
+.harness-assistant-message {
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  margin-bottom: 12px;
+}
+.harness-trace {
+  font-size: 10px;
+  color: #737180;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.harness-trace > div {
+  padding: 4px;
+}
+.harness-error {
+  font-size: 12px;
+  color: #a12b39;
+  line-height: 1.7;
+}
+.harness-decision {
+  padding: 13px;
+  background: #f0eaff;
+  border-radius: 9px;
+  font-size: 13px;
+  display: grid;
+  gap: 9px;
+  max-height: 35vh;
+  overflow: auto;
+}
+.harness-decision p {
+  font-size: 11px;
+  color: #6e677d;
+}
+.harness-decision small {
+  font-size: 10px;
+  color: #6e677d;
+}
+.harness-link {
+  font-size: 11px;
+  text-align: left;
+  text-decoration: underline;
+  color: #6d28d9;
+}
+.harness-preview-consent {
+  display: flex;
+  gap: 8px;
+  align-items: start;
+  font-size: 10px;
+  color: #747180;
+  line-height: 1.6;
+}
+.editor-chat-composer textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #ddd5ed;
+  border-radius: 8px;
+  padding: 12px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.editor-chat-composer {
+  font-size: 12px;
+}
+.editor-chat-composer .editor-primary-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-agent-review [data-review-side] h3 {
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .harness-home {
+    padding: 22px;
+  }
+  .harness-home > section:first-of-type {
+    padding: 60px 0 45px;
+  }
+  .harness-home-top {
+    letter-spacing: 0.04em;
+  }
+  .harness-intro {
+    font-size: 16px;
+  }
+}
+
+.editor-empty-preview {
+  color: #373345;
+}
+.editor-empty-preview p {
+  color: #6f687f;
+}
+.editor-empty-icon {
+  color: #7f6aab;
+}

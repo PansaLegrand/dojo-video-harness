@@ -1,0 +1,68 @@
+{
+  "name": "@motionforge/presets",
+  "version": "1.1.0",
+  "description": "Pure animation presets and caption generators that compile to motionforge scene data.",
+  "keywords": [
+    "motionforge",
+    "video",
+    "animation",
+    "presets",
+    "captions",
+    "karaoke",
+    "tiktok"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PansaLegrand/motionforge.git",
+    "directory": "packages/presets"
+  },
+  "homepage": "https://github.com/PansaLegrand/motionforge#readme",
+  "bugs": "https://github.com/PansaLegrand/motionforge/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "import": "./dist/catalog.js"
+    },
+    "./intents": {
+      "types": "./dist/intents.d.ts",
+      "import": "./dist/intents.js"
+    },
+    "./macros": {
+      "types": "./dist/macros.d.ts",
+      "import": "./dist/macros.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/.tsbuildinfo"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@motionforge/schema": "workspace:*",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
+  }
+}

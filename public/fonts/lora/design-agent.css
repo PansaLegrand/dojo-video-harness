@@ -1,0 +1,12 @@
+/* Generated from @fontsource-variable/lora for Design Agent preview/export. */
+
+/* Lora Variable latin coverage. */
+
+/* Lora Variable variable weight 400 700 */
+@font-face {
+  font-family: "Lora Variable";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400 700;
+  src: url("/fonts/lora/lora-latin-wght-normal.woff2") format("woff2-variations");
+}

@@ -1,0 +1,53 @@
+{
+  "name": "@motionforge/interchange",
+  "version": "1.1.0",
+  "description": "Bounded provider-neutral timeline, Remotion-host, and static snapshot interchange for MotionForge.",
+  "keywords": [
+    "motionforge",
+    "video",
+    "interchange",
+    "timeline"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PansaLegrand/motionforge.git",
+    "directory": "packages/interchange"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/.tsbuildinfo"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@motionforge/schema": "workspace:*",
+    "zod": "^3.25.67",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "vitest": "^3.2.7"
+  }
+}

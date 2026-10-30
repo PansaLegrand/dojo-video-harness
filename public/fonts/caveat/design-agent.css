@@ -1,0 +1,12 @@
+/* Generated from @fontsource-variable/caveat for Design Agent preview/export. */
+
+/* Caveat Variable latin coverage. */
+
+/* Caveat Variable variable weight 400 700 */
+@font-face {
+  font-family: "Caveat Variable";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400 700;
+  src: url("/fonts/caveat/caveat-latin-wght-normal.woff2") format("woff2-variations");
+}

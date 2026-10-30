@@ -1,0 +1,63 @@
+{
+  "name": "@motionforge/schema",
+  "version": "1.1.0",
+  "description": "Zod scene schema and validation helpers for motionforge scene documents.",
+  "keywords": [
+    "motionforge",
+    "video",
+    "scene",
+    "schema",
+    "zod",
+    "validation"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PansaLegrand/motionforge.git",
+    "directory": "packages/schema"
+  },
+  "homepage": "https://github.com/PansaLegrand/motionforge#readme",
+  "bugs": "https://github.com/PansaLegrand/motionforge/issues",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./values": {
+      "types": "./dist/values.d.ts",
+      "import": "./dist/values.js"
+    }
+  },
+  "files": [
+    "dist",
+    "scene.schema.json",
+    "!dist/**/*.test.*",
+    "!dist/.tsbuildinfo"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/generate-json-schema.mjs",
+    "check:schema": "tsc -p tsconfig.json && node scripts/generate-json-schema.mjs --check",
+    "generate:schema": "tsc -p tsconfig.json && node scripts/generate-json-schema.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.25.67",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "vitest": "^3.2.7"
+  }
+}

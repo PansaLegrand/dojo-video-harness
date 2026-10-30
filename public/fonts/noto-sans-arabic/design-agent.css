@@ -1,0 +1,30 @@
+/* Generated from @fontsource/noto-sans-arabic for Design Agent preview/export. */
+
+/* Noto Sans Arabic arabic coverage. */
+
+/* Noto Sans Arabic weight 400 */
+@font-face {
+  font-family: "Noto Sans Arabic";
+  font-style: normal;
+  font-display: block;
+  font-weight: 400;
+  src: url("/fonts/noto-sans-arabic/noto-sans-arabic-arabic-400-normal.woff2") format("woff2");
+}
+
+/* Noto Sans Arabic weight 500 */
+@font-face {
+  font-family: "Noto Sans Arabic";
+  font-style: normal;
+  font-display: block;
+  font-weight: 500;
+  src: url("/fonts/noto-sans-arabic/noto-sans-arabic-arabic-500-normal.woff2") format("woff2");
+}
+
+/* Noto Sans Arabic weight 700 */
+@font-face {
+  font-family: "Noto Sans Arabic";
+  font-style: normal;
+  font-display: block;
+  font-weight: 700;
+  src: url("/fonts/noto-sans-arabic/noto-sans-arabic-arabic-700-normal.woff2") format("woff2");
+}
