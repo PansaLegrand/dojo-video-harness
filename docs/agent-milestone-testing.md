@@ -1,5 +1,9 @@
 # Agent milestone testing
 
+For the completed baseline/extended live run through the explicitly selected
+Gateway fallback, see [Gateway readiness evidence](gateway-readiness-report.md).
+The earlier Kie failures remain separate; no runtime fallback was introduced.
+
 For the ordered readiness backlog, independent grading/media evidence, capability
 scope and engine handoff, see [the harness readiness plan](harness-readiness-plan.md).
 This runbook documents the current runner; planned additions do not change its

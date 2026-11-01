@@ -5,7 +5,9 @@ Date: 2026-11-01
 Last reviewed: 2026-11-02
 
 Status: executing; see [the execution ledger](readiness-progress.md) and
-[2026-11-02 evidence](readiness-report-2026-11-02.md). Live GPT qualification is pending.
+[2026-11-02 evidence](readiness-report-2026-11-02.md). The
+[Gateway automated GPT gates passed](gateway-readiness-report.md); real-media,
+human and additional capability acceptance remain open.
 
 ## 1. Milestone question and scope
 
@@ -185,7 +187,7 @@ evidence; functional owners below are not claims of assigned staffing.
 - [x] H-02 complete — independent assertions, evidence retention and grader fault checks
 - [ ] H-03 complete
 - [ ] H-04 complete
-- [ ] H-05 complete
+- [x] H-05 automated baseline complete — Gateway 54/54; paired real-media/human acceptance remains open
 - [ ] H-06 complete
 - [ ] H-07 complete
 
@@ -236,6 +238,11 @@ Repeat a broad gate only for a new candidate, failure or unresolved concern.
 Use Kie `gpt-6-sol` for this baseline, with the key provided privately through the
 process environment. Keep the exact endpoint/model/settings in sanitized evidence.
 Do not silently switch model or provider. Current configuration/entry point:
+
+The user subsequently authorized Vercel Gateway as an explicit testing fallback.
+For a separate Gateway run use base URL `https://ai-gateway.vercel.sh/v1`, model
+`openai/gpt-6-sol` and its matching key. Preserve failed Kie reports, freeze the
+chosen configuration for the entire run and report each provider independently.
 
 ```sh
 export LLM_BASE_URL=https://api.kie.ai/codex/v1

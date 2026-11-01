@@ -1,5 +1,10 @@
 # Harness readiness execution — 2026-11-02
 
+Later update: the user authorized a Gateway testing fallback, and its complete
+baseline and extended automated gates passed. See
+[the Gateway report](gateway-readiness-report.md). The Kie results below remain
+unchanged historical evidence; they are not reclassified as successful.
+
 Status: local checks passed; complete live GPT qualification pending.
 The user chose to keep Kie and leave the live gate pending after repeated HTTP 502
 responses. No additional GPT qualification retries are scheduled by this report.

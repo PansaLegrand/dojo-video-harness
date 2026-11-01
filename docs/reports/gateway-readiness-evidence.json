@@ -1,0 +1,600 @@
+{
+  "version": 1,
+  "status": "automated-gates-passed-human-review-required",
+  "routing": "Explicit test fallback to Vercel AI Gateway; no within-run fallback or automatic retry",
+  "scope": "Synthetic editing fixtures; no customer media. Kie failures remain separate.",
+  "healthProbe": {
+    "requests": 1,
+    "inputTokens": 10,
+    "outputTokens": 6
+  },
+  "toolSmoke": {
+    "requests": 7,
+    "inputTokens": 50111,
+    "outputTokens": 445,
+    "passed": true
+  },
+  "runs": [
+    {
+      "suite": "baseline",
+      "runId": "2026-11-01T17-17-46-792Z",
+      "startedAt": "2026-11-01T17:17:46.793Z",
+      "commit": "58632cdb037c4ec041adbd29ade40b2c8d711e78",
+      "model": "openai/gpt-6-sol",
+      "endpoint": "https://ai-gateway.vercel.sh/v1/responses",
+      "suiteHash": "a2fe689490c9a16545f938ead251cb6d57440fd5f3ed7e189b81c6c884068541",
+      "engineVersion": "1.1.1",
+      "lockfileHash": "3053ed145c70d2321fc210fb8cdb2c717f7cbb606483a228ccde237daf3a1eff",
+      "sourceUnchanged": true,
+      "requestBudget": 240,
+      "requests": 87,
+      "inputTokens": 640866,
+      "outputTokens": 7964,
+      "usageUnavailableCalls": 0,
+      "scenarioLatencyMs": {
+        "p50": 2859,
+        "p95": 21184
+      },
+      "grade": {
+        "complete": true,
+        "rate": 1,
+        "criticalPassed": true,
+        "eachCasePassed": true,
+        "passed": true,
+        "repeats": 3,
+        "expected": 54,
+        "executed": 54
+      },
+      "milestoneAgentGatePassed": true,
+      "extendedAgentGatePassed": false,
+      "reportSha256": "feb1007b7442ee91eb3326e9ebcb98cebb2f1bb4ef70d8360a2d34a9982f28b8",
+      "trialResults": [
+        {
+          "scenarioId": "title-color",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3505
+        },
+        {
+          "scenarioId": "title-wording",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2553
+        },
+        {
+          "scenarioId": "title-size",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2670
+        },
+        {
+          "scenarioId": "move-seconds",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2859
+        },
+        {
+          "scenarioId": "trim-tail",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3184
+        },
+        {
+          "scenarioId": "trim-head",
+          "repetition": 1,
+          "passed": true,
+          "calls": 3,
+          "durationMs": 9176
+        },
+        {
+          "scenarioId": "split-video",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3299
+        },
+        {
+          "scenarioId": "music-volume",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2752
+        },
+        {
+          "scenarioId": "mute-video",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2553
+        },
+        {
+          "scenarioId": "video-speed",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3159
+        },
+        {
+          "scenarioId": "delete-selection",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2762
+        },
+        {
+          "scenarioId": "canvas-format",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3175
+        },
+        {
+          "scenarioId": "eight-turn-session",
+          "repetition": 1,
+          "passed": true,
+          "calls": 8,
+          "durationMs": 21184
+        },
+        {
+          "scenarioId": "question-restart-answer",
+          "repetition": 1,
+          "passed": true,
+          "calls": 3,
+          "durationMs": 9728
+        },
+        {
+          "scenarioId": "project-text-injection",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2858
+        },
+        {
+          "scenarioId": "locked-track",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2408
+        },
+        {
+          "scenarioId": "missing-transcript",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3243
+        },
+        {
+          "scenarioId": "unsupported-generation",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2610
+        },
+        {
+          "scenarioId": "title-color",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2110
+        },
+        {
+          "scenarioId": "title-wording",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3681
+        },
+        {
+          "scenarioId": "title-size",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3068
+        },
+        {
+          "scenarioId": "move-seconds",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3139
+        },
+        {
+          "scenarioId": "trim-tail",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2970
+        },
+        {
+          "scenarioId": "trim-head",
+          "repetition": 2,
+          "passed": true,
+          "calls": 3,
+          "durationMs": 8423
+        },
+        {
+          "scenarioId": "split-video",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3105
+        },
+        {
+          "scenarioId": "music-volume",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2545
+        },
+        {
+          "scenarioId": "mute-video",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2783
+        },
+        {
+          "scenarioId": "video-speed",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3388
+        },
+        {
+          "scenarioId": "delete-selection",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2483
+        },
+        {
+          "scenarioId": "canvas-format",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2965
+        },
+        {
+          "scenarioId": "eight-turn-session",
+          "repetition": 2,
+          "passed": true,
+          "calls": 8,
+          "durationMs": 21659
+        },
+        {
+          "scenarioId": "question-restart-answer",
+          "repetition": 2,
+          "passed": true,
+          "calls": 3,
+          "durationMs": 8789
+        },
+        {
+          "scenarioId": "project-text-injection",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2321
+        },
+        {
+          "scenarioId": "locked-track",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2820
+        },
+        {
+          "scenarioId": "missing-transcript",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3344
+        },
+        {
+          "scenarioId": "unsupported-generation",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2708
+        },
+        {
+          "scenarioId": "title-color",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2344
+        },
+        {
+          "scenarioId": "title-wording",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2656
+        },
+        {
+          "scenarioId": "title-size",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2651
+        },
+        {
+          "scenarioId": "move-seconds",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3054
+        },
+        {
+          "scenarioId": "trim-tail",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2438
+        },
+        {
+          "scenarioId": "trim-head",
+          "repetition": 3,
+          "passed": true,
+          "calls": 3,
+          "durationMs": 8562
+        },
+        {
+          "scenarioId": "split-video",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 4188
+        },
+        {
+          "scenarioId": "music-volume",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2637
+        },
+        {
+          "scenarioId": "mute-video",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2655
+        },
+        {
+          "scenarioId": "video-speed",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2570
+        },
+        {
+          "scenarioId": "delete-selection",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2333
+        },
+        {
+          "scenarioId": "canvas-format",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3065
+        },
+        {
+          "scenarioId": "eight-turn-session",
+          "repetition": 3,
+          "passed": true,
+          "calls": 8,
+          "durationMs": 21643
+        },
+        {
+          "scenarioId": "question-restart-answer",
+          "repetition": 3,
+          "passed": true,
+          "calls": 3,
+          "durationMs": 7531
+        },
+        {
+          "scenarioId": "project-text-injection",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2350
+        },
+        {
+          "scenarioId": "locked-track",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2512
+        },
+        {
+          "scenarioId": "missing-transcript",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3350
+        },
+        {
+          "scenarioId": "unsupported-generation",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2820
+        }
+      ]
+    },
+    {
+      "suite": "extended",
+      "runId": "2026-11-01T17-22-30-376Z",
+      "startedAt": "2026-11-01T17:22:30.381Z",
+      "commit": "58632cdb037c4ec041adbd29ade40b2c8d711e78",
+      "model": "openai/gpt-6-sol",
+      "endpoint": "https://ai-gateway.vercel.sh/v1/responses",
+      "suiteHash": "a2fe689490c9a16545f938ead251cb6d57440fd5f3ed7e189b81c6c884068541",
+      "engineVersion": "1.1.1",
+      "lockfileHash": "3053ed145c70d2321fc210fb8cdb2c717f7cbb606483a228ccde237daf3a1eff",
+      "sourceUnchanged": true,
+      "requestBudget": 80,
+      "requests": 24,
+      "inputTokens": 177121,
+      "outputTokens": 2482,
+      "usageUnavailableCalls": 0,
+      "scenarioLatencyMs": {
+        "p50": 3338,
+        "p95": 7056
+      },
+      "grade": {
+        "complete": true,
+        "rate": 1,
+        "criticalPassed": true,
+        "eachCasePassed": true,
+        "passed": true,
+        "repeats": 3,
+        "expected": 18,
+        "executed": 18
+      },
+      "milestoneAgentGatePassed": false,
+      "extendedAgentGatePassed": true,
+      "reportSha256": "55d4fc4607a36d33774f1308831a41d645c8db4c9cc5649af03d1995e427008a",
+      "trialResults": [
+        {
+          "scenarioId": "compound-request",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 4099
+        },
+        {
+          "scenarioId": "fractional-time",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2781
+        },
+        {
+          "scenarioId": "named-distractor",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3788
+        },
+        {
+          "scenarioId": "ambiguous-target",
+          "repetition": 1,
+          "passed": true,
+          "calls": 2,
+          "durationMs": 7056
+        },
+        {
+          "scenarioId": "rejected-follow-up",
+          "repetition": 1,
+          "passed": true,
+          "calls": 2,
+          "durationMs": 4979
+        },
+        {
+          "scenarioId": "compound-unsupported",
+          "repetition": 1,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2723
+        },
+        {
+          "scenarioId": "compound-request",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3001
+        },
+        {
+          "scenarioId": "fractional-time",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2451
+        },
+        {
+          "scenarioId": "named-distractor",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2649
+        },
+        {
+          "scenarioId": "ambiguous-target",
+          "repetition": 2,
+          "passed": true,
+          "calls": 2,
+          "durationMs": 6113
+        },
+        {
+          "scenarioId": "rejected-follow-up",
+          "repetition": 2,
+          "passed": true,
+          "calls": 2,
+          "durationMs": 5895
+        },
+        {
+          "scenarioId": "compound-unsupported",
+          "repetition": 2,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3032
+        },
+        {
+          "scenarioId": "compound-request",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3479
+        },
+        {
+          "scenarioId": "fractional-time",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3073
+        },
+        {
+          "scenarioId": "named-distractor",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 2936
+        },
+        {
+          "scenarioId": "ambiguous-target",
+          "repetition": 3,
+          "passed": true,
+          "calls": 2,
+          "durationMs": 6003
+        },
+        {
+          "scenarioId": "rejected-follow-up",
+          "repetition": 3,
+          "passed": true,
+          "calls": 2,
+          "durationMs": 4952
+        },
+        {
+          "scenarioId": "compound-unsupported",
+          "repetition": 3,
+          "passed": true,
+          "calls": 1,
+          "durationMs": 3338
+        }
+      ]
+    }
+  ],
+  "ci": {
+    "url": "https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41330893940",
+    "commit": "58632cdb037c4ec041adbd29ade40b2c8d711e78",
+    "passed": true
+  }
+}

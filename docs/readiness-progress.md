@@ -20,3 +20,10 @@ committed reports. Runtime or provider changes get focused regressions followed
 by the appropriate complete candidate gate.
 
 Current evidence and remaining limits: [execution report](readiness-report-2026-11-02.md).
+
+Gateway follow-up: shared validation now supports explicit `openai/gpt-*` model
+IDs. 228 tests/build, 25 browser checks and cross-platform CI passed. Authorized
+Gateway runs passed 54/54 baseline and 18/18 extended trials on clean commit
+`58632cd`, with 87 and 24 requests respectively. H-05 automated evidence is complete;
+human/real-media and additional capability gates remain open. See
+[the Gateway report](gateway-readiness-report.md).
