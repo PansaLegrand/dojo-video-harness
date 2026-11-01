@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { transcribe } from "../packages/adapters/src/asr";
 import { wordErrorRate } from "../evals/agent/speech-oracle";
+import { providerUrl } from "../packages/adapters/src/provider-http";
 import { createVideoProjectDocument } from "../packages/core/src/lib/video-project/document";
 import { transcriptEvidenceFromAsr } from "../packages/core/src/lib/video-project/semantic";
 const args = process.argv.slice(2),
@@ -65,6 +66,15 @@ const report: Record<string, unknown> = {
   requestLimit: 1,
   requests: 0,
   model: config.model,
+  providerBaseUrl: providerUrl(config.baseUrl, "").href,
+  node: process.version,
+  dirty: !!execFileSync("git", ["status", "--porcelain"], {
+    encoding: "utf8",
+  }).trim(),
+  implementationHash: createHash("sha256")
+    .update(await readFile("packages/adapters/src/asr.ts"))
+    .update(await readFile("evals/agent/speech-oracle.ts"))
+    .digest("hex"),
   commit: execFileSync("git", ["rev-parse", "HEAD"], {
     encoding: "utf8",
   }).trim(),
