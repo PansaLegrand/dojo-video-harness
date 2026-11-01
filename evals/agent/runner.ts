@@ -17,6 +17,7 @@ import type {
 import { fixture, setNode, type Scenario, type Turn } from "./scenarios";
 import { gradeEdit, InvariantError, type Trial } from "./grading";
 import { assertIndependentOutcome } from "./oracles";
+import { createTrialEvidence, redactEvidence } from "./evidence";
 function invariant(value: unknown, message: string): asserts value {
   if (!value) throw new InvariantError(message);
 }
@@ -60,6 +61,8 @@ export async function runScenario(
     model?: LanguageModel;
     repetition?: number;
     onMessages?: (messages: ChatMessage[], turnIndex: number) => void;
+    evidenceDir?: string;
+    redactValues?: string[];
   } = {},
 ): Promise<Trial> {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-agent-eval-"));
@@ -70,17 +73,45 @@ export async function runScenario(
     inputTokens = 0,
     outputTokens = 0;
   const tools: string[] = [];
+  let usageUnavailableCalls = 0;
+  let finalTrial: Trial | undefined;
+  const evidence = createTrialEvidence(
+    options.evidenceDir,
+    options.redactValues,
+  );
   const started = Date.now();
   const model: LanguageModel = {
     async complete(messages, specs, signal) {
       calls++;
       options.onMessages?.(messages, turnIndex);
-      const reply = options.model
-        ? await options.model.complete(messages, specs, signal)
-        : referenceReply(scenario.turns[turnIndex], answered);
+      evidence.record("model.request", {
+        turnIndex,
+        messages: messages.map(
+          ({ providerOutput: _private, ...message }) => message,
+        ),
+      });
+      let reply: ModelReply;
+      try {
+        reply = options.model
+          ? await options.model.complete(messages, specs, signal)
+          : referenceReply(scenario.turns[turnIndex], answered);
+      } catch (error) {
+        if (options.model) usageUnavailableCalls++;
+        throw error;
+      }
+      if (options.model && !reply.usage) usageUnavailableCalls++;
+      evidence.record("model.response", {
+        turnIndex,
+        text: reply.text,
+        calls: reply.calls,
+      });
       inputTokens += reply.usage?.inputTokens ?? 0;
       outputTokens += reply.usage?.outputTokens ?? 0;
-      tools.push(...reply.calls.map((c) => c.name));
+      tools.push(
+        ...reply.calls.map((c) =>
+          String(redactEvidence(c.name, options.redactValues)),
+        ),
+      );
       return reply;
     },
   };
@@ -137,6 +168,12 @@ export async function runScenario(
       const turn = scenario.turns[turnIndex];
       answered = false;
       const before = await store.read(projectId);
+      evidence.record("project.before", {
+        turnIndex,
+        revision: before.revision,
+        hash: before.documentHash,
+        document: before.document,
+      });
       beforeLast = before.document;
       const input = {
         operationId: `turn-${turnIndex}`,
@@ -159,6 +196,7 @@ export async function runScenario(
         "Duplicate submission created a second run.",
       );
       let run = await settle(activeRun);
+      evidence.record("run.settled", { turnIndex, run });
       invariant(
         (await store.read(projectId)).documentHash === before.documentHash,
         "Agent mutated the document before approval.",
@@ -199,6 +237,7 @@ export async function runScenario(
         );
         activeRun = child.run.id;
         run = await settle(activeRun);
+        evidence.record("question.continuation", { turnIndex, run });
         invariant(
           (await store.read(projectId)).documentHash === before.documentHash,
           "Answer applied an edit without review.",
@@ -228,6 +267,7 @@ export async function runScenario(
         "Expected an actionable edit proposal.",
       );
       const comparison = await agent.review(projectId, activeRun);
+      evidence.record("comparison", { turnIndex, comparison });
       assertIndependentOutcome(
         before.document,
         comparison.afterDocument,
@@ -249,6 +289,12 @@ export async function runScenario(
         "Approval replay repeated an edit or provider work.",
       );
       const saved = await new ProjectStore(root).read(projectId);
+      evidence.record("project.applied", {
+        turnIndex,
+        revision: saved.revision,
+        hash: saved.documentHash,
+        document: saved.document,
+      });
       assertIndependentOutcome(
         before.document,
         saved.document,
@@ -287,32 +333,38 @@ export async function runScenario(
         "manual-wording-after-undo",
       );
     }
-    return {
+    finalTrial = {
       scenarioId: scenario.id,
       repetition: options.repetition ?? 1,
       passed: true,
       calls,
-      inputTokens,
-      outputTokens,
+      inputTokens: usageUnavailableCalls ? null : inputTokens,
+      outputTokens: usageUnavailableCalls ? null : outputTokens,
+      usageUnavailableCalls,
       durationMs: Date.now() - started,
       tools,
     };
+    return finalTrial;
   } catch (error) {
-    return {
+    finalTrial = {
       scenarioId: scenario.id,
       repetition: options.repetition ?? 1,
       passed: false,
       invariantFailure: error instanceof InvariantError,
-      error:
-        error instanceof Error
-          ? error.message.slice(0, 500)
-          : "Scenario failed",
+      error: evidence.error(error),
       calls,
-      inputTokens,
-      outputTokens,
+      inputTokens: usageUnavailableCalls ? null : inputTokens,
+      outputTokens: usageUnavailableCalls ? null : outputTokens,
+      usageUnavailableCalls,
       durationMs: Date.now() - started,
       tools,
     };
+    if (projectId)
+      evidence.record(
+        "project.failed",
+        await store.read(projectId).catch(() => ({ unavailable: true })),
+      );
+    return finalTrial;
   } finally {
     if (projectId && activeRun) {
       const p = await store.read(projectId).catch(() => null);
@@ -323,6 +375,10 @@ export async function runScenario(
       )
         await agent.cancel(projectId, activeRun).catch(() => {});
     }
-    await rm(root, { recursive: true, force: true });
+    try {
+      if (finalTrial) finalTrial.evidence = await evidence.save(finalTrial);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   }
 }

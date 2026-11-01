@@ -76,6 +76,8 @@ const commit = git("rev-parse", "HEAD"),
 const files = [
   "evals/agent/scenarios.ts",
   "evals/agent/grading.ts",
+  "evals/agent/oracles.ts",
+  "evals/agent/evidence.ts",
   "evals/agent/runner.ts",
   "scripts/evaluate-agent.ts",
   "packages/agent/src/loop.ts",
@@ -126,8 +128,22 @@ async function report() {
       !dirty &&
       sourceUnchanged &&
       grade.passed,
-    inputTokens: trials.reduce((n, t) => n + t.inputTokens, 0),
-    outputTokens: trials.reduce((n, t) => n + t.outputTokens, 0),
+    inputTokens: trials.some((t) => t.inputTokens === null)
+      ? null
+      : trials.reduce((n, t) => n + (t.inputTokens ?? 0), 0),
+    outputTokens: trials.some((t) => t.outputTokens === null)
+      ? null
+      : trials.reduce((n, t) => n + (t.outputTokens ?? 0), 0),
+    usageUnavailableCalls: trials.reduce(
+      (n, t) => n + (t.usageUnavailableCalls ?? 0),
+      0,
+    ),
+    engineVersion: JSON.parse(
+      await readFile("config/engine-release.json", "utf8"),
+    ).engineVersion,
+    lockfileHash: createHash("sha256")
+      .update(await readFile("package-lock.json"))
+      .digest("hex"),
     scenarioLatencyMs: { p50: percentile(0.5), p95: percentile(0.95) },
     trials,
   };
@@ -140,7 +156,12 @@ await report();
 outer: for (let repetition = 1; repetition <= repeats; repetition++)
   for (const scenario of cases) {
     if (live && (transportFailed || requests >= maxRequests)) break outer;
-    const result = await runScenario(scenario, { model, repetition });
+    const result = await runScenario(scenario, {
+      model,
+      repetition,
+      evidenceDir: output + ".evidence",
+      redactValues: [config.apiKey],
+    });
     trials.push(result);
     console.log(
       `${result.passed ? "PASS" : "FAIL"} ${scenario.id} (${repetition}/${repeats})${result.error ? `: ${result.error}` : ""}`,

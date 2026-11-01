@@ -93,8 +93,10 @@ export type Trial = {
   invariantFailure?: boolean;
   error?: string;
   calls: number;
-  inputTokens: number;
-  outputTokens: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  usageUnavailableCalls?: number;
+  evidence?: { path: string; sha256: string; omitted: number };
   durationMs: number;
   tools: string[];
 };
