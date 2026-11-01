@@ -5,11 +5,11 @@ checkout at web commit `dab4db60`. `extraction-manifest.json` records the origin
 file hashes. It is a source-origin record, not a claim that adapted files remain
 byte-identical. The source repositories were not modified by this extraction.
 
-The engine snapshot comes from DojoClip's declared Dojo Video Engine 1.1.0 vendor tree,
+The initial engine snapshot came from DojoClip's declared Dojo Video Engine 1.1.0 vendor tree,
 based on upstream commit `8ef6e0228dbfa7ee486ac145d8cb5dd5e5ba24d2`. Its 12 downstream
-compatibility/performance/correctness patches remain described in
-`vendor/dojo-video-engine/UPSTREAM.json`. Runtime source is included so a clean clone
-does not need a sibling checkout, private registry, or unpublished engine package.
+compatibility/performance/correctness patches were recorded in the historical
+`vendor/dojo-video-engine/UPSTREAM.json`. The reconciled runtime now comes from
+public npm packages; the source copy and its TypeScript aliases have been removed.
 
 Harness adaptations:
 
@@ -24,17 +24,20 @@ Harness adaptations:
   retain complete SHA-256 byte identity.
 - Inclusion of transitions and linked groups in model context.
 - Zod imports use the maintained `zod/v3` compatibility API in the pinned Zod 4
-  distribution. This preserves the renderer/command schema API while consuming
-  the updated dependency. Engine source import suffixes retain the existing
-  DojoClip source-build transformation.
-- Next.js App Router, shared TypeScript aliases, and a vendor base configuration for standalone source compilation. Vite is retained only for tests and the optional product reference fixture.
+  distribution. This preserves the command schema API while consuming the updated
+  dependency. Published engine packages supply their own compiled entry points.
+- Next.js App Router and shared TypeScript aliases for harness source workspaces.
+  Vite is retained only for tests and the optional product reference fixture.
 
 `scripts/extract-editor.mjs` records the one-time extraction procedure. Do not
-rerun it over the adapted working tree. Future engine updates should reconcile
-declared patches, run the core/browser checks, and update provenance together.
+rerun it over the adapted working tree. Future engine updates should change the
+exact npm versions, lockfile, and release provenance together, then run the
+core/browser checks. Engine changes belong upstream.
 
 The current workspace packages are private to the monorepo for release management;
-this is unrelated to the source license. This repository is published publicly under MIT. npm publication and replacement of DojoClip's in-tree editor remain separate release steps.
+this is unrelated to the source license. This repository is published publicly under MIT.
+Publishing harness SDK packages and replacing DojoClip's in-tree editor remain
+separate release steps.
 
 ## Engine naming migration — 2026-10-31
 
@@ -43,3 +46,12 @@ The engine repository, package scope, source paths, schema/tool identities, and 
 ## Product UI alignment — 2026-10-31
 
 The custom application/chat presentation was superseded by the product components. The initial `config/product-ui.manifest.json` recorded 84 managed UI, style, locale, and route files. The English-only simplification reduces this to 75 by excluding eight language dictionaries and the Japanese UI font loader; shared editor/chat components are unchanged. The new conflict-aware sync command and explicit host wrappers replace the one-time extraction workflow for UI upkeep.
+
+
+## Published engine consumption — 2026-11-01
+
+The initial vendored engine copy and its TypeScript aliases have been replaced by
+exact 1.1.1 npm packages. Rendering, playback, and audio/export patches were merged
+upstream before publication. `config/engine-release.json` records the public source
+commit, version, and package integrity. The earlier extraction manifests describe
+historical inputs; they are not the current runtime dependency graph.

@@ -18,63 +18,6 @@
       "node"
     ],
     "paths": {
-      "@dojo-video-engine/core": [
-        "./vendor/dojo-video-engine/core/src/index.ts"
-      ],
-      "@dojo-video-engine/agent-tools": [
-        "./vendor/dojo-video-engine/agent-tools/src/index.ts"
-      ],
-      "@dojo-video-engine/commands": [
-        "./vendor/dojo-video-engine/commands/src/index.ts"
-      ],
-      "@dojo-video-engine/export": [
-        "./vendor/dojo-video-engine/export/src/index.ts"
-      ],
-      "@dojo-video-engine/export/worker": [
-        "./vendor/dojo-video-engine/export/src/worker.ts"
-      ],
-      "@dojo-video-engine/extensions": [
-        "./vendor/dojo-video-engine/extensions/src/index.ts"
-      ],
-      "@dojo-video-engine/inspection": [
-        "./vendor/dojo-video-engine/inspection/src/index.ts"
-      ],
-      "@dojo-video-engine/interchange": [
-        "./vendor/dojo-video-engine/interchange/src/index.ts"
-      ],
-      "@dojo-video-engine/layout": [
-        "./vendor/dojo-video-engine/layout/src/index.ts"
-      ],
-      "@dojo-video-engine/player": [
-        "./vendor/dojo-video-engine/player/src/index.ts"
-      ],
-      "@dojo-video-engine/presets": [
-        "./vendor/dojo-video-engine/presets/src/index.ts"
-      ],
-      "@dojo-video-engine/presets/macros": [
-        "./vendor/dojo-video-engine/presets/src/macros.ts"
-      ],
-      "@dojo-video-engine/renderer-canvas2d": [
-        "./vendor/dojo-video-engine/renderer-canvas2d/src/index.ts"
-      ],
-      "@dojo-video-engine/renderer-canvas2d/runtime": [
-        "./vendor/dojo-video-engine/renderer-canvas2d/src/runtime.ts"
-      ],
-      "@dojo-video-engine/runtime": [
-        "./vendor/dojo-video-engine/runtime/src/index.ts"
-      ],
-      "@dojo-video-engine/schema": [
-        "./vendor/dojo-video-engine/schema/src/index.ts"
-      ],
-      "@dojo-video-engine/schema/commands": [
-        "./vendor/dojo-video-engine/schema/src/commands.ts"
-      ],
-      "@dojo-video-engine/schema/patch": [
-        "./vendor/dojo-video-engine/schema/src/patch.ts"
-      ],
-      "@dojo-video-engine/schema/values": [
-        "./vendor/dojo-video-engine/schema/src/values.ts"
-      ],
       "@/lib/*": [
         "packages/core/src/lib/*"
       ],
@@ -116,7 +59,6 @@
     "scripts/evaluate-agent.ts"
   ],
   "exclude": [
-    "node_modules",
-    "vendor"
+    "node_modules"
   ]
 }

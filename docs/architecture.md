@@ -19,8 +19,8 @@ is replaceable; the current implementation intentionally needs no database.
 The inherited `lib/editor` and `lib/video-project` organization is retained to
 avoid rewriting proven compiler/history behavior during extraction. `core` also
 contains browser media helpers, which must not be imported into a headless host.
-Server entrypoints import only pure modules. Next.js and TypeScript aliases support these source
-workspaces; the runtime packages are not yet separate published distributions.
+Server entrypoints import only pure modules. Next.js and TypeScript aliases support
+the harness source workspaces; the engine is a separately published dependency.
 
 Each project has an atomic JSON file under `.data/projects`. Writes are serialized
 within the single local process. Do not run two hosts against the same data directory.
@@ -45,7 +45,8 @@ runs and ASR/translation jobs snapshot their provider so updates affect only new
 
 Managed UI files are checked against `config/product-ui.manifest.json`. Product changes are pulled explicitly through `npm run sync:ui`; host adapters are excluded from that managed set. Source components retain their markup, Tailwind classes, CSS, and interactions. The local application header, English-only language policy, provider settings, and stored-output page are host-owned. Shared component reuse does not require full hosted-product parity. See `syncing-product-ui.md`.
 
-The engine source is vendored to make this checkout independently runnable while
-preserving the required downstream corrections. It is not a new renderer fork.
-Upstreaming those patches and consuming tested versioned packages is the intended
-distribution path. See `docs/provenance.md`.
+The engine is consumed from exact-version `@dojo-video-engine/*` npm packages.
+Its source, rendering fixes, and release artifacts belong to the engine repository.
+`config/engine-release.json` records the release commit and package integrity;
+`package-lock.json` pins the actual dependency graph. No engine TypeScript aliases
+or vendored renderer source are needed to run this checkout.

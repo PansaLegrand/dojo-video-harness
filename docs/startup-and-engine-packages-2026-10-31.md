@@ -1,5 +1,8 @@
 # Startup and engine package preparation — 2026-10-31
 
+This records the initial preparation. The npm migration below supersedes the
+publication-pending status in the original sections.
+
 The harness startup change is `14c4499`; `625ec1c` adds LF checkout normalization
 and verifies managed UI hashes in the cross-platform startup job.
 
@@ -51,3 +54,19 @@ the agent loop instead of asking the model to correct a host storage error.
 
 The follow-up passed 196 local tests, production build, and all 25 browser checks.
 The Windows scenario/clean-startup job is the acceptance gate for this fix.
+
+## npm migration — 2026-11-01
+
+All 16 engine packages are now public at **1.1.1**, under MIT, with GitHub
+provenance. The [successful release workflow](https://github.com/PansaLegrand/dojo-video-engine/actions/runs/41269083903)
+retains the tested bytes in the [GitHub release](https://github.com/PansaLegrand/dojo-video-engine/releases/tag/v1.1.1).
+The harness pins exact versions in its manifest and lockfile, records release
+integrity in `config/engine-release.json`, and removes the old renderer source
+copy and engine aliases. Users need no sibling engine checkout.
+
+The registry-installed harness passed 196 tests, production build, and all 25
+browser editing/export checks. npm verified 337 dependency signatures and 72
+attestations. The earlier cross-platform run at `5d52ebc` passed Windows, macOS,
+and Linux startup; the migration commit also runs those checks in CI.
+These checks use synthetic providers. They do not replace the opt-in paid GPT
+milestone evaluation or human visual/audio review.

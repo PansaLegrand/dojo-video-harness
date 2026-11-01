@@ -90,6 +90,7 @@ try {
   await writeFile(tsPath, JSON.stringify(ts, null, 2) + "\n");
   await rm(path.join(checkout, "vendor/dojo-video-engine"), {
     recursive: true,
+    force: true,
   });
   const install = npmInvocation(["install"]);
   await run(install.command, install.args);

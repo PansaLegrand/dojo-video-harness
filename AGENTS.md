@@ -19,7 +19,8 @@ Skills are instructions, not permission grants. Tools are trusted code, not
 model-provided modules. Keys must never enter browser bundles or committed files.
 
 The UI is managed by `config/product-ui.manifest.json`. Do not hand-edit or reformat managed files. Use `npm run sync:ui -- --source ../dojo-video-web` to preview changes, then `--apply`. `npm run check:ui-sync` verifies the recorded files without a product checkout. Put local behavior in `packages/ui/src/host` or host-owned wrappers. Do not rerun the historical extraction script. Dojo Video Engine
-changes belong upstream where practical; record any vendor patches and provenance.
+changes belong upstream. Consume tested versioned npm packages and update
+package-lock.json and config/engine-release.json together; do not restore a renderer source fork.
 
 At milestones, follow `docs/agent-milestone-testing.md`. Reference scenario runs
 validate the tests and host, not GPT quality. Paid evaluations require explicit

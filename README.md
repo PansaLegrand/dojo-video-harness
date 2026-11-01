@@ -96,7 +96,7 @@ npm start
   split, text/graphics, captions, styles, transitions, linked groups, source ranges,
   quiet-section analysis, undo/redo, and browser recovery.
 - Dojo Video Engine preview, local proxies within admission limits, and browser MP4
-  export. The vendored engine includes the declared DojoClip correctness patches.
+  export. The pinned engine packages include the reconciled DojoClip correctness patches.
 - Local project persistence with serialized transactions, atomic file replacement,
   revisions, conflict detection, operation receipts, and history.
 - A framework-independent agent loop using real function calls. Inspect a project,
@@ -128,14 +128,15 @@ Start with [the guided walkthrough](docs/learn-the-harness.md), then follow:
 | `apps/server/src/agent-service.ts`                     | Durable runs, questions, approvals, cancellation                  |
 | `apps/server/src/store.ts`                             | Local transactions, receipts, revisions                           |
 | `apps/server/src/local-api.ts`                         | Local services behind Next route handlers                         |
-| `vendor/dojo-video-engine/`                            | Pinned renderer source and patch provenance                       |
+| `config/engine-release.json`                          | Pinned engine version, source commit, and registry integrity       |
 
 There is no LangChain, Vercel agent runtime, Pi runtime, or coding-agent subprocess
 in the execution path. Pi inspired the small-core approach; a provider or runtime
 adapter can be added without giving it authority over document commits.
 
-The packages are source workspaces in this repository. They are not published npm
-packages yet. There is no runtime dependency on a sibling checkout. Development
+The harness packages are source workspaces in this repository. They are not
+published npm packages. The engine is consumed from the public
+`@dojo-video-engine/*` packages at exact version 1.1.1. There is no runtime dependency on a sibling checkout. Development
 uses the product’s Next.js 15.5 family, React 18.3, Tailwind 3.4, and shared TypeScript aliases; independently packaged
 embeddable SDK distributions are a subsequent release step.
 
