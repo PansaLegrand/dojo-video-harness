@@ -129,6 +129,9 @@ directs users to the caption UI when new transcription is required.
 
 ## Read the implementation
 
+Coding agents should begin with [the repository guide](AGENTS.md) for ownership,
+commands, invariants, and the readiness plan.
+
 Start with [the guided walkthrough](docs/learn-the-harness.md), then follow:
 
 | Location                                               | Responsibility                                                    |
