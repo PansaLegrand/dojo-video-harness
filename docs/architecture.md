@@ -23,7 +23,10 @@ Server entrypoints import only pure modules. Next.js and TypeScript aliases supp
 the harness source workspaces; the engine is a separately published dependency.
 
 Each project has an atomic JSON file under `.data/projects`. Writes are serialized
-within the single local process. Do not run two hosts against the same data directory.
+with reads in a per-project queue within the single local process, so polling
+does not overlap atomic replacement on Windows. Transaction callbacks use their
+supplied snapshot and must not recursively read/transact the same project.
+Different projects remain independent. Do not run two hosts against the same data directory.
 The host retains 50 undo states and 100 revision bases. Older bases fail closed;
 operation receipts are retained for replay. Model calls do not hold a project lock.
 

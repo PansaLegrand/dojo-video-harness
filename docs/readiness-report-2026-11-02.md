@@ -31,6 +31,24 @@ final report-retention/classification change also passed its 10-test focused
 regression set and typecheck. Each implementation increment was committed after
 its relevant verification; see `docs/readiness-progress.md`.
 
+## Windows persistence follow-up
+
+CI exposed transient Windows `EPERM` replacement failures under polling reads,
+including on the earlier pre-roadmap commit. Reads now share each project's
+serialization queue with writes; transaction internals use an unlocked snapshot
+read under that same queue. Other projects remain independent. The fix preserves
+atomic replacement and never repeats the transaction callback or provider call.
+
+Regression tests hold a write open while polling, prove other projects remain
+accessible, and exercise sustained read/write pressure. The final local check
+passed **220 tests**, typecheck and build; the expanded focused suite passed
+**89 tests**, and all **25 browser checks** passed. The
+[CI run for b1071fa](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41329186756)
+passed the editor job and Windows/macOS/Linux startup jobs, including actual
+process-restart coverage in the expanded cross-platform suite.
+
+This storage fix does not change the pending live GPT verdict below.
+
 ## Live evidence and its limits
 
 | Run                                | Result                                                                                                   | Interpretation                                                                          |

@@ -94,5 +94,16 @@
     "wordCount": 24,
     "sourceBound": true
   },
-  "liveMediaClaim": "ASR adapter/source-evidence fixture only; not a live browser or general speech benchmark"
+  "liveMediaClaim": "ASR adapter/source-evidence fixture only; not a live browser or general speech benchmark",
+  "ci": {
+    "url": "https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41329186756",
+    "commit": "b1071fa97676543faf99a63296677c70802d8852",
+    "result": "success",
+    "jobs": [
+      "local-editor",
+      "clean-startup (windows-latest)",
+      "clean-startup (macos-latest)",
+      "clean-startup (ubuntu-latest)"
+    ]
+  }
 }
