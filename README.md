@@ -1,5 +1,8 @@
 # Dojo Video Harness
 
+[![CI](https://github.com/PansaLegrand/dojo-video-harness/actions/workflows/check.yml/badge.svg)](https://github.com/PansaLegrand/dojo-video-harness/actions/workflows/check.yml)
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A local, English-only open-source video editor with a small TypeScript editing agent. It shares DojoClip’s Next.js App Router, React 18, Tailwind 3, and editor components, with a simpler local host.
 Bring your own LLM and transcription providers. Edit the same timeline by hand
 or through chat, review the result, and export through [Dojo Video Engine](https://github.com/PansaLegrand/dojo-video-engine) in your browser.
@@ -14,9 +17,10 @@ _Browser-test screenshot with synthetic model responses._
 
 ## Run locally
 
-Requirements: Node **20.19+**, npm, and a desktop browser with WebCodecs support
-(Chromium is the tested path). No database, Redis, DojoClip account, or cloud worker
-is needed. FFmpeg is required only for the browser acceptance test, not the app.
+Requirements: Git, Node **20.19+** (Node **22** recommended), npm, and a desktop
+browser with WebCodecs support (Chromium is the tested path). No database, Redis,
+DojoClip account, or cloud worker is needed. FFmpeg is required only for the
+browser acceptance test, not the app.
 
 ```sh
 git clone https://github.com/PansaLegrand/dojo-video-harness.git
@@ -27,13 +31,21 @@ npm run launch
 `launch` installs locked dependencies when missing, creates `.env` without
 overwriting an existing file, checks the local environment, and starts the editor.
 It opens the browser automatically from an interactive terminal. Otherwise open
-**http://127.0.0.1:4310**. Node 22 is recommended and pinned in `.nvmrc`.
+**http://127.0.0.1:4310**. The engine is installed automatically from the public
+`@dojo-video-engine/*` npm packages, pinned to **1.1.1**; no separate engine clone
+or pnpm installation is needed. Node 22 is pinned in `.nvmrc`.
 
 Create a project and import media. Manual editing, subtitle import, preview,
 motion graphics, and MP4 export work without API keys. In **Provider settings**,
 choose OpenAI or Kie and enter your GPT key. Speech recognition has its own provider
 settings. Saves apply to new requests immediately; running jobs keep their original
 configuration. Saved keys are never returned to the browser.
+
+| What you want to do | Provider credentials |
+| --- | --- |
+| Edit manually, import subtitles, preview, and export MP4 | None |
+| Edit through chat or translate captions | Your GPT provider key |
+| Transcribe imported speech | Your ASR provider key, configured separately |
 
 For later starts, use `npm run dev`. Other useful commands:
 
@@ -43,6 +55,10 @@ npm run setup -- --install  # Reinstall locked dependencies
 npm run doctor       # Check Node, local storage, and port availability
 npm run dev -- --no-open    # Start without opening the browser
 ```
+
+After pulling repository updates, run `npm run setup -- --install` before
+starting again. This installs the updated lockfile and preserves your `.env`
+and local project data.
 
 The setup and launcher work in PowerShell as well as macOS/Linux terminals. The
 startup CI runs on Windows, macOS, and Linux. If the port is occupied, the launcher
@@ -141,6 +157,14 @@ uses the product’s Next.js 15.5 family, React 18.3, Tailwind 3.4, and shared T
 embeddable SDK distributions are a subsequent release step.
 
 ## Verification
+
+The [engine 1.1.1 migration checks](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41270111442)
+passed on **2026-11-01**: 196 tests, production build, 25 browser editing/export
+checks, and clean startup on Windows, macOS, and Linux. See the
+[release and migration notes](docs/startup-and-engine-packages-2026-10-31.md#npm-migration--2026-11-01).
+These checks use synthetic providers; they do not certify live GPT quality.
+
+To check your own changes:
 
 ```sh
 npm run check
