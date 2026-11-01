@@ -84,6 +84,10 @@ it("defaults to zero provider calls and cannot pass a budget-exhausted live-mode
       requests: 0,
       milestoneAgentGatePassed: false,
     });
+    const duplicate = await run("reference", []);
+    expect(duplicate.code).not.toBe(0);
+    expect(duplicate.report.runId).toBe(reference.report.runId);
+    expect(requests).toBe(0);
     const capped = await run("capped", [
       "--live",
       "--repeat",

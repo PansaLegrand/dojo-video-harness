@@ -72,6 +72,7 @@ it("redacts echoed secrets from transport failures in the public report", async 
   expect(result.passed).toBe(false);
   expect(result.error).not.toContain("not-for-report");
   expect(result.inputTokens).toBeNull();
+  expect(result.failureCategory).toBe("provider");
 });
 
 it("redacts a credential echoed in a model-selected tool name", async () => {

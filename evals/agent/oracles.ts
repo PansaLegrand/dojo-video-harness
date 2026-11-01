@@ -2,7 +2,7 @@ import {
   canonicalSerialize,
   type VideoProjectDocument,
 } from "../../packages/core/src/lib/video-project/document";
-import { InvariantError } from "./grading";
+import { InvariantError, OutcomeError } from "./grading";
 
 /** Human-authored fixture outcomes. Deliberately does not import or execute commands. */
 export function assertIndependentOutcome(
@@ -161,5 +161,7 @@ export function assertIndependentOutcome(
     return canonicalSerialize(copy);
   };
   if (normalize(expected) !== normalize(after))
-    throw new Error(`Independent outcome mismatch: ${scenario}, turn ${turn}.`);
+    throw new OutcomeError(
+      `Independent outcome mismatch: ${scenario}, turn ${turn}.`,
+    );
 }

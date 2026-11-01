@@ -23,7 +23,7 @@ for (let i = 0; i < args.length; i++) {
     args[i + 1].startsWith("--")
   )
     throw new Error(
-      "Use --live, --repeat N, --max-requests N, --case ID, or --output PATH.",
+      "Use --live, --suite baseline|extended, --repeat N, --max-requests N, --case ID, or --output PATH.",
     );
   i++;
 }
@@ -99,6 +99,10 @@ const runId = new Date().toISOString().replace(/[:.]/g, "-");
 const output = path.resolve(
   value("--output", `test-results/agent-evals/${runId}.json`)!,
 );
+// Claim a new report before any provider call. Checkpoints may update this run,
+// but a later run must never overwrite earlier failure evidence.
+await mkdir(path.dirname(output), { recursive: true });
+await writeFile(output, "", { flag: "wx", mode: 0o600 });
 const trials: Trial[] = [];
 const startedAt = new Date().toISOString();
 async function report() {
@@ -166,7 +170,9 @@ async function report() {
     trials,
   };
   await mkdir(path.dirname(output), { recursive: true });
-  await writeFile(output + ".tmp", JSON.stringify(result, null, 2) + "\n");
+  await writeFile(output + ".tmp", JSON.stringify(result, null, 2) + "\n", {
+    mode: 0o600,
+  });
   await rename(output + ".tmp", output);
   return result;
 }
@@ -193,6 +199,7 @@ console.log(
     mode: result.mode,
     grade: result.grade,
     milestoneAgentGatePassed: result.milestoneAgentGatePassed,
+    extendedAgentGatePassed: result.extendedAgentGatePassed,
   }),
 );
 if (!result.grade.passed) process.exitCode = 1;

@@ -15,7 +15,7 @@ import type {
   ChatMessage,
 } from "../../packages/agent/src/types";
 import { fixture, setNode, type Scenario, type Turn } from "./scenarios";
-import { gradeEdit, InvariantError, type Trial } from "./grading";
+import { gradeEdit, InvariantError, OutcomeError, type Trial } from "./grading";
 import { assertIndependentOutcome } from "./oracles";
 import { createTrialEvidence, redactEvidence } from "./evidence";
 function invariant(value: unknown, message: string): asserts value {
@@ -74,6 +74,7 @@ export async function runScenario(
     outputTokens = 0;
   const tools: string[] = [];
   let usageUnavailableCalls = 0;
+  let providerFailed = false;
   let finalTrial: Trial | undefined;
   const evidence = createTrialEvidence(
     options.evidenceDir,
@@ -96,6 +97,7 @@ export async function runScenario(
           ? await options.model.complete(messages, specs, signal)
           : referenceReply(scenario.turns[turnIndex], answered);
       } catch (error) {
+        providerFailed = true;
         if (options.model) usageUnavailableCalls++;
         throw error;
       }
@@ -362,6 +364,18 @@ export async function runScenario(
       repetition: options.repetition ?? 1,
       passed: false,
       invariantFailure: error instanceof InvariantError,
+      failureCategory:
+        error instanceof InvariantError
+          ? "invariant"
+          : error instanceof OutcomeError
+            ? "outcome"
+            : error instanceof Error &&
+                error.message ===
+                  "Evaluation request budget exhausted; no automatic retry."
+              ? "budget"
+              : providerFailed
+                ? "provider"
+                : "host-or-agent",
       error: evidence.error(error),
       calls,
       inputTokens: usageUnavailableCalls ? null : inputTokens,

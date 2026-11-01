@@ -8,6 +8,7 @@ import {
 } from "../../packages/core/src/lib/video-project/commands";
 
 export class InvariantError extends Error {}
+export class OutcomeError extends Error {}
 function equal(a: unknown, b: unknown) {
   return a === undefined || b === undefined
     ? a === b
@@ -82,7 +83,7 @@ export function gradeEdit(
     byIdentity(actual),
   );
   if (canonicalSerialize(actual) !== canonicalSerialize(wanted))
-    throw new Error(
+    throw new OutcomeError(
       "Final document differs from the expected edit or changes unrelated content.",
     );
 }
@@ -91,6 +92,12 @@ export type Trial = {
   repetition: number;
   passed: boolean;
   invariantFailure?: boolean;
+  failureCategory?:
+    | "provider"
+    | "invariant"
+    | "outcome"
+    | "host-or-agent"
+    | "budget";
   error?: string;
   calls: number;
   inputTokens: number | null;
