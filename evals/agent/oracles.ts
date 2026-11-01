@@ -24,6 +24,31 @@ export function assertIndependentOutcome(
     item("title").node.style = { ...item("title").node.style, fontSize: value };
   };
   switch (scenario) {
+    case "compound-request":
+      Object.assign(item("clip").node, {
+        from: 0,
+        duration: 150,
+        videoStartTime: 0,
+      });
+      item("bed").node.volume = 0.25;
+      item("title").node.text = "Intro";
+      break;
+    case "fractional-time":
+      item("title").node.from = 75;
+      break;
+    case "named-distractor":
+      item("subtitle").node.text = "Thanks for watching";
+      break;
+    case "ambiguous-target":
+      color("title", "#2563eb");
+      break;
+    case "rejected-follow-up":
+      if (turn === 0) color("title", "#2563eb");
+      else if (turn === 1) item("title").node.text = "Launch Day";
+      else throw new Error("Unknown rejected-proposal turn");
+      break;
+    case "compound-unsupported":
+      break;
     case "title-color":
     case "project-text-injection":
       color("title", "#2563eb");

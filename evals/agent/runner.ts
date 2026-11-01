@@ -38,8 +38,8 @@ function referenceReply(turn: Turn, answered: boolean): ModelReply {
           question
             ? {
                 id: "color",
-                question: "Blue or green?",
-                options: [
+                question: turn.question?.question ?? "Blue or green?",
+                options: turn.question?.options ?? [
                   { id: "blue", label: "Blue (#2563eb)" },
                   { id: "green", label: "Green (#16a34a)" },
                 ],
@@ -214,7 +214,9 @@ export async function runScenario(
         );
         assert(run.clarification, "Missing structured question.");
         const q = run.clarification;
-        const choice = q.options?.find((o) => /green/i.test(o.label));
+        const choice = q.options?.find((o) =>
+          o.label.toLowerCase().includes(turn.answerMatch ?? "green"),
+        );
         const reply = {
           operationId: `answer-${turnIndex}`,
           questionId: q.id,
@@ -275,6 +277,15 @@ export async function runScenario(
         turnIndex,
       );
       gradeEdit(before.document, comparison.afterDocument, turn.reference);
+      if (turn.reject) {
+        await agent.cancel(projectId, activeRun);
+        invariant(
+          (await store.read(projectId)).documentHash === before.documentHash,
+          "Rejected proposal changed saved content.",
+        );
+        evidence.record("proposal.rejected", { turnIndex, runId: activeRun });
+        continue;
+      }
       const approval = {
         operationId: `approve-${turnIndex}`,
         baseRevision: before.revision,

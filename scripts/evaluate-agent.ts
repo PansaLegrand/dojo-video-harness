@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile, readdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { scenarios } from "../evals/agent/scenarios";
+import { extendedScenarios } from "../evals/agent/extended-scenarios";
 import { runScenario } from "../evals/agent/runner";
 import { gradeSuite, type Trial } from "../evals/agent/grading";
 import { GptResponsesModel } from "../packages/adapters/src/gpt-responses";
@@ -15,7 +16,9 @@ const value = (flag: string, fallback?: string) =>
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--live") continue;
   if (
-    !["--repeat", "--max-requests", "--case", "--output"].includes(args[i]) ||
+    !["--repeat", "--max-requests", "--case", "--output", "--suite"].includes(
+      args[i],
+    ) ||
     !args[i + 1] ||
     args[i + 1].startsWith("--")
   )
@@ -37,9 +40,13 @@ if (
   throw new Error("repeat must be 1–10 and max-requests 1–1000.");
 const live = args.includes("--live"),
   selection = value("--case");
+const suite = value("--suite", "baseline");
+if (!["baseline", "extended"].includes(suite!))
+  throw new Error("Use --suite baseline or extended");
+const available = suite === "extended" ? extendedScenarios : scenarios;
 const cases = selection
-  ? scenarios.filter((s) => s.id === selection)
-  : scenarios;
+  ? available.filter((s) => s.id === selection)
+  : available;
 if (!cases.length) throw new Error("Unknown scenario ID.");
 const config = {
   baseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1",
@@ -75,6 +82,7 @@ const commit = git("rev-parse", "HEAD"),
   dirty = !!git("status", "--porcelain");
 const files = [
   "evals/agent/scenarios.ts",
+  "evals/agent/extended-scenarios.ts",
   "evals/agent/grading.ts",
   "evals/agent/oracles.ts",
   "evals/agent/evidence.ts",
@@ -102,6 +110,7 @@ async function report() {
     durations[Math.max(0, Math.ceil(durations.length * p) - 1)] ?? null;
   const result = {
     version: 1,
+    suite,
     runId,
     startedAt,
     updatedAt: new Date().toISOString(),
@@ -123,6 +132,15 @@ async function report() {
     // A reference fixture run or a filtered/single-pass live run cannot qualify a milestone.
     milestoneAgentGatePassed:
       live &&
+      suite === "baseline" &&
+      !selection &&
+      repeats >= 3 &&
+      !dirty &&
+      sourceUnchanged &&
+      grade.passed,
+    extendedAgentGatePassed:
+      live &&
+      suite === "extended" &&
       !selection &&
       repeats >= 3 &&
       !dirty &&

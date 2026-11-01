@@ -13,6 +13,12 @@ export type Turn = {
   answer?: string;
   restart?: boolean;
   referenceTurn?: number;
+  reject?: boolean;
+  question?: {
+    question: string;
+    options: Array<{ id: string; label: string }>;
+  };
+  answerMatch?: string;
 };
 export type Scenario = {
   id: string;
