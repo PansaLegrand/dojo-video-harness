@@ -24,6 +24,26 @@ async function fixture() {
   await store.load();
   return { root, store };
 }
+it("saves an explicit Gateway GPT selection without exposing its key or changing old job configuration", async () => {
+  const { store } = await fixture(),
+    prior = store.get("llm");
+  const result = await store.save({
+    kind: "llm",
+    baseUrl: "https://ai-gateway.vercel.sh/v1",
+    model: "openai/gpt-6-sol",
+    apiKey: "synthetic-gateway-key",
+  });
+  expect(result.llm.model).toBe("openai/gpt-6-sol");
+  expect(JSON.stringify(result)).not.toContain("synthetic-gateway-key");
+  expect(prior.model).toBe("gpt-6-sol");
+  await expect(
+    store.save({
+      kind: "llm",
+      baseUrl: "https://ai-gateway.vercel.sh/v1",
+      model: "google/gemini-test",
+    }),
+  ).rejects.toThrow(/GPT/);
+});
 it("persists credentials privately, returns only metadata, and leaves job snapshots unchanged", async () => {
   const { root, store } = await fixture();
   const job = store.get("llm");

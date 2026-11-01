@@ -81,6 +81,12 @@ LLM_MODEL=gpt-6-sol
 LLM_API_KEY=your-kie-key
 ```
 
+Vercel AI Gateway can be selected explicitly with
+`LLM_BASE_URL=https://ai-gateway.vercel.sh/v1`,
+`LLM_MODEL=openai/gpt-6-sol`, and your own Gateway key in `LLM_API_KEY`.
+This uses the same Responses transport. Endpoint changes start a separate test
+run; the harness does not silently switch providers or reuse a failed run as a pass.
+
 Use the key for the endpoint you configure. The model name is sent unchanged;
 there is no automatic model switching or retry. Non-GPT model names are rejected
 before a request. Other model families and Chat Completions are outside the

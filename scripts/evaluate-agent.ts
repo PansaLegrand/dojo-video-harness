@@ -91,6 +91,7 @@ const files = [
   "packages/agent/src/loop.ts",
   "packages/agent/src/tools.ts",
   "packages/adapters/src/gpt-responses.ts",
+  "packages/adapters/src/gpt-model.ts",
   ...(await readdir("skills")).sort().map((n) => `skills/${n}`),
 ];
 const hash = createHash("sha256");

@@ -1,4 +1,5 @@
 import { atomicReplace } from "./atomic-replace";
+import { isGptModelId } from "../../../packages/adapters/src/gpt-model";
 import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -40,8 +41,10 @@ function validate(config: ProviderConfig, kind: Kind) {
       "Use a provider base URL with HTTPS (or HTTP on localhost), without credentials, query parameters, or a fragment.",
     );
   }
-  if (kind === "llm" && !/^gpt-[a-z0-9][a-z0-9._-]{0,99}$/.test(config.model))
-    throw new HttpError("Choose a GPT model such as gpt-6-sol.");
+  if (kind === "llm" && !isGptModelId(config.model))
+    throw new HttpError(
+      "Choose a GPT model such as gpt-6-sol or openai/gpt-6-sol.",
+    );
   if (/[\r\n\u0000]/.test(config.apiKey))
     throw new HttpError("The provider key must be a single line.");
   return config;

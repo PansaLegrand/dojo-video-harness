@@ -1,4 +1,5 @@
 import { z } from "zod/v3";
+import { isGptModelId } from "./gpt-model";
 import type {
   LanguageModel,
   ChatMessage,
@@ -116,9 +117,9 @@ export class GptResponsesModel implements LanguageModel {
     signal: AbortSignal,
   ) {
     signal.throwIfAborted();
-    if (!/^gpt-[a-z0-9][a-z0-9._-]{0,99}$/.test(this.config.model))
+    if (!isGptModelId(this.config.model))
       throw new Error(
-        "Set LLM_MODEL to a GPT model such as gpt-6-sol. Only GPT models are supported.",
+        "Set LLM_MODEL to a GPT model such as gpt-6-sol or openai/gpt-6-sol. Only GPT models are supported.",
       );
     const response = await fetch(
       providerUrl(this.config.baseUrl, "responses"),

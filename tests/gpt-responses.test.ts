@@ -54,6 +54,37 @@ function provider(body: unknown, status = 200) {
   return fetch;
 }
 describe("GPT Responses transport", () => {
+  it("preserves an explicitly selected Gateway GPT model and function-call protocol", async () => {
+    const fetch = provider(complete([call()]));
+    const reply = await new GptResponsesModel({
+      ...config,
+      baseUrl: "https://ai-gateway.vercel.sh/v1",
+      model: "openai/gpt-6-sol",
+    }).complete([{ role: "user", content: "Inspect" }], [tool], signal());
+    const [url, init] = fetch.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(url.href).toBe("https://ai-gateway.vercel.sh/v1/responses");
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      model: "openai/gpt-6-sol",
+      tools: [{ type: "function", name: "inspect_project", strict: false }],
+      store: false,
+    });
+    expect(reply.calls[0].id).toBe("call-1");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    "google/gpt-6-sol",
+    "openai/claude-test",
+    "openai/gpt-6-sol/other",
+    "openai/gpt-6-sol\n",
+    "openai/gpt-",
+    "gpt-6-sol?model=other",
+  ])("rejects invalid or non-GPT namespaced models: %s", async (model) => {
+    const fetch = provider(complete([answer]));
+    await expect(
+      new GptResponsesModel({ ...config, model }).complete([], [], signal()),
+    ).rejects.toThrow("Only GPT");
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("uses Responses function calls, bounded stateless requests, and image input", async () => {
     const fetch = provider(complete([reasoning, call()]));
     const abort = signal();
