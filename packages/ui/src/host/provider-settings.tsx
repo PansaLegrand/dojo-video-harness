@@ -168,10 +168,33 @@ function ProviderForm({
       )}
       {kind === "asr" && (
         <p className="text-sm text-muted-foreground">
-          Use an OpenAI-compatible transcription endpoint with word timestamps,
-          such as whisper-1. Your GPT key does not automatically configure
-          speech recognition.
+          Use ElevenLabs Scribe or an OpenAI-compatible transcription endpoint
+          with word timestamps. Speech recognition uses its own provider key.
         </p>
+      )}
+      {kind === "asr" && (
+        <div className="flex gap-3 text-sm">
+          <button
+            type="button"
+            className="text-primary underline"
+            onClick={() => {
+              setBaseUrl("https://api.elevenlabs.io/v1");
+              setModel("scribe_v1");
+            }}
+          >
+            Use ElevenLabs
+          </button>
+          <button
+            type="button"
+            className="text-primary underline"
+            onClick={() => {
+              setBaseUrl("https://api.openai.com/v1");
+              setModel("whisper-1");
+            }}
+          >
+            Use OpenAI transcription
+          </button>
+        </div>
       )}
       <button
         disabled={busy}

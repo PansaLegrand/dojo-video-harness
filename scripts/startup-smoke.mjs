@@ -84,6 +84,36 @@ try {
   assert(
     !(await (await fetch(base + "/api/config")).json()).data.llm.keyConfigured,
   );
+  const speech = page.getByRole("form", { name: "Speech recognition" });
+  await speech
+    .getByRole("button", { name: "Use ElevenLabs", exact: true })
+    .click();
+  assert.equal(
+    await speech.getByLabel("Base URL", { exact: true }).inputValue(),
+    "https://api.elevenlabs.io/v1",
+  );
+  assert.equal(
+    await speech.getByLabel("Model", { exact: true }).inputValue(),
+    "scribe_v1",
+  );
+  await speech
+    .getByLabel("API key", { exact: true })
+    .fill("startup-asr-secret");
+  await speech
+    .getByRole("button", { name: "Save settings", exact: true })
+    .click();
+  await speech.getByRole("status").waitFor();
+  const asrSaved = await (await fetch(base + "/api/config")).text();
+  assert(!asrSaved.includes("startup-asr-secret"));
+  assert(JSON.parse(asrSaved).data.asr.keyConfigured);
+  await speech.getByLabel("Clear saved key").check();
+  await speech
+    .getByRole("button", { name: "Save settings", exact: true })
+    .click();
+  await speech.getByRole("status").waitFor();
+  assert(
+    !(await (await fetch(base + "/api/config")).json()).data.asr.keyConfigured,
+  );
   await page.screenshot({
     path: path.join(output, "settings.png"),
     fullPage: true,
@@ -98,6 +128,7 @@ try {
         node: process.version,
         projectCreated: true,
         settingsSavedAndCleared: true,
+        elevenLabsPreset: true,
         providerCalls: 0,
       },
       null,

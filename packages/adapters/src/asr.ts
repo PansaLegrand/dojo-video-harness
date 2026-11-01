@@ -28,25 +28,72 @@ export async function transcribe(
   language: string,
   signal: AbortSignal,
 ) {
+  signal.throwIfAborted();
+  const base = providerUrl(config.baseUrl, "audio/transcriptions");
+  const eleven = base.hostname === "api.elevenlabs.io";
+  if (eleven && base.pathname !== "/v1/audio/transcriptions")
+    throw new Error(
+      "Use https://api.elevenlabs.io/v1 as the ElevenLabs base URL.",
+    );
   const form = new FormData();
   form.set("file", file, name);
-  form.set("model", config.model);
-  form.set("response_format", "verbose_json");
-  form.append("timestamp_granularities[]", "word");
-  if (language !== "auto") form.set("language", language);
+  if (eleven) {
+    form.set("model_id", config.model);
+    form.set("timestamps_granularity", "word");
+    form.set("tag_audio_events", "false");
+    form.set("diarize", "false");
+    if (language !== "auto") form.set("language_code", language);
+  } else {
+    form.set("model", config.model);
+    form.set("response_format", "verbose_json");
+    form.append("timestamp_granularities[]", "word");
+    if (language !== "auto") form.set("language", language);
+  }
   const response = await fetch(
-    providerUrl(config.baseUrl, "audio/transcriptions"),
+    eleven ? providerUrl(config.baseUrl, "speech-to-text") : base,
     {
       method: "POST",
       redirect: "error",
       signal,
       headers: config.apiKey
-        ? { Authorization: `Bearer ${config.apiKey}` }
+        ? eleven
+          ? { "xi-api-key": config.apiKey }
+          : { Authorization: `Bearer ${config.apiKey}` }
         : {},
       body: form,
     },
   );
-  return normalizeTranscript(await providerJson(response));
+  const raw = await providerJson(response);
+  return eleven ? normalizeElevenLabsTranscript(raw) : normalizeTranscript(raw);
+}
+const elevenTranscript = z.object({
+  text: z.string(),
+  language_code: z.string().optional(),
+  words: z
+    .array(
+      z.object({
+        type: z.enum(["word", "spacing", "audio_event"]),
+        text: z.string(),
+        start: z.number().finite().nonnegative(),
+        end: z.number().finite().nonnegative(),
+      }),
+    )
+    .min(1)
+    .max(100_000),
+});
+export function normalizeElevenLabsTranscript(raw: unknown) {
+  const parsed = elevenTranscript.safeParse(raw);
+  if (!parsed.success)
+    throw new Error(
+      "ElevenLabs must return a single transcript with genuine word timestamps.",
+    );
+  return normalizeTranscript({
+    text: parsed.data.text,
+    language: parsed.data.language_code,
+    words: parsed.data.words
+      .filter((w) => w.type === "word")
+      .map((w) => ({ word: w.text, start: w.start, end: w.end })),
+  });
 }
 export function normalizeTranscript(raw: unknown) {
   const result = transcript.parse(raw);

@@ -45,6 +45,12 @@ fixtures first, then an explicitly authorized live test.
 
 ## Another ASR provider
 
+The shipped adapter supports OpenAI-compatible `audio/transcriptions` endpoints
+and native ElevenLabs `https://api.elevenlabs.io/v1/speech-to-text`. Selecting the
+ElevenLabs preset uses `scribe_v1` and the user's own key. Native word/spacing/event
+records are normalized without inventing timestamps; spacing/events do not become
+spoken word evidence. The same local receipt and consent boundaries apply.
+
 Normalize provider output into actual words with source start/end timestamps.
 Reject absent or malformed word timing; do not manufacture it from segments.
 Keep receipts bound to source hash, language, provider, and model. Display captions

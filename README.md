@@ -84,10 +84,12 @@ LLM_API_KEY=your-kie-key
 Use the key for the endpoint you configure. The model name is sent unchanged;
 there is no automatic model switching or retry. Non-GPT model names are rejected
 before a request. Other model families and Chat Completions are outside the
-supported scope. Speech recognition has a separate OpenAI-compatible audio
-transcription adapter and its own key; Kie chat access does not configure ASR.
+supported scope. Speech recognition supports ElevenLabs Scribe and OpenAI-compatible
+word-timestamp endpoints with its own key; Kie chat access does not configure ASR.
+Choose **Use ElevenLabs** in Provider settings to select
+`https://api.elevenlabs.io/v1` and `scribe_v1`, then enter your own ElevenLabs key.
 
-ASR must provide genuine word timestamps in `verbose_json`; segment-only output
+ASR must provide genuine word timestamps (`verbose_json` for compatible endpoints); segment-only output
 is rejected rather than converted into invented word timings. This adapter caps
 transcription uploads at 25 MiB. Choose a smaller audio source when needed.
 
@@ -186,6 +188,12 @@ npm run test:live:gpt -- --live
 It verifies inspection/skill use, proposal review, explicit application, and a
 question/answer continuation. It is not part of CI and never uses customer media.
 See [the GPT core and live Kie verification](docs/gpt-agent-verification-2026-10-31.md).
+
+An optional ASR probe accepts one owned recording of at most 30 seconds / 5 MiB
+and a file containing its expected spoken text. With your ASR variables set
+privately, run `npm run test:live:asr -- --live --file speech.wav --expected-file speech.txt`.
+It makes one request, checks transcription and genuine source-bound timestamps,
+and retains local evidence. It is separate from the GPT request budget and CI.
 
 The browser test needs `ffmpeg` and `ffprobe` on PATH. It starts an isolated real
 local server and synthetic LLM/ASR HTTP endpoints, uses actual browser storage and

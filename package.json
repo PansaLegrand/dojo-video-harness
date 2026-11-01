@@ -23,6 +23,7 @@
     "sync:ui": "node scripts/sync-product-ui.mjs",
     "test:ui-parity": "node scripts/verify-product-ui.mjs",
     "test:live:gpt": "tsx scripts/test-live-gpt.ts",
+    "test:live:asr": "tsx scripts/test-live-asr.ts",
     "test:agent:scenarios": "vitest run tests/agent-scenarios.test.ts tests/agent-service.test.ts tests/agent.test.ts tests/gpt-responses.test.ts tests/atomic-replace.test.ts tests/provider-settings.test.ts tests/store.test.ts",
     "eval:agent": "tsx scripts/evaluate-agent.ts",
     "verify:milestone": "node scripts/verify-milestone.mjs",
