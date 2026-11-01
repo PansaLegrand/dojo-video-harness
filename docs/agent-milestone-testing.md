@@ -1,5 +1,10 @@
 # Agent milestone testing
 
+For the ordered readiness backlog, independent grading/media evidence, capability
+scope and engine handoff, see [the harness readiness plan](harness-readiness-plan.md).
+This runbook documents the current runner; planned additions do not change its
+behavior until implemented and verified.
+
 The initial launch gate has three layers: deterministic correctness checks, real
 browser workflows, and repeated live GPT evaluations. A model saying “done” is
 never the grading signal. We inspect the proposed and saved document, preserve

@@ -197,6 +197,10 @@ See [architecture](docs/architecture.md), [extension guide](docs/extending.md),
 
 ## Milestone launch checks
 
+The [harness readiness plan](docs/harness-readiness-plan.md) defines the ordered
+work, test matrix, acceptance criteria, and engine handoff for the current
+user-reviewed editing workflow. It separates planned coverage from existing tests.
+
 Use `npm run verify:milestone` for the complete local gate. Before a launch, use
 `npm run verify:milestone -- --live` on a clean committed candidate with your GPT
 provider configured. The paid gate repeats 18 scenarios three times, including an
