@@ -110,6 +110,10 @@ export class ProjectStore {
     return path.join(this.directory, "projects", id + ".json");
   }
   async read(id: string): Promise<Project> {
+    return this.serialized(id, () => this.readSnapshot(id));
+  }
+  /** Internal unlocked read: transaction callbacks already own the project queue. */
+  private async readSnapshot(id: string): Promise<Project> {
     try {
       return JSON.parse(await readFile(this.file(id), "utf8"));
     } catch (cause) {
@@ -158,49 +162,45 @@ export class ProjectStore {
     await atomicJson(this.file(p.id), p);
   }
   async archive(id: string) {
-    const previous = this.queues.get(id) ?? Promise.resolve();
-    const work = previous
-      .catch(() => {})
-      .then(async () => {
-        const project = await this.read(id);
-        if (
-          project.runs.some((run) =>
-            ["queued", "running", "needs_evidence"].includes(run.status),
-          )
+    return this.serialized(id, async () => {
+      const project = await this.readSnapshot(id);
+      if (
+        project.runs.some((run) =>
+          ["queued", "running", "needs_evidence"].includes(run.status),
         )
-          throw new HttpError(
-            "Cancel active edits before deleting this project.",
-            409,
-          );
-        const trash = path.join(this.directory, "trash");
-        await mkdir(trash, { recursive: true, mode: 0o700 });
-        await atomicReplace(
-          this.file(id),
-          path.join(trash, `${id}-${randomUUID()}.json`),
+      )
+        throw new HttpError(
+          "Cancel active edits before deleting this project.",
+          409,
         );
-        return { deleted: true };
-      });
-    this.queues.set(id, work);
-    try {
-      return await work;
-    } finally {
-      if (this.queues.get(id) === work) this.queues.delete(id);
-    }
+      const trash = path.join(this.directory, "trash");
+      await mkdir(trash, { recursive: true, mode: 0o700 });
+      await atomicReplace(
+        this.file(id),
+        path.join(trash, `${id}-${randomUUID()}.json`),
+      );
+      return { deleted: true };
+    });
   }
   /** Serialize read/validate/write, not model/network calls. Errors leave the file untouched. */
   async transaction<T>(
     id: string,
     fn: (p: Project) => T | Promise<T>,
   ): Promise<T> {
+    return this.serialized(id, async () => {
+      const p = await this.readSnapshot(id);
+      const result = await fn(p);
+      await this.save(p);
+      return result;
+    });
+  }
+  /** Queue readers too: a polling read must not keep a Windows replacement locked.
+   * Different projects remain independent. Callbacks use their supplied snapshot;
+   * never recursively enter this queue for the same project. */
+  private async serialized<T>(id: string, fn: () => Promise<T>): Promise<T> {
+    identifier.parse(id);
     const previous = this.queues.get(id) ?? Promise.resolve();
-    const work = previous
-      .catch(() => {})
-      .then(async () => {
-        const p = await this.read(id);
-        const result = await fn(p);
-        await this.save(p);
-        return result;
-      });
+    const work = previous.catch(() => {}).then(fn);
     this.queues.set(id, work);
     try {
       return await work;
