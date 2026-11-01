@@ -1,8 +1,11 @@
 # Harness readiness plan for user-reviewed video editing
 
-Date: 2026-11-01  
-Last reviewed: 2026-11-01  
-Status: planned; no implementation, paid execution or acceptance is recorded here
+Date: 2026-11-01
+
+Last reviewed: 2026-11-02
+
+Status: executing; see [the execution ledger](readiness-progress.md) and
+[2026-11-02 evidence](readiness-report-2026-11-02.md). Live GPT qualification is pending.
 
 ## 1. Milestone question and scope
 
@@ -165,7 +168,7 @@ failures and budget exhaustion; a broken or partial report cannot pass.
 
 ## 7. Ordered work packages
 
-All items are planned. Record completion with commit, executable test IDs and
+Record completion with commit, executable test IDs and
 evidence; functional owners below are not claims of assigned staffing.
 
 | Work item | Owner                        | Deliverable and exit condition                                                                                        | Depends on                             |
@@ -178,8 +181,8 @@ evidence; functional owners below are not claims of assigned staffing.
 | H-06      | Capability owner + reviewer  | Separately budgeted advanced-capability evidence, human review and per-capability verdict                             | H-05; engine E-05 when packages change |
 | H-07      | Harness maintainer           | Readiness report and accurate public supported/limited/unsupported claims                                             | H-06 and engine handoff                |
 
-- [ ] H-01 complete
-- [ ] H-02 complete
+- [x] H-01 complete — initial capability/coverage inventory
+- [x] H-02 complete — independent assertions, evidence retention and grader fault checks
 - [ ] H-03 complete
 - [ ] H-04 complete
 - [ ] H-05 complete

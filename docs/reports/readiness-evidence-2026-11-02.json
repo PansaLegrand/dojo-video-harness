@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "status": "local-checks-passed-live-gpt-pending",
+  "model": "gpt-6-sol",
+  "provider": "Kie",
+  "userDecision": "Keep Kie; leave live gate pending",
+  "runs": [
+    {
+      "runId": "2026-11-01T15-28-40-900Z",
+      "suite": "baseline",
+      "commit": "cad4ddc9774d8a92118c9cea6515df42a936dfe2",
+      "suiteHash": "c8d809a98a1401be383e17a94a5582850901a6a4598db5a0dcd3450982ca864d",
+      "sourceUnchanged": true,
+      "requests": 1,
+      "executedTrials": 1,
+      "plannedTrials": 54,
+      "passedTrials": 0,
+      "qualified": false,
+      "transportFailed": true,
+      "usageUnavailableCalls": 1,
+      "failures": [
+        {
+          "scenarioId": "title-color",
+          "repetition": 1,
+          "error": "Provider returned HTTP 502. Check the configured endpoint, model, key, and account limits."
+        }
+      ],
+      "evidenceSha256": "0abe372e364c9e9a22fd7d981d655b555610a59de2f0288c1f9b49fa8598cdb1"
+    },
+    {
+      "runId": "2026-11-01T15-35-38-475Z",
+      "suite": "baseline",
+      "commit": "cad4ddc9774d8a92118c9cea6515df42a936dfe2",
+      "suiteHash": "c8d809a98a1401be383e17a94a5582850901a6a4598db5a0dcd3450982ca864d",
+      "sourceUnchanged": true,
+      "requests": 77,
+      "executedTrials": 31,
+      "plannedTrials": 54,
+      "passedTrials": 30,
+      "qualified": false,
+      "transportFailed": true,
+      "usageUnavailableCalls": 1,
+      "failures": [
+        {
+          "scenarioId": "eight-turn-session",
+          "repetition": 2,
+          "error": "Provider returned HTTP 502. Check the configured endpoint, model, key, and account limits."
+        }
+      ],
+      "evidenceSha256": "49b8a1ca7d2ed4674e0c58db23e4931ccbf499a84a7b849342ebc6dd6954cef6"
+    },
+    {
+      "runId": "2026-11-01T15-59-49-744Z",
+      "suite": "extended",
+      "commit": "4661bd5bba7f702f34fa8eeb7cfd2573c0501c60",
+      "suiteHash": "7e51a29db992e1f2792e7b731185af2d99c2883538e583fdc1fe654645746d7d",
+      "sourceUnchanged": true,
+      "requests": 6,
+      "executedTrials": 4,
+      "plannedTrials": 18,
+      "passedTrials": 3,
+      "qualified": false,
+      "transportFailed": true,
+      "usageUnavailableCalls": 1,
+      "failures": [
+        {
+          "scenarioId": "ambiguous-target",
+          "repetition": 1,
+          "error": "Provider returned HTTP 502. Check the configured endpoint, model, key, and account limits."
+        }
+      ],
+      "evidenceSha256": "2ff80e27c8ebe1d79dbe8f03658bc95ac316a74c380339f2078c2c6733310a03"
+    }
+  ],
+  "evaluationRequests": 84,
+  "additionalGptHealthRequests": 1,
+  "asrProbeRequests": 2,
+  "cleanAsrResult": {
+    "version": 1,
+    "passed": true,
+    "sourceSha256": "541f6c41947ac058935fc6f50d168fbd9ccf952c648a0acb8e880d6122cda471",
+    "seconds": 8.094125,
+    "requestLimit": 1,
+    "requests": 1,
+    "model": "scribe_v1",
+    "providerBaseUrl": "https://api.elevenlabs.io/v1/",
+    "node": "v24.22.1",
+    "dirty": false,
+    "implementationHash": "a397070b54dc71dd4f548a1ad85d35e3a5a050589fe8e3ef68b4f65a078c0487",
+    "commit": "57522b7b7cf86af01090c7e2c30f12b16b5e688c",
+    "scope": "live adapter and source-evidence binding; not a live browser or multi-speaker benchmark",
+    "wordErrorRate": 0,
+    "wordCount": 24,
+    "sourceBound": true
+  },
+  "liveMediaClaim": "ASR adapter/source-evidence fixture only; not a live browser or general speech benchmark"
+}
