@@ -41,11 +41,11 @@ choose OpenAI or Kie and enter your GPT key. Speech recognition has its own prov
 settings. Saves apply to new requests immediately; running jobs keep their original
 configuration. Saved keys are never returned to the browser.
 
-| What you want to do | Provider credentials |
-| --- | --- |
-| Edit manually, import subtitles, preview, and export MP4 | None |
-| Edit through chat or translate captions | Your GPT provider key |
-| Transcribe imported speech | Your ASR provider key, configured separately |
+| What you want to do                                      | Provider credentials                         |
+| -------------------------------------------------------- | -------------------------------------------- |
+| Edit manually, import subtitles, preview, and export MP4 | None                                         |
+| Edit through chat or translate captions                  | Your GPT provider key                        |
+| Transcribe imported speech                               | Your ASR provider key, configured separately |
 
 For later starts, use `npm run dev`. Other useful commands:
 
@@ -142,20 +142,20 @@ commands, invariants, and the readiness plan.
 
 Start with [the guided walkthrough](docs/learn-the-harness.md), then follow:
 
-| Location                                               | Responsibility                                                    |
-| ------------------------------------------------------ | ----------------------------------------------------------------- |
-| `packages/agent/src/loop.ts`                           | Bounded model → tool → observation loop                           |
-| `packages/agent/src/tools.ts`                          | Tool descriptions, runtime validation, effects                    |
-| `skills/`                                              | Domain instructions loaded by the `read_skill` tool               |
-| `packages/adapters/src/`                               | LLM and ASR transports; no document mutation                      |
-| `packages/core/src/lib/video-project/`                 | Authoritative document, commands, scope, evidence, history        |
-| `packages/ui/src/components/editor/dojo-video-engine/` | Real manual editor and chat/review UI                             |
-| `app/`                                                 | English App Router pages and local API route handlers |
-| `packages/ui/src/host/`                                | Local user, copy, and provider-request adapters                   |
-| `apps/server/src/agent-service.ts`                     | Durable runs, questions, approvals, cancellation                  |
-| `apps/server/src/store.ts`                             | Local transactions, receipts, revisions                           |
-| `apps/server/src/local-api.ts`                         | Local services behind Next route handlers                         |
-| `config/engine-release.json`                          | Pinned engine version, source commit, and registry integrity       |
+| Location                                               | Responsibility                                               |
+| ------------------------------------------------------ | ------------------------------------------------------------ |
+| `packages/agent/src/loop.ts`                           | Bounded model → tool → observation loop                      |
+| `packages/agent/src/tools.ts`                          | Tool descriptions, runtime validation, effects               |
+| `skills/`                                              | Domain instructions loaded by the `read_skill` tool          |
+| `packages/adapters/src/`                               | LLM and ASR transports; no document mutation                 |
+| `packages/core/src/lib/video-project/`                 | Authoritative document, commands, scope, evidence, history   |
+| `packages/ui/src/components/editor/dojo-video-engine/` | Real manual editor and chat/review UI                        |
+| `app/`                                                 | English App Router pages and local API route handlers        |
+| `packages/ui/src/host/`                                | Local user, copy, and provider-request adapters              |
+| `apps/server/src/agent-service.ts`                     | Durable runs, questions, approvals, cancellation             |
+| `apps/server/src/store.ts`                             | Local transactions, receipts, revisions                      |
+| `apps/server/src/local-api.ts`                         | Local services behind Next route handlers                    |
+| `config/engine-release.json`                           | Pinned engine version, source commit, and registry integrity |
 
 There is no LangChain, Vercel agent runtime, Pi runtime, or coding-agent subprocess
 in the execution path. Pi inspired the small-core approach; a provider or runtime
@@ -169,11 +169,22 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The [engine 1.1.1 migration checks](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41270111442)
-passed on **2026-11-01**: 196 tests, production build, 25 browser editing/export
-checks, and clean startup on Windows, macOS, and Linux. See the
-[release and migration notes](docs/startup-and-engine-packages-2026-10-31.md#npm-migration--2026-11-01).
-These checks use synthetic providers; they do not certify live GPT quality.
+The [current readiness checks](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41330893940)
+passed on **2026-11-02**: 228 tests, production build, 25 browser editing/export
+checks, and startup checks on Windows, macOS, and Linux. These checks use synthetic
+providers. See the [engine migration notes](docs/startup-and-engine-packages-2026-10-31.md#npm-migration--2026-11-01).
+
+Separately, [live GPT qualification through Vercel AI Gateway](docs/gateway-readiness-report.md)
+passed all 54 baseline trials and 18 extended trials using `openai/gpt-6-sol`.
+The failed Kie runs remain recorded; the Gateway run used an explicitly selected
+endpoint, without automatic fallback or paid retries. A bounded ElevenLabs probe
+also verified genuine source-bound word timestamps; see the
+[ASR and recovery evidence](docs/readiness-report-2026-11-02.md).
+
+The supported milestone is **propose → compare → approve → apply**. Paired real-media
+human acceptance and broader editing coverage remain open. The agent can correct
+tool validation errors, but does not autonomously render, inspect, and revise its
+own output. Follow the [readiness plan](docs/harness-readiness-plan.md) before a launch.
 
 To check your own changes:
 
