@@ -16,6 +16,7 @@ import type {
 } from "../../packages/agent/src/types";
 import { fixture, setNode, type Scenario, type Turn } from "./scenarios";
 import { gradeEdit, InvariantError, type Trial } from "./grading";
+import { assertIndependentOutcome } from "./oracles";
 function invariant(value: unknown, message: string): asserts value {
   if (!value) throw new InvariantError(message);
 }
@@ -213,6 +214,12 @@ export async function runScenario(
           run.proposal === null,
           "Unsupported request produced an edit proposal.",
         );
+        assertIndependentOutcome(
+          before.document,
+          (await store.read(projectId)).document,
+          scenario.id,
+          turnIndex,
+        );
         continue;
       }
       assert.equal(
@@ -221,6 +228,12 @@ export async function runScenario(
         "Expected an actionable edit proposal.",
       );
       const comparison = await agent.review(projectId, activeRun);
+      assertIndependentOutcome(
+        before.document,
+        comparison.afterDocument,
+        scenario.id,
+        turnIndex,
+      );
       gradeEdit(before.document, comparison.afterDocument, turn.reference);
       const approval = {
         operationId: `approve-${turnIndex}`,
@@ -236,6 +249,12 @@ export async function runScenario(
         "Approval replay repeated an edit or provider work.",
       );
       const saved = await new ProjectStore(root).read(projectId);
+      assertIndependentOutcome(
+        before.document,
+        saved.document,
+        scenario.id,
+        turnIndex,
+      );
       gradeEdit(before.document, saved.document, turn.reference);
     }
     if (scenario.manualThenUndo) {
@@ -262,6 +281,11 @@ export async function runScenario(
       gradeEdit(beforeLast!, (await store.read(projectId)).document, [
         setNode("title", ["text"], "Manual wording retained"),
       ]);
+      assertIndependentOutcome(
+        beforeLast!,
+        (await store.read(projectId)).document,
+        "manual-wording-after-undo",
+      );
     }
     return {
       scenarioId: scenario.id,
