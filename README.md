@@ -130,12 +130,44 @@ npm start
 - Proposal review with synchronized before/after previews, explicit apply,
   selective undo, structured questions, cancellation, and the product’s quick-edit controls. Tool events remain available through the local API.
 - Provider-backed captions and translation, with persisted source-bound receipts.
+- One-instruction workflows for joining imported clips, overlaying a logo, generating
+  and translating captions, then exporting the reviewed revision.
+- Approved instrumental music generation through Kie V6, with local storage and
+  automatic, exactly-once insertion into the approved audio track.
 
 This is a standalone extraction, not a claim of complete hosted-product parity.
 DojoClip billing, accounts, collaboration, hosted asset galleries, and production
 worker infrastructure are outside this local application. Image/video generation
-jobs are an extension point, not a shipped provider integration. Chat currently
-directs users to the caption UI when new transcription is required.
+jobs are an extension point, not a shipped provider integration. The combined
+editing workflow can prepare new transcription after explicit source/provider
+consent; standalone caption controls remain available.
+
+## Basic workflows and background music
+
+Import clips and a logo, choose **Whole project** scope, and ask:
+
+> Join Clip A then Clip B, add Logo, generate English captions, translate them to Spanish, then export.
+
+Review the workflow card and approve provider access. After preparation, use the
+normal **Compare / Apply** controls, then **Export approved workflow**. Export is
+performed by the browser and saved locally against the applied revision. Sources
+are limited to 25 MiB each for this first transcription workflow; existing linked
+captions and unsupported steps require a separate edit rather than a partial plan.
+
+For music, configure **Background music · Kie** in `/en/settings` (or use
+`MUSIC_BASE_URL=https://api.kie.ai`, `MUSIC_MODEL=V6`, `MUSIC_API_KEY` privately).
+Ask for background music, or use the Background music panel without a GPT key.
+**Generate and insert music** approves one paid provider job and its exact track,
+start time, maximum length and volume. The first provider track is saved locally
+and inserted when ready. Cancellation and undo do not repeat generation or refund
+provider charges. Uncertain submissions require reconciliation with the existing
+provider task ID. A locked or changed target pauses insertion.
+
+Skills stay simple: add a trusted lowercase `skills/name.md` file and restart the
+host. `SKILLS_DIR` can select another local directory. Markdown guides existing
+tools; it does not install executable tools. There is no npm plugin installer.
+See [the extension guide](docs/extending.md) and
+[implementation and evidence](docs/basic-workflows-and-music-2026-11-03.md).
 
 ## Read the implementation
 

@@ -6,7 +6,11 @@ type PublicProvider = {
   configured: boolean;
   keyConfigured: boolean;
 };
-type Settings = { llm: PublicProvider; asr: PublicProvider };
+type Settings = {
+  llm: PublicProvider;
+  asr: PublicProvider;
+  music: PublicProvider;
+};
 export default function ProviderSettings() {
   const [settings, setSettings] = useState<Settings | null>(null),
     [error, setError] = useState("");
@@ -23,7 +27,7 @@ export default function ProviderSettings() {
   if (!settings) return <p role="status">Loading provider settings…</p>;
   return (
     <div className="space-y-6">
-      {(["llm", "asr"] as const).map((kind) => (
+      {(["llm", "asr", "music"] as const).map((kind) => (
         <ProviderForm
           key={kind}
           kind={kind}
@@ -39,7 +43,7 @@ function ProviderForm({
   initial,
   onSave,
 }: {
-  kind: "llm" | "asr";
+  kind: "llm" | "asr" | "music";
   initial: PublicProvider;
   onSave: (settings: Settings) => void;
 }) {
@@ -51,7 +55,11 @@ function ProviderForm({
     [message, setMessage] = useState(""),
     [error, setError] = useState("");
   const title =
-    kind === "llm" ? "GPT chat and translation" : "Speech recognition";
+    kind === "llm"
+      ? "GPT chat and translation"
+      : kind === "asr"
+        ? "Speech recognition"
+        : "Background music · Kie";
   const inputClass =
     "mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm";
   async function save(event: FormEvent) {
@@ -95,7 +103,7 @@ function ProviderForm({
       <h2 className="text-lg font-semibold">{title}</h2>
       <p className="text-sm text-muted-foreground">
         {initial.configured
-          ? "Configured. A successful edit or transcription verifies provider access."
+          ? "Configured. A successful provider request verifies access."
           : "Optional. Manual editing works without a key."}
       </p>
       {kind === "llm" && (
@@ -121,6 +129,13 @@ function ProviderForm({
             Use Kie
           </button>
         </div>
+      )}
+      {kind === "music" && (
+        <p className="text-sm text-muted-foreground">
+          Instrumental music using your own Kie key. Generation is paid by your
+          provider account and starts only after you approve the music plan. The
+          approved track is inserted automatically when ready.
+        </p>
       )}
       <label className="block text-sm">
         Base URL

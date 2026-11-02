@@ -27,3 +27,13 @@ Gateway runs passed 54/54 baseline and 18/18 extended trials on clean commit
 `58632cd`, with 87 and 24 requests respectively. H-05 automated evidence is complete;
 human/real-media and additional capability gates remain open. See
 [the Gateway report](gateway-readiness-report.md).
+
+## Basic workflows and music — 2026-11-03
+
+The [new implementation and evidence](basic-workflows-and-music-2026-11-03.md)
+adds imported-asset discovery, a durable one-instruction join/logo/ASR/translation/
+review/export path, local Markdown skill loading and approved Kie music generation
+with exactly-once local timeline insertion. Real browser media checks, bounded
+live GPT planning/controlled transcript tests and an actual recovered music task
+have separate evidence. This advances H-03/H-04/H-06 subsets; it does not close
+all roadmap or human-acceptance gates.

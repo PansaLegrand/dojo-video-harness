@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceRepository": "dojo-video-web",
-  "sourceCommit": "dd59a6a74d5a9c32b87fbb0fa7c139ff0795bfd2",
+  "sourceCommit": "123070f4788b063ba6ec590339442430bd06bcb5",
   "transforms": [
     "engine namespace/path rename",
     "local user import boundary",
@@ -360,14 +360,14 @@
     {
       "source": "components/editor/motionforge/editor-workspace.css",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-workspace.css",
-      "sourceHash": "08574a10c1a4cc10bd9be715e8765d50b06fc5b499216042982b56ec4f72222e",
-      "outputHash": "08574a10c1a4cc10bd9be715e8765d50b06fc5b499216042982b56ec4f72222e"
+      "sourceHash": "9e0e3987699819ded2bdd25b4b3553a199f90de58a87eb74e317bb83b300f529",
+      "outputHash": "9e0e3987699819ded2bdd25b4b3553a199f90de58a87eb74e317bb83b300f529"
     },
     {
       "source": "components/editor/motionforge/motionforge-editor.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/dojo-video-engine-editor.tsx",
-      "sourceHash": "7edbaba953e4f2c5fe9a38f0e61b0b617320486761f9fa2d0d1c72274f320d68",
-      "outputHash": "7d7c3c43b983336d33443cb34e8d808ff916b227f4f70fb9a73387c950b43004"
+      "sourceHash": "f1e697ed6e1b37449b78cf0f1caf7872dfa2d1e8f42341e4115cc43618072fc9",
+      "outputHash": "f8da65871ba385fd09b2b0d5682bbd690674d389200d8ceb86bbdd0cca36bb80"
     },
     {
       "source": "components/editor/motionforge/native-editor-copy-locales.ts",
@@ -402,8 +402,8 @@
     {
       "source": "components/editor/motionforge/video-workspace-chat.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/video-workspace-chat.tsx",
-      "sourceHash": "6b70fef66e46b0bdf1763d24dec6c024223f2f78889f2e48483f4b50fa8cc1d9",
-      "outputHash": "6b70fef66e46b0bdf1763d24dec6c024223f2f78889f2e48483f4b50fa8cc1d9"
+      "sourceHash": "0cef37ff705f7883151fd5073cacbd3f10ca0a54e9909bb31f9a168b8616fc84",
+      "outputHash": "0cef37ff705f7883151fd5073cacbd3f10ca0a54e9909bb31f9a168b8616fc84"
     },
     {
       "source": "components/editor/motionforge/workspace-copy.ts",

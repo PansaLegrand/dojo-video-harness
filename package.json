@@ -24,14 +24,17 @@
     "test:ui-parity": "node scripts/verify-product-ui.mjs",
     "test:live:gpt": "tsx scripts/test-live-gpt.ts",
     "test:live:asr": "tsx scripts/test-live-asr.ts",
-    "test:agent:scenarios": "vitest run tests/agent-scenarios.test.ts tests/agent-service.test.ts tests/agent.test.ts tests/gpt-responses.test.ts tests/atomic-replace.test.ts tests/provider-settings.test.ts tests/store.test.ts tests/agent-process-recovery.test.ts tests/evaluation-oracles.test.ts tests/evaluation-evidence.test.ts tests/extended-agent-scenarios.test.ts tests/elevenlabs-asr.test.ts",
+    "test:agent:scenarios": "vitest run tests/agent-scenarios.test.ts tests/agent-service.test.ts tests/agent.test.ts tests/gpt-responses.test.ts tests/atomic-replace.test.ts tests/provider-settings.test.ts tests/store.test.ts tests/agent-process-recovery.test.ts tests/evaluation-oracles.test.ts tests/evaluation-evidence.test.ts tests/extended-agent-scenarios.test.ts tests/elevenlabs-asr.test.ts tests/editing-workflow.test.ts tests/basic-speech-editing.test.ts tests/music-service.test.ts tests/music-adapter.test.ts tests/skill-loader.test.ts",
     "eval:agent": "tsx scripts/evaluate-agent.ts",
     "verify:milestone": "node scripts/verify-milestone.mjs",
     "setup": "node scripts/setup.mjs",
     "launch": "node scripts/setup.mjs --start",
     "doctor": "node scripts/doctor.mjs",
     "test:startup": "node scripts/startup-smoke.mjs",
-    "test:engine-packages": "node scripts/test-engine-packages.mjs"
+    "test:engine-packages": "node scripts/test-engine-packages.mjs",
+    "test:live:music": "tsx scripts/test-live-music.ts",
+    "eval:basic:planner": "tsx scripts/evaluate-basic-workflow-planner.ts",
+    "eval:speech:semantics": "tsx scripts/evaluate-speech-semantics.ts"
   },
   "dependencies": {
     "@dojo-video-engine/agent-tools": "1.1.1",

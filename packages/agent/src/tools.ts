@@ -36,7 +36,7 @@ export function createVideoTools(
       name: "inspect_project",
       effect: "read",
       description:
-        "Read project relationships and up to 24 exact items. Empty input returns a bounded inventory.",
+        "Read project relationships, imported asset identities (including unused logos), and up to 24 exact items. Empty input returns a bounded inventory.",
       parameters: object({
         itemIds: { type: "array", items: { type: "string" }, maxItems: 24 },
       }),
@@ -48,6 +48,8 @@ export function createVideoTools(
         return observed({
           snapshotHash: request.baseHash,
           format: document.format,
+          assets: Object.values(document.assets).slice(0, 50).map(asset => ({ id: asset.id, name: asset.name, type: asset.type, width: asset.width, height: asset.height, durationSeconds: asset.durationSeconds })),
+          omittedAssets: Math.max(0, Object.keys(document.assets).length - 50),
           tracks: document.tracks,
           transitions: document.transitions ?? {},
           linkedGroups: document.linkedGroups ?? {},

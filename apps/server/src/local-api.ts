@@ -25,6 +25,13 @@ import {
   atomicJson,
   identifier,
 } from "./store";
+import { loadLocalSkills } from "./skill-loader";
+import {
+  EditingWorkflowService,
+  type WorkflowTaskReceipt,
+} from "./editing-workflow";
+import { MusicService } from "./music-service";
+import { musicTools } from "./music-tools";
 import { AgentService } from "./agent-service";
 import { ProviderSettings } from "./provider-settings";
 import { prepareExport, claimExport, finishExport } from "./exports";
@@ -35,7 +42,6 @@ import {
 } from "../../../packages/adapters/src/index";
 import { canonicalSerialize } from "../../../packages/core/src/lib/video-project/document";
 import { transcriptEvidenceFromAsr } from "../../../packages/core/src/lib/video-project/semantic";
-import type { Skill } from "../../../packages/agent/src/skills";
 export async function createLocalApi() {
   const root = process.cwd();
   const port = Number(process.env.PORT ?? 4310);
@@ -53,25 +59,26 @@ export async function createLocalApi() {
   const providers = new ProviderSettings(data, {
     llm: config("LLM", "gpt-6-sol"),
     asr: config("ASR", "whisper-1"),
+    music: {
+      baseUrl: process.env.MUSIC_BASE_URL ?? "https://api.kie.ai",
+      model: process.env.MUSIC_MODEL ?? "V6",
+      apiKey: process.env.MUSIC_API_KEY ?? "",
+    },
   });
   await providers.load();
-  const skills: Skill[] = await Promise.all(
-    (await readdir(path.join(root, "skills")))
-      .filter((n) => n.endsWith(".md"))
-      .map(async (name) => {
-        const text = await readFile(path.join(root, "skills", name), "utf8");
-        return {
-          name: name.slice(0, -3),
-          description:
-            text.split("\n").find((l) => l && !l.startsWith("#")) ?? name,
-          instructions: text,
-        };
-      }),
+  const skills = await loadLocalSkills(
+    path.resolve(root, process.env.SKILLS_DIR ?? "skills"),
   );
+  const music = new MusicService(store, () => providers.get("music"));
+  await music.recover();
   const agent = new AgentService(
     store,
     () => new GptResponsesModel(providers.get("llm")),
     skills,
+    (projectId, runId, request) => [
+      ...musicTools(music, projectId, runId, request),
+      workflows.tool(projectId, runId),
+    ],
   );
   type Task = {
     id: string;
@@ -82,7 +89,7 @@ export async function createLocalApi() {
     error_message?: string;
     raw_asr_result?: unknown;
     target_language?: string;
-    output_subtitle_data?: unknown;
+    output_subtitle_data?: WorkflowTaskReceipt["output_subtitle_data"];
     requestHash: string;
     operationId: string;
   };
@@ -100,6 +107,7 @@ export async function createLocalApi() {
     }
     tasks.set(task.id, task);
   }
+  const workflows = new EditingWorkflowService(store, (id) => tasks.get(id));
   const saveTask = async (task: Task) => {
     tasks.set(task.id, task);
     await atomicJson(path.join(data, "tasks", task.id + ".json"), task);
@@ -288,6 +296,7 @@ export async function createLocalApi() {
           })
           .passthrough()
           .parse(await input(req));
+        await workflows.authorizeProviderRequest(v.project_id, v.request_id);
         const p = await store.read(v.project_id),
           source = p.sources.find(
             (s) => s.assetId === v.asset_id || s.sourceId === v.asset_id,
@@ -383,6 +392,7 @@ export async function createLocalApi() {
         .passthrough()
         .parse(await input(req));
       await store.read(v.project_id);
+      await workflows.authorizeProviderRequest(v.project_id, v.request_id);
       const llm = providers.get("llm"),
         model = new GptResponsesModel(llm);
       const hash = canonicalSerialize({
@@ -498,6 +508,57 @@ export async function createLocalApi() {
               return projectSummary(p);
             }),
           );
+        }
+      }
+      if (parts[3] === "editing-workflows") {
+        if (parts.length === 4 && method === "GET")
+          return json(res, await workflows.list(id));
+        const workflowId = identifier.parse(parts[4]);
+        if (parts.length === 6 && method === "POST") {
+          if (parts[5] === "approve")
+            return json(
+              res,
+              await workflows.approve(id, workflowId, await input(req)),
+            );
+          if (parts[5] === "captions")
+            return json(
+              res,
+              await workflows.captions(id, workflowId, await input(req)),
+            );
+          if (parts[5] === "complete")
+            return json(
+              res,
+              await workflows.complete(id, workflowId, await input(req)),
+            );
+          if (parts[5] === "cancel")
+            return json(res, await workflows.cancel(id, workflowId));
+          if (parts[5] === "exported")
+            return json(
+              res,
+              await workflows.exported(id, workflowId, await input(req)),
+            );
+        }
+      }
+      if (parts[3] === "music-jobs") {
+        if (parts.length === 4 && method === "GET")
+          return json(res, await music.list(id));
+        if (parts.length === 4 && method === "POST")
+          return json(res, await music.propose(id, await input(req)));
+        const jobId = identifier.parse(parts[4]);
+        if (parts.length === 5 && method === "GET")
+          return json(res, await music.get(id, jobId));
+        if (parts.length === 6 && method === "POST") {
+          if (parts[5] === "approve")
+            return json(res, await music.approve(id, jobId));
+          if (parts[5] === "cancel")
+            return json(res, await music.cancel(id, jobId));
+          if (parts[5] === "resume")
+            return json(res, await music.resume(id, jobId));
+          if (parts[5] === "reconcile")
+            return json(
+              res,
+              await music.reconcile(id, jobId, await input(req)),
+            );
         }
       }
       if (parts[3] === "document" && method === "GET")

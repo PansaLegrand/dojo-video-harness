@@ -1,3 +1,8 @@
+import { setupMusicProof } from "./lib/music-browser-proof.mjs";
+import {
+  verifyBasicWorkflow,
+  basicWorkflowInstruction,
+} from "./lib/verify-basic-workflow.mjs";
 import { chromium } from "playwright";
 import { createServer } from "node:http";
 import { spawn, execFileSync } from "node:child_process";
@@ -21,10 +26,20 @@ const checks = [],
 let modelCalls = 0,
   asrCalls = 0,
   followupReceivedContext = false;
+const musicProof = await setupMusicProof(tmp);
 const provider = createServer(async (req, res) => {
   const chunks = [];
   for await (const c of req) chunks.push(c);
   const bytes = Buffer.concat(chunks);
+  if (
+    musicProof.providerHandler(
+      req,
+      res,
+      bytes,
+      `http://127.0.0.1:${provider.address().port}`,
+    )
+  )
+    return;
   res.setHeader("Content-Type", "application/json");
   if (req.url === "/v1/audio/transcriptions") {
     asrCalls++;
@@ -49,7 +64,50 @@ const provider = createServer(async (req, res) => {
   const context = JSON.parse(content);
   let name = "propose_edit",
     args;
-  if (
+  const musicReply = musicProof.modelReply(context, body);
+  if (musicReply) {
+    name = musicReply.name;
+    args = musicReply.args;
+  } else if (context.instruction === basicWorkflowInstruction) {
+    assert(
+      body.tools.some((tool) => tool.name === "prepare_editing_workflow"),
+      "Workflow tool must be advertised by the real agent host",
+    );
+    const inventory = body.input
+      .filter((item) => item.type === "function_call_output")
+      .map((item) => {
+        try {
+          return JSON.parse(item.output);
+        } catch {
+          return null;
+        }
+      })
+      .find((item) => Array.isArray(item?.assets));
+    if (!inventory) {
+      name = "inspect_project";
+      args = {};
+    } else {
+      const logo = inventory.assets.find(
+        (asset) => asset.type === "image" && asset.name.includes("logo"),
+      );
+      assert(
+        logo,
+        "Imported logo must be discoverable through the real project tool",
+      );
+      name = "prepare_editing_workflow";
+      args = {
+        clipIds: context.document.items
+          .filter((item) => item.node.type === "video")
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((item) => item.id),
+        logoAssetId: logo.id,
+        generateCaptions: true,
+        sourceLanguage: "en",
+        translationLanguage: "es",
+        exportVideo: true,
+      };
+    }
+  } else if (
     context.instruction === "Ask me which color" &&
     !context.authoring?.clarification
   ) {
@@ -145,6 +203,7 @@ const child = spawn(process.execPath, ["scripts/run-next.mjs", "start"], {
     ASR_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
     ASR_API_KEY: "synthetic-asr-key",
     ASR_MODEL: "fixture",
+    ...musicProof.env(`http://127.0.0.1:${providerPort}`),
   },
 });
 let log = "";
@@ -554,6 +613,16 @@ try {
   await savedCard.getByTitle("Delete").click();
   await until(async () => (await api("/api/projects")).length === 0);
   check("product delete action archives the local project", true);
+  await verifyBasicWorkflow({
+    page,
+    api,
+    base,
+    tmp,
+    output,
+    check,
+    counts: () => ({ modelCalls, asrCalls }),
+  });
+  await musicProof.verify({ page, api, base, tmp, output, check });
   check("no browser exceptions", errors.length === 0);
   await writeFile(
     path.join(output, "report.json"),

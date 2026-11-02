@@ -32,6 +32,9 @@
       ],
       "@/host/*": [
         "packages/ui/src/host/*"
+      ],
+      "@/components/editor/dojo-video-engine/dojo-video-engine-editor": [
+        "packages/ui/src/host/harness-editor.tsx"
       ]
     },
     "baseUrl": ".",
@@ -56,7 +59,10 @@
     "vitest.config.ts",
     "scripts/test-live-gpt.ts",
     "evals/**/*.ts",
-    "scripts/evaluate-agent.ts"
+    "scripts/evaluate-agent.ts",
+    "scripts/test-live-music.ts",
+    "scripts/evaluate-basic-workflow-planner.ts",
+    "scripts/evaluate-speech-semantics.ts"
   ],
   "exclude": [
     "node_modules"

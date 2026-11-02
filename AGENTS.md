@@ -45,6 +45,8 @@ it does not own the domain's commit semantics.
 | `packages/core/src/lib/video-project/`                                                        | Document, commands, source clocks, capabilities, compilation, scope and review semantics |
 | `packages/ui/src/components/editor/dojo-video-engine/`                                        | Shared manual editor, timeline and chat/review UI                                        |
 | `packages/ui/src/host/`                                                                       | Local user, provider requests and product-copy adapters                                  |
+| `apps/server/src/music-service.ts`, `music-tools.ts`, `editing-workflow.ts`                   | Durable approved music jobs and compound editing plans                                   |
+| `apps/server/src/skill-loader.ts`, `packages/ui/src/host/harness-editor.tsx`                  | Bounded local Markdown loading and local-only editor extensions                          |
 | `skills/`, `evals/agent/`, `tests/`                                                           | Domain guidance, outcome-graded scenarios and host/agent regression tests                |
 | `config/product-ui.manifest.json`, `scripts/sync-product-ui.mjs`                              | Managed UI hashes and conflict-aware synchronization                                     |
 | `config/engine-release.json`, `package-lock.json`                                             | Engine provenance and exact installed dependency graph                                   |
@@ -135,7 +137,9 @@ npm run check:ui-sync
 ```
 
 The ordinary hash check needs no private product checkout. Review new imports and
-dependencies after sync. Do not rerun the historical `scripts/extract-editor.mjs`.
+dependencies after sync. Do not rerun the historical `scripts/extract-editor.mjs`. The exact editor alias
+in `tsconfig.json` routes the managed page through `host/harness-editor.tsx`; its
+relative import of the real managed editor prevents alias recursion.
 
 Engine changes belong upstream in Dojo Video Engine. Update tested package versions,
 `package-lock.json` and `config/engine-release.json` together; never restore engine
@@ -159,3 +163,12 @@ Report changes, relevant checks and remaining uncertainty. Separate source/unit
 checks, synthetic browser results, live-model results, package publication and
 deployment. Keep this guide current when ownership or commands change;
 `AGENT.md` forwards here.
+
+Music approval authorizes one paid job and automatic insertion at its reviewed
+placement. Keep the submit fence, provider-task reconciliation, private frozen
+configuration, cancellation and insertion receipt atomicity. Do not resubmit an
+unknown paid outcome. Markdown files cannot authorize spending or mutate the
+project. Compound workflow exports must match both the applied hash and revision.
+Run `eval:basic:planner` / `eval:speech:semantics` in reference mode for fixture checks;
+`--live` is a separately budgeted provider gate. `test:live:music -- --live` creates
+one paid generation; read its flags and preserve failed reports before using it.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useSignInGate } from "@/lib/use-sign-in-gate";
 import { buildSelectionCommands, selectionActionIssue, type SelectionAction } from "@/lib/video-project/selection-commands";
@@ -154,11 +154,20 @@ export default function DojoVideoEngineEditor({
   chatInitiallyOpen = false,
   initialPanel,
   initialItemId,
+  renderAgentExtensions,
 }: {
   projectId: string;
   chatInitiallyOpen?: boolean;
   initialPanel?: "captions" | "graphics";
   initialItemId?: string;
+  renderAgentExtensions?: (context: {
+    projectId: string;
+    controller: VideoWorkspaceController;
+    sources: Record<string, string>;
+    onAuthorizeSources: (assetIds: string[]) => Promise<void>;
+    onExportSaved: (exportId: string) => void;
+    onExport: (expected: { revision: number; documentHash: string }) => Promise<{ revision: number; documentHash: string; exportId: string; blob: Blob; width: number; height: number; fps: number; durationInFrames: number; resolution: string }>;
+  }) => ReactNode;
 }) {
   const t = useNativeEditorText();
   const openSignIn = useSignInGate();
@@ -231,6 +240,7 @@ export default function DojoVideoEngineEditor({
   const exportTaskRef = useRef<{ cancel(): void } | null>(null);
   const publicationRef = useRef<ExportPublication | null>(null);
   const publicationFinishedRef = useRef(false);
+  const exportIdRef = useRef<string | null>(null);
   const disabled = loading;
   const mediaPreviews = useEditorMediaPreviews(document, sources);
 
@@ -698,7 +708,7 @@ export default function DojoVideoEngineEditor({
     setShowInspector(true);
   }
 
-  async function exportVideo(fileHandle?: DojoVideoEngineExportFileHandle) {
+  async function exportVideo(fileHandle?: DojoVideoEngineExportFileHandle, expected?: { revision: number; documentHash: string }) {
     const lifetime = lifetimeRef.current;
     if (!compiled.scene || previewError || exportProgress !== null || exportTaskRef.current || !documentRef.current || !lifetime || lifetime.signal.aborted)
       return;
@@ -713,6 +723,8 @@ export default function DojoVideoEngineEditor({
     let publication: ExportPublication | null = null;
     try {
       const exportSnapshot = await operation.wait(controller.flush());
+      if (expected && (exportSnapshot.revision !== expected.revision || exportSnapshot.documentHash !== expected.documentHash))
+        throw new Error("The reviewed project changed. Review the current revision before exporting.");
       const savedRevision = String(exportSnapshot.revision);
       const snapshot = toEditorDocument(exportSnapshot.document);
       const exportSources = { ...sources };
@@ -735,8 +747,10 @@ export default function DojoVideoEngineEditor({
       if (publicationRef.current && !publicationFinishedRef.current)
         await operation.wait(publicationRef.current.cancel().catch(() => {}));
       operation.check();
+      const exportId = id();
+      exportIdRef.current = exportId;
       publication = createEditorExportPublication(projectId, {
-        exportId: id(),
+        exportId,
         documentRevision: savedRevision,
         width: scene.width,
         height: scene.height,
@@ -782,6 +796,7 @@ export default function DojoVideoEngineEditor({
         savedToFile: !!fileHandle,
       });
       if (!fileHandle) downloadBlob(blob, filename);
+      return { revision: exportSnapshot.revision, documentHash: exportSnapshot.documentHash, exportId, blob, width: scene.width, height: scene.height, fps: snapshot.format.fps, durationInFrames: snapshot.format.durationInFrames, resolution: exportResolution };
     } catch (cause) {
       if (publication) void publication.cancel().catch(() => {});
       if (
@@ -1329,7 +1344,11 @@ export default function DojoVideoEngineEditor({
       /></div>
         </div>
         </div>
-        <VideoWorkspaceChat resizeHandle={<EditorChatResizer width={chatWidth} onChange={setChatWidth} label={t("Resize chat")} />} hidden={!showChat} controller={controller} sources={sources} onAuthorizeSources={authorizeSourceUploads} onCaptureVisualContext={captureVisualContext} onClose={() => setShowChat(false)} onSeekFrame={seek} onPausePreview={() => { previewRef.current?.pause(); setPlaying(false); }} mainPreviewPlaying={playing} onCapabilityAction={applyCapability} />
+        <VideoWorkspaceChat extensions={renderAgentExtensions?.({ projectId, controller, sources, onAuthorizeSources: authorizeSourceUploads, onExportSaved: exportId => { if (exportIdRef.current === exportId) { publicationFinishedRef.current = true; setPublished(true); } }, onExport: async expected => {
+          const result = await exportVideo(undefined, expected);
+          if (!result) throw new Error("Export did not complete. Check the editor's export status.");
+          return result;
+        } })} resizeHandle={<EditorChatResizer width={chatWidth} onChange={setChatWidth} label={t("Resize chat")} />} hidden={!showChat} controller={controller} sources={sources} onAuthorizeSources={authorizeSourceUploads} onCaptureVisualContext={captureVisualContext} onClose={() => setShowChat(false)} onSeekFrame={seek} onPausePreview={() => { previewRef.current?.pause(); setPlaying(false); }} mainPreviewPlaying={playing} onCapabilityAction={applyCapability} />
       </div>
       {output && (
         <div

@@ -32,6 +32,8 @@ import type {
 } from "../../../packages/core/src/lib/video-project/agent-types";
 import type { NativeAgentRequest } from "../../../packages/core/src/lib/video-project/agent-runtime";
 import type { AgentEvent } from "../../../packages/agent/src/types";
+import type { EditingWorkflow } from "./editing-workflow";
+import type { MusicJob } from "./music-service";
 import type { ExportReceipt } from "./exports";
 
 export class HttpError extends Error {
@@ -77,6 +79,8 @@ export type Project = {
   runs: StoredRun[];
   messages: VideoProjectAgentMessage[];
   exports?: Record<string, ExportReceipt>;
+  musicJobs?: Record<string, MusicJob>;
+  editingWorkflows?: Record<string, EditingWorkflow>;
 };
 export function snapshot(p: Project): VideoProjectSnapshot {
   return {
@@ -173,6 +177,10 @@ export class ProjectStore {
           "Cancel active edits before deleting this project.",
           409,
         );
+      if (Object.values(project.musicJobs ?? {}).some(job => ["submitting", "running", "downloading"].includes(job.status)))
+        throw new HttpError("Cancel active music generation before deleting this project.", 409);
+      if (Object.values(project.editingWorkflows ?? {}).some(plan => plan.status === "approved"))
+        throw new HttpError("Cancel active workflow preparation before deleting this project.", 409);
       const trash = path.join(this.directory, "trash");
       await mkdir(trash, { recursive: true, mode: 0o700 });
       await atomicReplace(

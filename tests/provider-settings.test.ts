@@ -126,3 +126,43 @@ it("serializes parallel saves and rejects unsafe configuration", async () => {
     }),
   ).toThrow(/Invalid/);
 });
+it("keeps music optional, stores its key privately, and freezes earlier settings snapshots", async () => {
+  const { store } = await fixture();
+  expect(store.public().music.configured).toBe(false);
+  const original = store.get("music");
+  const result = await store.save({
+    kind: "music",
+    baseUrl: "https://api.kie.ai",
+    model: "V6",
+    apiKey: "synthetic-music-key",
+  });
+  expect(result.music.configured).toBe(true);
+  expect(JSON.stringify(result)).not.toContain("synthetic-music-key");
+  expect(original.apiKey).toBe("");
+  await expect(
+    store.save({
+      kind: "music",
+      baseUrl: "https://another.invalid",
+      model: "V6",
+    }),
+  ).rejects.toThrow(/new key/);
+  await expect(
+    store.save({
+      kind: "music",
+      baseUrl: "https://api.kie.ai",
+      model: "invented",
+    }),
+  ).rejects.toThrow(/V6/);
+});
+
+it("rejects an LLM path as the music API base before provider work", async () => {
+  const { store } = await fixture();
+  await expect(
+    store.save({
+      kind: "music",
+      baseUrl: "https://api.kie.ai/codex/v1",
+      model: "V6",
+      apiKey: "fixture",
+    }),
+  ).rejects.toThrow(/music API origin/);
+});

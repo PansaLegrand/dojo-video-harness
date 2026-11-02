@@ -407,3 +407,5 @@
 .editor-chat-resizer:hover span, .editor-chat-resizer:focus-visible span { background: var(--editor-accent); }
 .editor-chat-resizer:focus-visible { outline: 2px solid var(--editor-accent); outline-offset: -2px; }
 @media (max-width: 899px) { .editor-chat-resizer { display: none; } }
+
+.editor-agent-extensions { flex-shrink: 0; min-height: 0; max-height: 40%; overflow-y: auto; }

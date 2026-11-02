@@ -21,18 +21,19 @@ const savedSchema = z
     version: z.literal(1),
     llm: configSchema.optional(),
     asr: configSchema.optional(),
+    music: configSchema.optional(),
   })
   .strict();
 const inputSchema = z
   .object({
-    kind: z.enum(["llm", "asr"]),
+    kind: z.enum(["llm", "asr", "music"]),
     baseUrl: z.string().trim().min(1).max(500),
     model: z.string().trim().min(1).max(100),
     apiKey: z.string().trim().max(8192).optional(),
     clearKey: z.boolean().optional(),
   })
   .strict();
-type Kind = "llm" | "asr";
+type Kind = "llm" | "asr" | "music";
 function validate(config: ProviderConfig, kind: Kind) {
   try {
     providerUrl(config.baseUrl, "models");
@@ -45,6 +46,17 @@ function validate(config: ProviderConfig, kind: Kind) {
     throw new HttpError(
       "Choose a GPT model such as gpt-6-sol or openai/gpt-6-sol.",
     );
+  if (
+    kind === "music" &&
+    new URL(config.baseUrl).pathname.replace(/\/+$/, "") !== ""
+  )
+    throw new HttpError(
+      "Use the music API origin, such as https://api.kie.ai, without /codex/v1.",
+    );
+  if (kind === "music" && config.model !== "V6")
+    throw new HttpError(
+      "The music adapter currently supports V6 instrumental generation.",
+    );
   if (/[\r\n\u0000]/.test(config.apiKey))
     throw new HttpError("The provider key must be a single line.");
   return config;
@@ -55,7 +67,8 @@ export class ProviderSettings {
   private pending: Promise<unknown> = Promise.resolve();
   constructor(
     private directory: string,
-    private defaults: Record<Kind, ProviderConfig>,
+    private defaults: Record<"llm" | "asr", ProviderConfig> &
+      Partial<Record<"music", ProviderConfig>>,
   ) {}
   async load() {
     try {
@@ -69,13 +82,21 @@ export class ProviderSettings {
           500,
         );
     }
-    for (const kind of ["llm", "asr"] as const) validate(this.get(kind), kind);
+    for (const kind of ["llm", "asr", "music"] as const)
+      validate(this.get(kind), kind);
   }
   private get file() {
     return path.join(this.directory, "provider-settings.json");
   }
   get(kind: Kind): ProviderConfig {
-    return { ...(this.saved[kind] ?? this.defaults[kind]) };
+    return {
+      ...(this.saved[kind] ??
+        this.defaults[kind] ?? {
+          baseUrl: "https://api.kie.ai",
+          model: "V6",
+          apiKey: "",
+        }),
+    };
   }
   public() {
     const show = (kind: Kind) => {
@@ -91,7 +112,7 @@ export class ProviderSettings {
         source: this.saved[kind] ? "settings" : "environment",
       };
     };
-    return { llm: show("llm"), asr: show("asr") };
+    return { llm: show("llm"), asr: show("asr"), music: show("music") };
   }
   save(raw: unknown) {
     const parsed = inputSchema.safeParse(raw);

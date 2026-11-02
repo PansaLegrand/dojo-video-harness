@@ -24,7 +24,9 @@ call stages a candidate. Keep the user's final commit in the host.
 
 Add a short Markdown file under `skills/`. Its first paragraph describes when to
 use it. The server reads only that known directory and advertises an index. Restart
-the host after editing skills. The model can request details through `read_skill`.
+the host after editing skills. `SKILLS_DIR` optionally selects a different local
+directory. The loader admits at most 32 regular, lowercase-named `.md` files,
+64 KiB each, and rejects symlink files. The model can request details through `read_skill`.
 
 Skills should explain a method and its domain constraints, not contain hidden
 permissions, credentials, arbitrary executable snippets, or duplicated tool schemas.
@@ -72,3 +74,23 @@ more than adding a synchronous editing command:
 
 Add this as a host-owned external-action lifecycle with resumable state. Do not
 hide spending or uploads inside an apparently read-only tool.
+
+## Music as a small external-action example
+
+Follow `skills/music-generation.md` → `apps/server/src/music-tools.ts` →
+`music-service.ts` → `packages/adapters/src/music.ts`.
+The tool prepares an approval card. Approval persists the input and submission
+fence before the provider call. A known task can be polled after restart; an
+unknown submission is never repeated automatically. Downloaded audio is inspected,
+hashed and stored before a single validated insertion and completed receipt are
+committed together. Undo does not rerun the provider job.
+
+The local host registers extra tools with the fourth `AgentService` constructor
+argument. See `local-api.ts` for explicit wiring. A future video-search package
+would use this seam, plus ordinary Markdown guidance; no npm discovery or dynamic
+code loading is implemented in this release.
+
+`EditingWorkflowService` demonstrates a different effect: source uploads and
+provider preparation produce one reviewable candidate; existing Compare/Apply
+owns the final document commit. The local editor wrapper uses the product's
+optional extension slot, so host-specific panels do not fork the managed UI.

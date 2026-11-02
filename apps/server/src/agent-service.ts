@@ -39,12 +39,15 @@ import {
   runOf,
   type StoredRun,
 } from "./store";
+import type { AgentTool } from "../../../packages/agent/src/tools";
+import type { NativeAgentRequest } from "../../../packages/core/src/lib/video-project/agent-runtime";
 export class AgentService {
   private active = new Map<string, AbortController>();
   constructor(
     private store: ProjectStore,
     private model: LanguageModel | (() => LanguageModel),
     private skills: Skill[],
+    private extraTools?: (projectId: string, runId: string, request: NativeAgentRequest) => AgentTool[],
   ) {}
   async start(projectId: string, raw: unknown) {
     const input = agentRunInputSchema.parse(raw),
@@ -175,6 +178,7 @@ export class AgentService {
       request: run.request,
       model,
       skills: this.skills,
+      extraTools: this.extraTools?.(projectId, id, run.request),
       signal,
       messages: project.messages.slice(-12),
       onEvent: (event) =>
