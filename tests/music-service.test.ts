@@ -264,10 +264,14 @@ describe("approved durable background music", () => {
     await until(
       async () => (await f.service.get(f.project.id, job.id)).hasProviderTask,
     );
-    expect(
-      (await stat(path.join(f.directory, "music-configs", job.id + ".json")))
-        .mode & 0o077,
-    ).toBe(0);
+    // Windows protects these files with directory ACLs, not POSIX mode bits.
+    // Keep every job/configuration invariant above on all platforms.
+    if (process.platform !== "win32") {
+      expect(
+        (await stat(path.join(f.directory, "music-configs", job.id + ".json")))
+          .mode & 0o077,
+      ).toBe(0);
+    }
     f.rotate();
     await f.store.commit(f.project.id, {
       operationId: "manual",

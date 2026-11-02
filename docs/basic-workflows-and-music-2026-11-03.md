@@ -110,3 +110,8 @@ creates one paid task, never an automatic retry.
 This is development qualification for these concrete workflows. The full
 readiness roadmap, varied real speech/phone footage, human visual/audio acceptance
 and final clean release-candidate qualification remain separate gates.
+
+The first Windows CI run exposed a POSIX-only permission assertion. The test now
+checks mode bits only on POSIX; Windows continues all job/recovery/credential
+exclusion assertions and relies on its directory ACLs. This is a platform-aware
+test correction, not a change to submission, insertion or cancellation behavior.
