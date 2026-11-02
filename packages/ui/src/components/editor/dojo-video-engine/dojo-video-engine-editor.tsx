@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSignInGate } from "@/lib/use-sign-in-gate";
 import { buildSelectionCommands, selectionActionIssue, type SelectionAction } from "@/lib/video-project/selection-commands";
@@ -29,7 +29,7 @@ import {
   ImageIcon,
   X,
   PanelLeftClose,
-  PanelRightClose,
+  PanelLeftOpen,
   MessageSquare,
   FolderOpen,
   Activity,
@@ -112,6 +112,7 @@ import { compileVideoProjectDocument, toEditorDocument } from "@/lib/video-proje
 import { importLocalVideoSource, relinkLocalVideoSource, uploadLocalVideoSource } from "@/lib/video-project/local-assets";
 import { createLocalMediaOperation } from "@/lib/video-project/local-media-operation";
 import { useLocalSourceRestore } from "./use-local-source-restore";
+import { EditorChatResizer } from "./editor-chat-resizer";
 import { VideoWorkspaceChat } from "./video-workspace-chat";
 import { EditorInteractionProvider } from "./editor-interaction";
 import { useNativeEditorText } from "./native-editor-copy";
@@ -201,6 +202,7 @@ export default function DojoVideoEngineEditor({
   const [published, setPublished] = useState(false);
   const [showLibrary, setShowLibrary] = useState(true);
   const [showChat, setShowChat] = useState(chatInitiallyOpen);
+  const [chatWidth, setChatWidth] = useState(340);
   useEffect(() => { if (chatInitiallyOpen) setShowChat(true); }, [chatInitiallyOpen]);
   const [captionSetup, setCaptionSetup] = useState<{ itemId: string; target?: string } | null>(null);
   const relinkInputRef = useRef<HTMLInputElement>(null);
@@ -1020,9 +1022,12 @@ export default function DojoVideoEngineEditor({
       {localImport && !(showLibrary && !showInspector && activeTool === "media") && <div role="status" aria-label={t("Import media")} className="flex shrink-0 items-center gap-3 border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-4 py-2 text-xs">
         <span className="min-w-0 flex-1 truncate">{t(`Importing ${localImport.name}`)}</span><progress className="w-24 shrink-0" max={1} value={localImport.progress} /><button type="button" className="shrink-0 underline" onClick={() => localMediaRef.current?.cancel()}>{t("Cancel")}</button>
       </div>}
-      <div className={`editor-body ${showLibrary ? "" : "editor-panel-collapsed"} ${showChat ? "editor-chat-open" : ""}`}>
+      <div style={{ "--editor-chat-width": `${chatWidth}px` } as CSSProperties} className={`editor-body ${showLibrary ? "" : "editor-panel-collapsed"} ${showChat ? "editor-chat-open" : ""}`}>
         <nav className="editor-tool-rail" aria-label="Editor tools">
           {([{ key: "graphics", label: "Motion Graphics", icon: Shapes }, { key: "text", label: "Text", icon: Type }, { key: "captions", label: "Captions", icon: Subtitles }, { key: "visualizer", label: "Music visualizer", icon: Activity }, { key: "media", label: "Media", icon: FolderOpen }, { key: "project", label: "Project", icon: Settings2 }] as const).map(tool => <button key={tool.key} aria-label={locale === "en" ? `Open ${tool.label}` : tool.key === "graphics" ? motionCopy(locale).panel : t(tool.label)} aria-pressed={activeTool === tool.key && showLibrary} onClick={() => openTool(tool.key)}><tool.icon size={21} strokeWidth={1.5} /><span>{tool.key === "graphics" ? motionCopy(locale).panel : t(tool.label)}</span></button>)}
+          <button type="button" className="editor-panel-toggle" aria-label={showLibrary ? showInspector ? "Close inspector" : "Hide library" : "Show media library"} title={t(showLibrary ? showInspector ? "Hide inspector" : "Hide library" : "Show media library")} aria-expanded={showLibrary} onClick={() => setShowLibrary(value => !value)}>
+            {showLibrary ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+          </button>
         </nav>
         {showLibrary && <div className="editor-tool-panel">
         <div className="editor-panel-switch" role="group" aria-label={t("Editing panel")}>
@@ -1032,12 +1037,7 @@ export default function DojoVideoEngineEditor({
         {showInspector && (
           <div className="editor-inspector">
             <div className="editor-panel-heading"><button className="editor-back-button" onClick={() => { setShowInspector(false); if (activeTool === "project") setActiveTool("media"); }}><ChevronLeft size={16} />{t(activeTool === "project" ? "Media" : activeTool === "text" ? "Text" : activeTool === "captions" ? "Captions" : "Media")}</button><span>{t(selected ? selected.caption ? "Captions" : selected.node.type === "text" ? "Text" : "Editing layer" : "Project")}</span>
-              <button
-                aria-label="Close inspector"
-                onClick={() => setShowLibrary(false)}
-              >
-                <PanelRightClose size={14} />
-              </button>
+
             </div>
             <div className="border-b border-[var(--editor-border)] bg-[var(--editor-panel)] p-3"><label className="text-[11px] text-[var(--editor-muted)]">{t("Editing layer")}<select aria-label={t("Editing layer")} value={selectedId ?? ""} onChange={event => controller.select(event.target.value || null)} className="mt-1 w-full rounded border border-[var(--editor-border)] bg-[var(--editor-surface)] p-2 text-xs">
               <option value="">{t("Project")}</option>
@@ -1107,7 +1107,7 @@ export default function DojoVideoEngineEditor({
         )}
         <EditorLibrary hidden={showInspector}
           tool={activeTool} selectedItemId={selectedId} library={library} sources={sources} previews={mediaPreviews} disabled={disabled} upload={localImport ?? upload} onCancelImport={localImport ? () => localMediaRef.current?.cancel() : undefined}
-          onClose={() => setShowLibrary(false)} onImport={() => mediaInputRef.current?.click()}
+          onImport={() => mediaInputRef.current?.click()}
           onDrop={files => void importMedia(files)} onAddMedia={(asset, range) => addMedia(asset, undefined, undefined, range)} onAddText={addText} onAddMotion={addMotion} fps={document.format.fps}
           onImportCaptions={() => subtitlesInputRef.current?.click()}
           onAddCaption={() => captionFlow.addManual([{ id: id(), text: t("Your caption"), startMs: 0, endMs: 3000 }], controller.getPlayheadFrame(), t("Captions"))}
@@ -1329,7 +1329,7 @@ export default function DojoVideoEngineEditor({
       /></div>
         </div>
         </div>
-        <VideoWorkspaceChat hidden={!showChat} controller={controller} sources={sources} onAuthorizeSources={authorizeSourceUploads} onCaptureVisualContext={captureVisualContext} onClose={() => setShowChat(false)} onSeekFrame={seek} onPausePreview={() => { previewRef.current?.pause(); setPlaying(false); }} mainPreviewPlaying={playing} onCapabilityAction={applyCapability} />
+        <VideoWorkspaceChat resizeHandle={<EditorChatResizer width={chatWidth} onChange={setChatWidth} label={t("Resize chat")} />} hidden={!showChat} controller={controller} sources={sources} onAuthorizeSources={authorizeSourceUploads} onCaptureVisualContext={captureVisualContext} onClose={() => setShowChat(false)} onSeekFrame={seek} onPausePreview={() => { previewRef.current?.pause(); setPlaying(false); }} mainPreviewPlaying={playing} onCapabilityAction={applyCapability} />
       </div>
       {output && (
         <div

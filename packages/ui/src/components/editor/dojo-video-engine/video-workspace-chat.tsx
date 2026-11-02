@@ -1,6 +1,6 @@
 "use client";
 import "./editor-authoring.css";
-import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Loader2, Send, Sparkles, X } from "lucide-react";
 import { VideoWorkspaceController, videoProjectRequest, type VideoProjectSnapshot } from "@/lib/video-project/client-controller";
 import type { VideoProjectAgentRun as WorkspaceAgentRun, VideoProjectAgentMessage } from "@/lib/video-project/agent-types";
@@ -22,7 +22,8 @@ function messageFor(cause: unknown, fallback: string) {
 const button = "rounded border border-[var(--editor-border)] px-3 py-2 text-xs text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40";
 const initialScope: EditorAuthoringScopeChoice = { kind: "automatic", fromSeconds: "0", toSeconds: "5" };
 const catalog = editorCapabilityDescriptors();
-export function VideoWorkspaceChat({ controller, sources, onAuthorizeSources, onCaptureVisualContext, onClose, onCapabilityAction, onSeekFrame, onPausePreview, mainPreviewPlaying = false, hidden = false }: {
+export function VideoWorkspaceChat({ resizeHandle, controller, sources, onAuthorizeSources, onCaptureVisualContext, onClose, onCapabilityAction, onSeekFrame, onPausePreview, mainPreviewPlaying = false, hidden = false }: {
+  resizeHandle?: ReactNode;
   controller: VideoWorkspaceController; sources: Record<string, string>; onAuthorizeSources: (assetIds: string[]) => Promise<void>;
   onCaptureVisualContext: (snapshot: VideoProjectSnapshot, itemId: string, frame: number) => Promise<unknown>; onClose: () => void; hidden?: boolean;
   onCapabilityAction?: (action: EditorCapabilityInput) => void | Promise<void>; onSeekFrame?: (frame: number) => void; onPausePreview?: () => void; mainPreviewPlaying?: boolean;
@@ -282,6 +283,7 @@ export function VideoWorkspaceChat({ controller, sources, onAuthorizeSources, on
   const capabilityTarget = workspace.selectedItemId && workspace.selectedNodeId ? { itemId: workspace.selectedItemId, nodeId: workspace.selectedNodeId } : null;
   const quickIds = new Set(quick.map(entry => entry.action.capability)), fontChoices = catalog.find(entry => entry.id === "text.font")?.choices ?? [];
   return <aside aria-label="Video agent chat" aria-hidden={hidden} style={hidden ? { display: "none" } : undefined} className="editor-chat">
+    {resizeHandle}
     <div className="editor-panel-heading"><h2 className="editor-chat-title"><Sparkles size={18} />{t("Video agent")}</h2><button aria-label="Close chat" onClick={onClose}><X size={16} /></button></div>
     <div ref={scrollRef} onScroll={event => { const element = event.currentTarget; followMessages.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80; }} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
       {!data.messages.length && <div className="editor-chat-welcome"><Sparkles size={29} strokeWidth={1.5} /><h3>{t("What would you like to create?")}</h3><p>{t("Describe an edit, ask about the selected clip, or create a motion graphic. Chat and manual controls share one history.")}</p></div>}

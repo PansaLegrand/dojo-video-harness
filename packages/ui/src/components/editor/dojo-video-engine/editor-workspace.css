@@ -70,9 +70,9 @@
 .editor-secondary-button { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--editor-border); border-radius: 7px; }
 .editor-wide-button { width: 100%; margin-bottom: 12px; }
 .editor-body { display: grid; grid-template-columns: 64px 300px minmax(0, 1fr); flex: 1; min-height: 0; position: relative; }
-.editor-body.editor-chat-open { grid-template-columns: 64px 300px minmax(0, 1fr) 340px; }
+.editor-body.editor-chat-open { grid-template-columns: 64px 300px minmax(0, 1fr) min(50vw, var(--editor-chat-width, 340px)); }
 .editor-body.editor-panel-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
-.editor-body.editor-panel-collapsed.editor-chat-open { grid-template-columns: 64px minmax(0, 1fr) 340px; }
+.editor-body.editor-panel-collapsed.editor-chat-open { grid-template-columns: 64px minmax(0, 1fr) min(50vw, var(--editor-chat-width, 340px)); }
 .editor-tool-rail { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 5px; border-right: 1px solid var(--editor-border); overflow-y: auto; }
 .editor-tool-rail > button { display: flex; width: 54px; min-height: 61px; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 7px 3px; border-radius: 7px; color: var(--editor-muted); }
 .editor-tool-rail > button span { font-size: 10px; font-weight: 500; line-height: 1.25; text-align: center; overflow-wrap: anywhere; }
@@ -134,7 +134,7 @@
 .editor-timeline-tracks[hidden] { display: none; }
 .editor-timeline { display: flex; height: 100%; flex-direction: column; min-height: 0; }
 .editor-timeline-scroll { display: flex; align-items: flex-start; min-height: 0; flex: 1; overflow: auto; }
-.editor-chat { width: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--editor-panel); border-left: 1px solid var(--editor-border); }
+.editor-chat { position: relative; width: 100%; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--editor-panel); border-left: 1px solid var(--editor-border); }
 .editor-chat-title { display: flex; align-items: center; gap: 8px; }
 .editor-chat-title svg { color: var(--editor-accent-text); }
 .editor-chat-welcome { padding: 30px 10px 20px; }
@@ -145,7 +145,7 @@
 .editor-chat-suggestion:hover { border-color: var(--editor-accent); background: var(--editor-accent-soft); }
 .editor-chat-composer { flex-shrink: 0; padding: 14px; border-top: 1px solid var(--editor-border); background: var(--editor-panel); }
 .editor-chat-composer textarea { min-height: 94px; max-height: 180px; resize: vertical; font-size: 13px; }
-@media (min-width: 1600px) { .editor-body { grid-template-columns: 68px 330px minmax(0, 1fr); } .editor-body.editor-chat-open { grid-template-columns: 68px 330px minmax(0, 1fr) 360px; } }
+@media (min-width: 1600px) { .editor-body { grid-template-columns: 68px 330px minmax(0, 1fr); } .editor-body.editor-chat-open { grid-template-columns: 68px 330px minmax(0, 1fr) min(50vw, var(--editor-chat-width, 340px)); } }
 @media (max-width: 1199px) {
   .editor-body, .editor-body.editor-chat-open { grid-template-columns: 60px 270px minmax(0, 1fr); }
   .editor-body.editor-panel-collapsed, .editor-body.editor-panel-collapsed.editor-chat-open { grid-template-columns: 60px minmax(0, 1fr); }
@@ -396,7 +396,14 @@
 .editor-transcript-words button[data-search-match="true"] { box-shadow: inset 0 -2px #eab308; }
 .editor-transcript-words button[aria-pressed="true"] { background: var(--editor-accent-soft); color: var(--editor-accent-text); }
 @media (min-width: 900px) and (max-width: 1199px) {
-  .editor-body.editor-chat-open { grid-template-columns: 60px 240px minmax(0, 1fr) 290px; }
-  .editor-body.editor-panel-collapsed.editor-chat-open { grid-template-columns: 60px minmax(0, 1fr) 290px; }
-  .editor-chat { position: static; width: 100%; box-shadow: none; }
+  .editor-body.editor-chat-open { grid-template-columns: 60px 240px minmax(0, 1fr) min(50vw, var(--editor-chat-width, 340px)); }
+  .editor-body.editor-panel-collapsed.editor-chat-open { grid-template-columns: 60px minmax(0, 1fr) min(50vw, var(--editor-chat-width, 340px)); }
+  .editor-chat { position: relative; width: 100%; box-shadow: none; }
 }
+
+.editor-tool-rail > .editor-panel-toggle { margin-top: auto; min-height: 40px; flex-shrink: 0; }
+.editor-chat-resizer { position: absolute; inset-block: 0; left: -5px; width: 10px; z-index: 5; cursor: ew-resize; touch-action: none; user-select: none; display: grid; place-items: center; }
+.editor-chat-resizer span { width: 3px; height: 36px; border-radius: 3px; background: var(--editor-border); }
+.editor-chat-resizer:hover span, .editor-chat-resizer:focus-visible span { background: var(--editor-accent); }
+.editor-chat-resizer:focus-visible { outline: 2px solid var(--editor-accent); outline-offset: -2px; }
+@media (max-width: 899px) { .editor-chat-resizer { display: none; } }

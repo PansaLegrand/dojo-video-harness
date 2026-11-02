@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceRepository": "dojo-video-web",
-  "sourceCommit": "49bf63498aa3be102140efc5171e45694d6a2d84",
+  "sourceCommit": "dd59a6a74d5a9c32b87fbb0fa7c139ff0795bfd2",
   "transforms": [
     "engine namespace/path rename",
     "local user import boundary",
@@ -136,6 +136,12 @@
       "outputHash": "6dec91df32e237ecc19ae1aa610bc6deeb7acbe61ac7a418e04c67c04ad897d9"
     },
     {
+      "source": "components/editor/motionforge/editor-chat-resizer.tsx",
+      "target": "packages/ui/src/components/editor/dojo-video-engine/editor-chat-resizer.tsx",
+      "sourceHash": "f3a488bac40138aea5d06688e6068ad22dad98fd6202342fb60e6568dae72378",
+      "outputHash": "f3a488bac40138aea5d06688e6068ad22dad98fd6202342fb60e6568dae72378"
+    },
+    {
       "source": "components/editor/motionforge/editor-clarification.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-clarification.tsx",
       "sourceHash": "91ddbab503202c4ec032fdb16bedc39aae0f0ecc9cd6a64636dc993a4d13bb0f",
@@ -210,8 +216,8 @@
     {
       "source": "components/editor/motionforge/editor-library.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-library.tsx",
-      "sourceHash": "ae772aa8cf95f7efadb2efd0c65a72c3cda3b4e2fd5464554ae3bfe2413a8186",
-      "outputHash": "2a074077428e2ddf2918824e23fc7a51e1ea7467cf48bfda8f6bb079e3a817d9"
+      "sourceHash": "d89c5e3a35f4d806c5fd4f9ab57347e86a30d6719ff0ba07c56ae9dbec200e3b",
+      "outputHash": "512bff3381a7d3016434826f72ba56432a9e4c1b94d845cdcdad838bcd4cd378"
     },
     {
       "source": "components/editor/motionforge/editor-media-previews.ts",
@@ -354,26 +360,26 @@
     {
       "source": "components/editor/motionforge/editor-workspace.css",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-workspace.css",
-      "sourceHash": "699a2783696a945176783f389430e8806357de503d1fbab33b78bbce285675ff",
-      "outputHash": "699a2783696a945176783f389430e8806357de503d1fbab33b78bbce285675ff"
+      "sourceHash": "08574a10c1a4cc10bd9be715e8765d50b06fc5b499216042982b56ec4f72222e",
+      "outputHash": "08574a10c1a4cc10bd9be715e8765d50b06fc5b499216042982b56ec4f72222e"
     },
     {
       "source": "components/editor/motionforge/motionforge-editor.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/dojo-video-engine-editor.tsx",
-      "sourceHash": "9bb204fcb56c3d6d1c1782ce5d4707a515db4265874d05f511a2a731b47bee1c",
-      "outputHash": "e260c8a4049a96cbea5b1162630f833499f0ace7b50b40b685803d54431ab7ca"
+      "sourceHash": "7edbaba953e4f2c5fe9a38f0e61b0b617320486761f9fa2d0d1c72274f320d68",
+      "outputHash": "7d7c3c43b983336d33443cb34e8d808ff916b227f4f70fb9a73387c950b43004"
     },
     {
       "source": "components/editor/motionforge/native-editor-copy-locales.ts",
       "target": "packages/ui/src/components/editor/dojo-video-engine/native-editor-copy-locales.ts",
-      "sourceHash": "50747455d89515baa3f5d0652b91a241891a65305d262aa86c1707690196bd49",
-      "outputHash": "50747455d89515baa3f5d0652b91a241891a65305d262aa86c1707690196bd49"
+      "sourceHash": "e0303d18ff630dc00eef196b78f5977ed36dca5a6cfc463056a544e791599021",
+      "outputHash": "e0303d18ff630dc00eef196b78f5977ed36dca5a6cfc463056a544e791599021"
     },
     {
       "source": "components/editor/motionforge/native-editor-copy.ts",
       "target": "packages/ui/src/components/editor/dojo-video-engine/native-editor-copy.product.ts",
-      "sourceHash": "2ecd969bb16666affdb5da43cb61f59ade359200b4b347314d704bea4ecb88aa",
-      "outputHash": "2ecd969bb16666affdb5da43cb61f59ade359200b4b347314d704bea4ecb88aa"
+      "sourceHash": "245ed4774ff4398bbc3e6b0dae58096a546a7149b546c1693df33f741cda96d7",
+      "outputHash": "245ed4774ff4398bbc3e6b0dae58096a546a7149b546c1693df33f741cda96d7"
     },
     {
       "source": "components/editor/motionforge/timeline-window.ts",
@@ -396,8 +402,8 @@
     {
       "source": "components/editor/motionforge/video-workspace-chat.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/video-workspace-chat.tsx",
-      "sourceHash": "b72e446c9339fd5866ce0a2637fb9efeef20258c552a6ebeeeb13b4883c82813",
-      "outputHash": "b72e446c9339fd5866ce0a2637fb9efeef20258c552a6ebeeeb13b4883c82813"
+      "sourceHash": "6b70fef66e46b0bdf1763d24dec6c024223f2f78889f2e48483f4b50fa8cc1d9",
+      "outputHash": "6b70fef66e46b0bdf1763d24dec6c024223f2f78889f2e48483f4b50fa8cc1d9"
     },
     {
       "source": "components/editor/motionforge/workspace-copy.ts",

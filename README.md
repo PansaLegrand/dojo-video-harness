@@ -125,6 +125,8 @@ npm start
   revisions, conflict detection, operation receipts, and history.
 - A framework-independent agent loop using real function calls. Inspect a project,
   read a skill, search transcript evidence, propose an edit, or ask a question.
+- Desktop chat resizes from its left edge, up to half the window width; the left
+  panel toggle stays at the bottom of the tool rail. Narrow screens retain the chat drawer.
 - Proposal review with synchronized before/after previews, explicit apply,
   selective undo, structured questions, cancellation, and the product’s quick-edit controls. Tool events remain available through the local API.
 - Provider-backed captions and translation, with persisted source-bound receipts.

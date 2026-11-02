@@ -158,6 +158,7 @@ const zh: Record<string, string> = {
   "Your imported media will appear here.": "导入的素材会显示在这里。",
   "Select a video or audio clip to generate captions.": "选择视频或音频片段以生成字幕。",
   "Select a video or audio clip to add a music visualizer.": "选择视频或音频片段以添加音乐可视化。",
+  "Resize chat": "调整对话宽度",
   "Resize timeline": "调整时间轴高度",
   "What would you like to create?": "你想创作什么？",
   "Add an opening title": "添加开场标题",

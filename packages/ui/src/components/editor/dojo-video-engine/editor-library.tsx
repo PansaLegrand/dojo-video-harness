@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Eye, Film, FolderOpen, ImageIcon, Music2, PanelLeftClose, Plus, Search, Subtitles, Type, Upload } from "lucide-react";
+import { Eye, Film, FolderOpen, ImageIcon, Music2, Plus, Search, Subtitles, Type, Upload } from "lucide-react";
 import { requiresLocalVideoProxy } from "@/lib/dojo-video-engine-browser/preview-proxy-policy";
 import { EditorSourcePreview } from "./editor-source-preview";
 import { filterEditorLibrary, type EditorMediaFilter, type EditorSourceRange } from "./editor-source-range";
@@ -20,7 +20,7 @@ import { useNativeEditorText } from "./native-editor-copy";
 export type EditorTool = "media" | "text" | "captions" | "visualizer" | "graphics" | "project";
 
 /** The original editor's tool browser. Selected-clip controls replace this panel. */
-export function EditorLibrary({ tool, selectedItemId, library, sources, previews, items, fps = 30, hidden = false, transcriptPanel, disabled, upload, onCancelImport, onClose, onImport, onDrop, onAddMedia, onAddText, onAddMotion, onImportCaptions, onAddCaption, onCreateCaptions, onTranslateCaptions, captionBusy, onSelect, onAddVisualizer, onRelink }: {
+export function EditorLibrary({ tool, selectedItemId, library, sources, previews, items, fps = 30, hidden = false, transcriptPanel, disabled, upload, onCancelImport, onImport, onDrop, onAddMedia, onAddText, onAddMotion, onImportCaptions, onAddCaption, onCreateCaptions, onTranslateCaptions, captionBusy, onSelect, onAddVisualizer, onRelink }: {
   tool: EditorTool;
   selectedItemId: string | null;
   library: EditorAsset[];
@@ -33,7 +33,6 @@ export function EditorLibrary({ tool, selectedItemId, library, sources, previews
   disabled: boolean;
   upload: { name: string; progress: number } | null;
   onCancelImport?: () => void;
-  onClose: () => void;
   onImport: () => void;
   onDrop: (files: File[]) => void;
   onAddMedia: (asset: EditorAsset, range?: EditorSourceRange) => void;
@@ -62,7 +61,7 @@ export function EditorLibrary({ tool, selectedItemId, library, sources, previews
   return <aside className="editor-library" hidden={hidden} aria-label="Media library"
     onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }}
     onDrop={event => { event.preventDefault(); onDrop(Array.from(event.dataTransfer.files)); }}>
-    <div className="editor-panel-heading"><h2>{t(title)}</h2><button aria-label="Hide library" onClick={onClose}><PanelLeftClose size={17} /></button></div>
+    <div className="editor-panel-heading"><h2>{t(title)}</h2></div>
     <div className="editor-library-content">
       {tool === "graphics" ? <><p className="editor-section-label">{graphicsCopy.insert}</p><MotionTemplateGallery locale={locale} onSelect={onAddMotion} disabled={disabled} /></> : tool === "text" ? <>
         <button className="editor-primary-button editor-wide-button" disabled={disabled} onClick={() => onAddText()}><Plus size={17} />{t("Add text")}</button>
