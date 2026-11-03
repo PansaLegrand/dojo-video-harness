@@ -36,9 +36,11 @@ It opens the browser automatically from an interactive terminal. Otherwise open
 or pnpm installation is needed. Node 22 is pinned in `.nvmrc`.
 
 Create a project and import media. Manual editing, subtitle import, preview,
-motion graphics, and MP4 export work without API keys. In **Provider settings**,
-choose OpenAI or Kie and enter your GPT key. Speech recognition has its own provider
-settings. Saves apply to new requests immediately; running jobs keep their original
+motion graphics, and MP4 export work without API keys. For chat, configure
+**Vercel AI Gateway** or a GPT-6-series provider with a compatible Responses API.
+In **Provider settings**, enter its base URL, model ID, and API key using the
+configuration below. Speech recognition has its own provider settings.
+Saves apply to new requests immediately; running jobs keep their original
 configuration. Saved keys are never returned to the browser.
 
 | What you want to do                                      | Provider credentials                         |
@@ -73,25 +75,27 @@ of Git when changing `DATA_DIR`.
 Shared editor and chat components can be synced from the product when useful. The harness has its own smaller scope; full product parity is not a goal. Local persistence, provider keys, and usage copy live in host adapters. See [syncing the product UI](docs/syncing-product-ui.md).
 
 The agent and caption translation support **GPT models through the Responses API**.
-The default model is `gpt-6-sol`. For Kie, use:
+Vercel AI Gateway is the documented, live-tested example for GPT-6:
 
 ```dotenv
-LLM_BASE_URL=https://api.kie.ai/codex/v1
-LLM_MODEL=gpt-6-sol
-LLM_API_KEY=your-kie-key
+LLM_BASE_URL=https://ai-gateway.vercel.sh/v1
+LLM_MODEL=openai/gpt-6-sol
+LLM_API_KEY=your-vercel-ai-gateway-key
 ```
 
-Vercel AI Gateway can be selected explicitly with
-`LLM_BASE_URL=https://ai-gateway.vercel.sh/v1`,
-`LLM_MODEL=openai/gpt-6-sol`, and your own Gateway key in `LLM_API_KEY`.
-This uses the same Responses transport. Endpoint changes start a separate test
-run; the harness does not silently switch providers or reuse a failed run as a pass.
+Other GPT-6-series providers can use the same adapter if their `/responses`
+endpoint supports the harness's function calls and tool-result continuation.
+Set the provider's base URL (without `/responses`), exact model ID, and matching
+key. Model IDs must use the `gpt-*` or `openai/gpt-*` form; `gpt-6-sol` is the
+default when no model is configured. GPT-6 availability alone does not establish
+API compatibility; validate another endpoint with the optional live check below.
+The harness does not silently switch providers or retry paid requests.
 
 Use the key for the endpoint you configure. The model name is sent unchanged;
 there is no automatic model switching or retry. Non-GPT model names are rejected
 before a request. Other model families and Chat Completions are outside the
 supported scope. Speech recognition supports ElevenLabs Scribe and OpenAI-compatible
-word-timestamp endpoints with its own key; Kie chat access does not configure ASR.
+word-timestamp endpoints with its own key; configuring chat does not configure ASR.
 Choose **Use ElevenLabs** in Provider settings to select
 `https://api.elevenlabs.io/v1` and `scribe_v1`, then enter your own ElevenLabs key.
 
@@ -216,7 +220,7 @@ providers. See the [engine migration notes](docs/startup-and-engine-packages-202
 
 Separately, [live GPT qualification through Vercel AI Gateway](docs/gateway-readiness-report.md)
 passed all 54 baseline trials and 18 extended trials using `openai/gpt-6-sol`.
-The failed Kie runs remain recorded; the Gateway run used an explicitly selected
+Earlier provider failures remain recorded; the Gateway run used an explicitly selected
 endpoint, without automatic fallback or paid retries. A bounded ElevenLabs probe
 also verified genuine source-bound word timestamps; see the
 [ASR and recovery evidence](docs/readiness-report-2026-11-02.md).
@@ -244,7 +248,8 @@ npm run test:live:gpt -- --live
 
 It verifies inspection/skill use, proposal review, explicit application, and a
 question/answer continuation. It is not part of CI and never uses customer media.
-See [the GPT core and live Kie verification](docs/gpt-agent-verification-2026-10-31.md).
+See [the live Gateway qualification](docs/gateway-readiness-report.md) and
+[the original GPT adapter verification](docs/gpt-agent-verification-2026-10-31.md).
 
 An optional ASR probe accepts one owned recording of at most 30 seconds / 5 MiB
 and a file containing its expected spoken text. With your ASR variables set
