@@ -1,5 +1,9 @@
 import { setupMusicProof } from "./lib/music-browser-proof.mjs";
 import {
+  overlayReply,
+  verifyReadableOverlays,
+} from "./lib/readable-overlay-browser-proof.mjs";
+import {
   verifyBasicWorkflow,
   basicWorkflowInstruction,
 } from "./lib/verify-basic-workflow.mjs";
@@ -64,7 +68,8 @@ const provider = createServer(async (req, res) => {
   const context = JSON.parse(content);
   let name = "propose_edit",
     args;
-  const musicReply = musicProof.modelReply(context, body);
+  const musicReply =
+    overlayReply(context, body) ?? musicProof.modelReply(context, body);
   if (musicReply) {
     name = musicReply.name;
     args = musicReply.args;
@@ -623,6 +628,7 @@ try {
     counts: () => ({ modelCalls, asrCalls }),
   });
   await musicProof.verify({ page, api, base, tmp, output, check });
+  await verifyReadableOverlays({ page, api, base, output, check });
   check("no browser exceptions", errors.length === 0);
   await writeFile(
     path.join(output, "report.json"),

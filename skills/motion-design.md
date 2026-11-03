@@ -2,6 +2,13 @@
 
 Build editable motion graphics from the installed native primitives and macros.
 
+For ordinary titles, lower-thirds and supplied-text captions, start with
+`prepare_text_overlay`. It supplies canvas-relative bounds, readable text sizes,
+wrapping and a contrasting plate without asking the user for geometry. Include
+its returned command in `propose_edit`; it never applies an edit. If copy exceeds
+the readable limits, ask for shorter text or separate cards rather than truncating
+it. Real speech captions still use source-bound `captionSource` evidence.
+
 Choose a clear hierarchy, readable text, and intentional timing. Read the current
 canvas and existing style before proposing. Use the documented macro schema;
 do not invent CSS features, scripts, media URLs, or Lottie JSON. Preserve editable

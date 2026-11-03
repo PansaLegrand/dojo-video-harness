@@ -9,6 +9,7 @@ import { searchNativeTranscript } from "../../core/src/lib/video-project/agent-t
 import { nativeClarificationSchema } from "../../core/src/lib/video-project/agent-authoring";
 import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
 import { readSkill, type Skill } from "./skills";
+import { prepareReadableOverlay } from "../../core/src/lib/video-project/readable-overlay";
 import type { ToolSpec } from "./types";
 export type ToolOutcome =
   | { kind: "observation"; value: unknown }
@@ -33,6 +34,29 @@ export function createVideoTools(
   const document = parseVideoProjectDocument(request.document);
   return [
     {
+      name: "prepare_text_overlay",
+      effect: "read",
+      description:
+        "Prepare an editable, bounded title, lower-third or supplied-text caption with readable responsive defaults. Returns an insertGraphic command for propose_edit; never changes the project. Use source-bound captionSource for speech transcription. Excess copy is rejected, never truncated.",
+      parameters: object(
+        {
+          itemId: { type: "string" },
+          trackId: { type: "string" },
+          kind: { type: "string", enum: ["title", "lowerThird", "caption"] },
+          text: { type: "string", maxLength: 240 },
+          subtitle: { type: "string", maxLength: 120 },
+          from: { type: "integer", minimum: 0 },
+          duration: { type: "integer", minimum: 1 },
+        },
+        ["itemId", "trackId", "kind", "text", "from", "duration"],
+      ),
+      execute: async (args) =>
+        observed({
+          command: prepareReadableOverlay(document, args),
+          next: "Include this command in propose_edit, then compare and approve. No edit has been applied.",
+        }),
+    },
+    {
       name: "inspect_project",
       effect: "read",
       description:
@@ -48,7 +72,16 @@ export function createVideoTools(
         return observed({
           snapshotHash: request.baseHash,
           format: document.format,
-          assets: Object.values(document.assets).slice(0, 50).map(asset => ({ id: asset.id, name: asset.name, type: asset.type, width: asset.width, height: asset.height, durationSeconds: asset.durationSeconds })),
+          assets: Object.values(document.assets)
+            .slice(0, 50)
+            .map((asset) => ({
+              id: asset.id,
+              name: asset.name,
+              type: asset.type,
+              width: asset.width,
+              height: asset.height,
+              durationSeconds: asset.durationSeconds,
+            })),
           omittedAssets: Math.max(0, Object.keys(document.assets).length - 50),
           tracks: document.tracks,
           transitions: document.transitions ?? {},
