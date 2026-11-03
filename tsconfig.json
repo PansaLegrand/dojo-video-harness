@@ -62,7 +62,8 @@
     "scripts/evaluate-agent.ts",
     "scripts/test-live-music.ts",
     "scripts/evaluate-basic-workflow-planner.ts",
-    "scripts/evaluate-speech-semantics.ts"
+    "scripts/evaluate-speech-semantics.ts",
+    "scripts/rehearse-presentation.ts"
   ],
   "exclude": [
     "node_modules"

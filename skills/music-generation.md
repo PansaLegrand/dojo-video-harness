@@ -1,4 +1,5 @@
 # Background music
+
 Generate instrumental background music and insert it after explicit approval.
 
 Use prepare_background_music when the user asks for newly generated background
@@ -17,3 +18,11 @@ submissions require explicit recovery; do not start replacement paid work.
 Music providers may return multiple tracks. This first integration uses the first
 validated track, saves it locally, and inserts up to the approved duration without
 stretching or looping. Undo affects the timeline, not the completed provider job.
+
+For a single request combining background music and visual edits, prepare music
+with `continueEditing:true`, then continue the same tool loop and finish with the
+complete visual `propose_edit`. The existing timeline must already cover the
+approved music range. Preserve its audio track settings and project duration.
+Tell the user to compare/apply the visuals first, then approve music generation
+and automatic insertion. Never stop after only preparing music when the request
+also contains visual edits, and never silently drop an unsupported requested step.

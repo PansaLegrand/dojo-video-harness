@@ -163,6 +163,12 @@ and inserted when ready. Cancellation and undo do not repeat generation or refun
 provider charges. Uncertain submissions require reconciliation with the existing
 provider task ID. A locked or changed target pauses insertion.
 
+A single request can prepare music and a visual edit together. The agent uses
+`prepare_background_music` with `continueEditing: true`, then returns the visual
+proposal. Review/apply the visuals before approving the separate paid music job.
+See the [presentation rehearsal](docs/presentation-rehearsal-2026-11-03.md) for a
+bounded example and its evidence.
+
 Skills stay simple: add a trusted lowercase `skills/name.md` file and restart the
 host. `SKILLS_DIR` can select another local directory. Markdown guides existing
 tools; it does not install executable tools. There is no npm plugin installer.
