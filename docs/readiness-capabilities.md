@@ -1,7 +1,7 @@
 # Harness capability and coverage inventory
 
 Date: 2026-11-01. Last reviewed: 2026-11-04. Acceptance results are recorded separately.
-Current published engine dependency: 1.1.2; 1.1.3 candidate consumer checks passed, publication/adoption pending. No new live-quality claim is made by this table.
+Current published engine dependency: 1.1.3; candidate and registry consumer checks passed. No new live-quality claim is made by this table.
 
 | Capability / request family                                                                                         | Classification                                       | Existing tests / remaining acceptance                                                                                                                                         |
 | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

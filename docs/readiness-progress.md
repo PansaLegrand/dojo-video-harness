@@ -49,6 +49,6 @@ have separate evidence. This advances H-03/H-04/H-06 subsets; it does not close
 all roadmap or human-acceptance gates.
 
 The exact 1.1.3 candidate at `2b04163` passed isolated consumer checks:
-355 tests, build and 47 browser checks including real media. Registry adoption
-awaits the engine release workflow; source/tarball acceptance is not publication.
+355 tests, build and 47 browser checks including real media. Engine 1.1.3 is now published and adopted with verified registry integrity;
+registry-installed checks also passed.
 Human acceptance remains pending after the user chose to review later.
