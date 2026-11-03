@@ -1,6 +1,6 @@
 # Readiness execution ledger
 
-Started: 2026-11-01. Last updated: 2026-11-02. The harness plan remains the acceptance contract.
+Started: 2026-11-01. Last updated: 2026-11-04. The harness plan remains the acceptance contract.
 
 ## November 3 follow-up
 
@@ -47,3 +47,8 @@ with exactly-once local timeline insertion. Real browser media checks, bounded
 live GPT planning/controlled transcript tests and an actual recovered music task
 have separate evidence. This advances H-03/H-04/H-06 subsets; it does not close
 all roadmap or human-acceptance gates.
+
+The exact 1.1.3 candidate at `2b04163` passed isolated consumer checks:
+355 tests, build and 47 browser checks including real media. Registry adoption
+awaits the engine release workflow; source/tarball acceptance is not publication.
+Human acceptance remains pending after the user chose to review later.

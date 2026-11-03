@@ -217,7 +217,7 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The [current readiness checks](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41330893940)
+The [earlier release checks](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41330893940)
 passed on **2026-11-02**: 228 tests, production build, 25 browser editing/export
 checks, and startup checks on Windows, macOS, and Linux. These checks use synthetic
 providers. See the [engine migration notes](docs/startup-and-engine-packages-2026-10-31.md#npm-migration--2026-11-01).
