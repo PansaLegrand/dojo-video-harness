@@ -1,5 +1,13 @@
 /** Own local demo fixtures only. --live allows at most eight GPT planning calls; music still needs approval. */
 import fs from "node:fs/promises";
+import {
+  evaluateScene,
+  layoutScene,
+  type LayoutBox,
+} from "@dojo-video-engine/core";
+import type { SceneNode } from "@dojo-video-engine/schema";
+import { compileEditorDocument } from "../packages/core/src/lib/editor/document";
+import { toEditorDocument } from "../packages/core/src/lib/video-project/document";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
@@ -175,14 +183,56 @@ if (live) {
     ).document;
     const texts: string[] = [];
     let animated = false;
-    function visit(node: any) {
-      if (node.type === "text") texts.push(node.text);
+    function visit(node: SceneNode) {
+      if (node.type === "text") texts.push(node.text ?? "");
       if (node.animations?.length) animated = true;
       for (const child of node.children ?? []) visit(child);
     }
     after.items.forEach((i) => visit(i.node));
     const jobs = await music.list(p.id);
     const clip = (id: string) => after.items.find((i) => i.id === id)!.node;
+    const scene = compileEditorDocument(
+      toEditorDocument(after),
+      Object.fromEntries(
+        before.sources.map((source) => {
+          if (!source.url) throw new Error("Demo source is unavailable.");
+          return [
+            source.assetId,
+            new URL(source.url, "http://127.0.0.1:4326").href,
+          ];
+        }),
+      ),
+    );
+    const boxes: LayoutBox[] = [];
+    function collect(box: LayoutBox) {
+      boxes.push(box);
+      box.children.forEach(collect);
+    }
+    layoutScene(evaluateScene(scene, 180)).boxes.forEach(collect);
+    const hasTitle = (node: SceneNode): boolean =>
+      node.text === "Coffee. But make it cinematic." ||
+      (node.children?.some(hasTitle) ?? false);
+    const plates = boxes.filter(
+      (box) =>
+        box.node.type !== "text" &&
+        (box.node.style.background ?? box.node.style.backgroundColor) &&
+        hasTitle(box.node),
+    );
+    const compactPlate = plates.some(
+      (box) =>
+        box.height > 0 &&
+        box.height <= 160 &&
+        box.width <= 700 &&
+        box.y >= 900 &&
+        box.y + box.height <= 1280,
+    );
+    result.plateBounds = plates.map((box) => ({
+      id: box.id,
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+    }));
     const checks = {
       proposal: finished.status === "awaiting_review",
       unchangedSaved:
@@ -190,11 +240,13 @@ if (live) {
       format:
         after.format.durationInFrames === 600 &&
         after.format.width === 720 &&
+        after.format.fps === 30 &&
         after.format.height === 1280,
       clipOrder:
         clip("coffee-arrival").from === 90 &&
         clip("coffee-moment").from === 270,
       countdown: ["3", "2", "1"].every((t) => texts.includes(t)) && animated,
+      compactPlate,
       overlay: texts.some((t) => t.includes("Coffee. But make it cinematic.")),
       outro: texts.some((t) => t.includes("Made with DojoClip")),
       music:
@@ -204,6 +256,10 @@ if (live) {
         jobs[0].request.fromFrame === 0 &&
         jobs[0].request.volume === 0.18,
     };
+    await fs.writeFile(
+      path.join(root, ".build", "candidate-scene.json"),
+      JSON.stringify(scene, null, 2),
+    );
     result.checks = checks;
     result.passed = Object.values(checks).every(Boolean);
     result.texts = texts;

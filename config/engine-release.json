@@ -1,139 +1,139 @@
 {
   "version": 1,
-  "engineVersion": "1.1.1",
+  "engineVersion": "1.1.2",
   "repository": "https://github.com/PansaLegrand/dojo-video-engine",
-  "sourceCommit": "f19313c60f205d929a757ac5811aab1c4f6b5f88",
-  "tag": "v1.1.1",
-  "releaseWorkflow": "https://github.com/PansaLegrand/dojo-video-engine/actions/runs/41269083903",
-  "manifestSha256": "d9dcbc0993c25521c43fd22f7b3b330874206ffc8c4cc68123289e2063f9540a",
+  "sourceCommit": "8503406d86c3f2f0fc739c24036d17755b64c0b2",
+  "tag": "v1.1.2",
+  "releaseWorkflow": "https://github.com/PansaLegrand/dojo-video-engine/actions/runs/41557918894",
+  "manifestSha256": "63414bc51cad76b957bd9e43c1ca8ec2d1197cbce8d9e5e5a5a2e9036836402b",
   "packages": [
     {
       "name": "@dojo-video-engine/agent-tools",
-      "version": "1.1.1",
-      "integrity": "sha512-he2qyzKrP+XB2Y9u+JaQidBkrWwLpBCOSC9JypYjgQJjoq8Hfr/a4Ns2WYEPSvkAcTQT+Mf8t9+nhv0WlEpkbA==",
-      "sha256": "50c8b3d9b9a4cba81052c67d3ef5ff60fbd01e581d1f7bfcf8d03fd38a9726f3",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/agent-tools/-/agent-tools-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fagent-tools@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-luOl415nY49sRV8FIxJuemOHDVH3rpgXtUuS+hqNQEnw1kZ/GkQFSCVYuuGpSVEDQKUuRVdjDs2C1mIMwi9QDA==",
+      "sha256": "738d647e7a78ecde07c7ec61062eb739fd9c62fdaa2da527856cc0a75648663e",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/agent-tools/-/agent-tools-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fagent-tools@1.1.2"
     },
     {
       "name": "@dojo-video-engine/authoring",
-      "version": "1.1.1",
-      "integrity": "sha512-H3DQxtGY/HY+ktHDKabA+MKc9ubZ+jzSuiF/SMcr69kfKzxhDJ+xgDMUOYR7x/N74q/htTQNpF94n2a4v27y0Q==",
-      "sha256": "151a375c633a25767634fd6130b151895fa42ec200163399a5bd994cd1f5a10e",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/authoring/-/authoring-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fauthoring@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-XziNksihBKfntZmK0oXOuv5BN0yu8t9XStJPxlT6G0EXlw+yQJI4pQcQRdloealr1+NK309iFeTpBvfDM0yDHw==",
+      "sha256": "dc9a00a8b258e2a184c4c04a1f25a7cc593a99965ecff079da1b9c3c1fccf450",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/authoring/-/authoring-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fauthoring@1.1.2"
     },
     {
       "name": "@dojo-video-engine/cli",
-      "version": "1.1.1",
-      "integrity": "sha512-LPx7jTYOpIW743t7jGQQD1+uLY3jC/jQS68tOc79QuGbX8SzTMa64ChOIIDKGzWtUbYBQTKd/oU5aqKVTSSiOg==",
-      "sha256": "01eae88090bf1f6374092ae6ac57da7b903f482bb3ff266cec4cae74d360302f",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/cli/-/cli-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcli@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-xd+oaQtHR8bs7/9yKrrWMCwKwaLr+IPM+0DGkais18uzpRK/A9PMB+OwxjhUXjZkI5qWwvb5tBBn0xqUaLpAkQ==",
+      "sha256": "a26bc7b3b0d98fd5021553478e2155ba42bb29c047c310ce13a253f4fd5f9ff8",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/cli/-/cli-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcli@1.1.2"
     },
     {
       "name": "@dojo-video-engine/commands",
-      "version": "1.1.1",
-      "integrity": "sha512-zuBso2boaf5qpLFyKYivJCAbzSvpfvYV0FPyGzcMX1AULlKmXlZ1VGZF/nw+tjd5A4RIabdKMd6SI25fyj+Idg==",
-      "sha256": "b0870a1cb4d1feed8f3e226a3de6468d31d253bc00c505c2ce522decfb1aea63",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/commands/-/commands-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcommands@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-pVzWo4s6Da9uhBSxg7yBqhz3/44oVIuaEGVEamg0UKr7i7mlwlgDGbsk0cDTfbXop/KutUb8Su21JIVQbaS5Pg==",
+      "sha256": "02130e35f9cf38c4ba326be3665782dd92843d6c3c9fd278994ac723641b2c8b",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/commands/-/commands-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcommands@1.1.2"
     },
     {
       "name": "@dojo-video-engine/core",
-      "version": "1.1.1",
-      "integrity": "sha512-HJXTKRccgWi8Mg2eztOojkVEAEtH4VwqOJcpyJDT5Jd70SBJsuM8FOhjhA9Ko/0uKK5AaVKsXh4aUfOTkRz29A==",
-      "sha256": "8995d4872024cae3fc6449a3d1b1d0b9e74352d5cbdabe0e75196b186d71f018",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/core/-/core-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcore@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-cbUvS+r1nsAq8V4qmWtFdS2FeOOf8nk5bTkUmS9C/sI0rpnqvBburtwbIbgjTHLJHoHJrZkn6bKPwz341GeVqw==",
+      "sha256": "16e942e80030a56e790d766493cec9bc586f308c4facf6439b5e1ad9b34f4f9b",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/core/-/core-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcore@1.1.2"
     },
     {
       "name": "@dojo-video-engine/create",
-      "version": "1.1.1",
-      "integrity": "sha512-Uzj2MjPzXR7ijZhsAu0/02+hgTR0bLcihLs3AQvc5M+5GqjTWrdAbdLxVcI4sn7gjxcXQydC/ouo1eR3fIGoaQ==",
-      "sha256": "cbb655e1f918d166cde79ffee2e07ba7c17ddaeeef8427586336d370b6ceb063",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/create/-/create-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcreate@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-s69CBy9LseDlge4jhyH9FOy2fLJryIuUhiJPYZPHmMM0NzZHnQBp8QsFLEft3/hKvxtgaf8HIiw7GiCVt1K59w==",
+      "sha256": "a597c3ffb9a638660d7bc9fd6f33ad95635ca7507294d87dc94329a155033071",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/create/-/create-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fcreate@1.1.2"
     },
     {
       "name": "@dojo-video-engine/export",
-      "version": "1.1.1",
-      "integrity": "sha512-DJIUDUCY26ehxhSC3eQpSfOV+Xg33/S2pm/V9L7XquFOId1hj0oqq4kZ/Bw6SwVZWnawUNkVKOzVSMfB5m7MWA==",
-      "sha256": "2dd1ecd5d715a5edec44edbd40cbd3e51e18d2b050aab939cab8eff82b9e2d32",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/export/-/export-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fexport@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-R41yzvOeVEwnIf5RaLGPEbnlVLRdV+ZJjgXHKydRdNBQfvbf0RrZuYbsjmIw4+avcRySuYii34QDSBu+HCScgw==",
+      "sha256": "8650713bc36ad2db157ad08717a1c1d89d4eb4a6e13eddc9239e014835ba9bb3",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/export/-/export-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fexport@1.1.2"
     },
     {
       "name": "@dojo-video-engine/extensions",
-      "version": "1.1.1",
-      "integrity": "sha512-DDCwAX4QNqMc24gmg6E0IdGDVLxppgGievH2/POgmAVXC+3ZJ79y+ecDY0TLhh8pyNweYwc3tKCK3l3MwMSXoQ==",
-      "sha256": "ff9f35682f6f5c39b085ab55086f91b916bc12eb2ba8cda06465ba46970435b4",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/extensions/-/extensions-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fextensions@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-/51wRMwE6G3H1Hf+QR6czhnPe/TCMpYNe4GxX4Iwav9WkFTIEfSnDin982skiOG380BF0njK7XP+sytTUH+Z/Q==",
+      "sha256": "4c773e6235fcc3194424edb036ab72d83130dab82233d0fa98dcbb9f8b7923e3",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/extensions/-/extensions-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fextensions@1.1.2"
     },
     {
       "name": "@dojo-video-engine/inspection",
-      "version": "1.1.1",
-      "integrity": "sha512-W1ZIodDSgJHGPANf6HUuCir2Ym4Yosvet/y5OyTxSJwUDx5ZhBCAAIR1ATVICK3c1fVrZFlQHHUfxuIgXfeZ4Q==",
-      "sha256": "dc988b46eae2920aa3b735deffc7df3d2a78bdc056803d64f12ec53c998a4f8b",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/inspection/-/inspection-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2finspection@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-IUEQYpY9AaxzL1uIAg7PzNv9iPxx6YzTl61YsIuPD+JB2MV9eTe7bxqcRUSc0AdS3NgHojpZD8r23nyNZIC8Tw==",
+      "sha256": "b1b7af23679757691131c43b9c81e6a5d190bb3eb73798149ec83d9f19c6a0c3",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/inspection/-/inspection-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2finspection@1.1.2"
     },
     {
       "name": "@dojo-video-engine/interchange",
-      "version": "1.1.1",
-      "integrity": "sha512-4JOl5mZvFskrA9li4moVUPGyLFrC2SN098ifbdyH04Memj9fF0z3yiKTZ7MuQqs0UrWGWXkQJmESFT9W5SQGbg==",
-      "sha256": "9184d5fe986847064239a0ed4c65e2e72f4b52ec150091b4d659b73adc167669",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/interchange/-/interchange-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2finterchange@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-hs4HcDyohpf7lZJQMASapGp27dVAQLrdGgxH8i/9hZzP/+lF79RQOjClNuAiQ4lHkzWvUyptbO0hhqWynK7l1g==",
+      "sha256": "28056be128f8110b0b1b1d68c062f419e4078696229984a3372e777512858ccc",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/interchange/-/interchange-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2finterchange@1.1.2"
     },
     {
       "name": "@dojo-video-engine/layout",
-      "version": "1.1.1",
-      "integrity": "sha512-bn4Fz2r+S8whOdQV1AeHrhCSaHP2ra7j9qUs05yOLdx5yvs8KMGk+8M3zRz8MAO4qfs06g+Za4Vl8ac7Pmw9oQ==",
-      "sha256": "b7201799675b4f6c34a319157d211c842a314e18d6f9fd15543b99a1a7bb60f9",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/layout/-/layout-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2flayout@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-cCUjogdNjSNZ1kSij25kO8EPJlis5ijOIuo/P/nKYWgeypfZc2KVWiIzAsfBXAFuezmsZz5xNLfBt9qbkK9Bsg==",
+      "sha256": "762d86c4fd45345dcbd83539912a43ec445e07ee46210ddfb3afee3c404019b9",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/layout/-/layout-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2flayout@1.1.2"
     },
     {
       "name": "@dojo-video-engine/player",
-      "version": "1.1.1",
-      "integrity": "sha512-dv9wjPYeG3kuxJlcce5+S7LgdLAsX5U5qwUWYBu5gx/kwkvd/y/7RU2lsNTJSm6W0qLXfE4XbuhHWQY4JgtsVA==",
-      "sha256": "69ddb7f1defae3e6ed72f234280051e1e63414347d27afc5c807655b6bd23797",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/player/-/player-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fplayer@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-G2fyY3/jpTX0R8wyqco+FTDpHxrow6H3tOT8q7Gjfau8NHyTODz+ZaGh1ZOSHNgrNS3wJLsYXHBuI0NY5lTQfw==",
+      "sha256": "42cdcf62c3acebd9b1810512a3bfed1e373d47bbb5a7277313c70c8b7522fe48",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/player/-/player-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fplayer@1.1.2"
     },
     {
       "name": "@dojo-video-engine/presets",
-      "version": "1.1.1",
-      "integrity": "sha512-3OTxchj5Cn8MuDVoSaCxaw8dRlZ3zDEG6OGgqzr+8dTYxt3IaavEPCysTygei5PVMsABEPyYR8MAF4dTcufPDQ==",
-      "sha256": "701088d5fa3ce93b13f433da5da42c4d63e93d5776514f0fd097cf8aad96279a",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/presets/-/presets-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fpresets@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-iX6NUQiSUGK3wXKa3NOcTqPYcqSZgVw5wKrQLKTQ3POnFYhOhWqWahoNjIVtfdsH08CJvEngCieVnWGrvQ4GCg==",
+      "sha256": "fef0d572c07e94eecd4c3d79c4c09c1c291e782e40e03ff97faaf7cd04820d0c",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/presets/-/presets-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fpresets@1.1.2"
     },
     {
       "name": "@dojo-video-engine/renderer-canvas2d",
-      "version": "1.1.1",
-      "integrity": "sha512-vkZBFAXPNkbTFlqSD2hYAJ+UuT6JqGMznBcnPio1Q+CkaIAaiATC3ZD6PLESByqZYuwLIUpYcB0x3sEJLDQuZg==",
-      "sha256": "850d9bb3c0f0b857237212cf45932f112aef2dd2088fda09557bd202e880325b",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/renderer-canvas2d/-/renderer-canvas2d-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2frenderer-canvas2d@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-/zXCsgZUtGsbwhCxFmOys1lItm8ZGsARjurCMx9lFwOzwnMUWPBuU3kSaMvZEJ9UMDRR/nXb0n2fmO3jXPzwGQ==",
+      "sha256": "9067e40b86b8bc44df4ec278b5a40f1a14253962e0874854d7d6af601150a518",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/renderer-canvas2d/-/renderer-canvas2d-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2frenderer-canvas2d@1.1.2"
     },
     {
       "name": "@dojo-video-engine/runtime",
-      "version": "1.1.1",
-      "integrity": "sha512-bSnw1Zk5yVmXxJ1l+S2FclGlbJqmU00Vm7M/g+V72QLiy1vuk22Kt4e8xhFdFFcLEftkvVBQ2lE5NcZuq+pTnA==",
-      "sha256": "8115406c74b497908fcdca12c2e3394ecf66407c96dd7bc07b96c6345c29a5af",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/runtime/-/runtime-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fruntime@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-AMO4MOa5k3KsmMyUCwQU0OlZeIJPMcg2umKOEJMDNH79lpqHcn3YfPTZgvcDAf/z7mYU7mso+QEQcfzxyc9+vQ==",
+      "sha256": "a89c35590f64b3e618033856f8e392ffdda84facfd14f5679e48b22434a64584",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/runtime/-/runtime-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fruntime@1.1.2"
     },
     {
       "name": "@dojo-video-engine/schema",
-      "version": "1.1.1",
-      "integrity": "sha512-MwJVLHN84eWivYURLU4vsG2CYXl77WgaQihSMuSZK8SxXoUsbdtDdHY2ErTBcbjN1DpRcxL3Ql0/3KLplDw5Jg==",
-      "sha256": "56c97c7f38d459497f7a780d071ca36b8621d9eaa0536ebf69070747ecbc1abe",
-      "tarball": "https://registry.npmjs.org/@dojo-video-engine/schema/-/schema-1.1.1.tgz",
-      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fschema@1.1.1"
+      "version": "1.1.2",
+      "integrity": "sha512-SZG86tSoiRppCFupXEZyvL1kLL+2AltaZ/Jpi8SdFbkVXit9eX/R+cc8ho5KEEfymd/B3Lk4kzktvze3O8VZzQ==",
+      "sha256": "f6aedfd602595183e2f278294e6a964c9d1a21585709f9deeb17edfbb1b2e20e",
+      "tarball": "https://registry.npmjs.org/@dojo-video-engine/schema/-/schema-1.1.2.tgz",
+      "attestations": "https://registry.npmjs.org/-/npm/v1/attestations/@dojo-video-engine%2fschema@1.1.2"
     }
   ]
 }

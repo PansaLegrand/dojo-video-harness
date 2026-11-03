@@ -36,15 +36,25 @@ or the host environment. The script never approves music or exports video.
 
 - New regression tests cover standalone termination and compound continuation,
   a single music plan, unchanged saved document, and a separately reviewable edit.
-- The live GPT planning rehearsal used four model calls; all structural assertions
-  passed, including clip order, countdown animation, text, format and music plan.
+- The revised full instruction used four live GPT planning calls and passed all
+  assertions, including clip order, countdown animation, text, format, music plan
+  and independently evaluated lower-third bounds (x=28, y=1064, 664×120 pixels).
 - A single approved Kie V6 job returned usable audio. The durable host stored it
   locally and inserted one 20-second item at 18% volume at revision 3.
-- Rendering exposed a valid-color spelling mismatch in engine 1.1.1. The upstream
+- Rendering exposed a valid-color spelling mismatch in engine 1.1.1. Engine 1.1.2 is published. The upstream
   fix compares canonical paint sources while retaining tamper rejection. Regression
   cases cover uppercase hex, padded hex/named/functional colors and shape paint.
-- Keep the exact rendered/exported evidence with the recording bundle. A passing
-  model-plan assertion alone does not prove that preview or export is correct.
+- The first rendered output exposed an unbounded title plate. The final prompt
+  supplies explicit dimensions; `motion-design.md` now explains this constraint,
+  and the rehearsal oracle checks evaluated geometry. A fresh model run, browser
+  comparison and decoded 20-second visual export passed with the revised request.
+- The first project's plate was corrected through chat, compared and applied while
+  preserving its already generated music. Its final 720×1280 H.264/AAC export fully
+  decoded at 30 fps / 20 seconds; independent audio comparison measured gain 0.17994
+  and correlation 0.99998 after a measured 11.02 ms codec-priming offset. No second
+  music generation was submitted for the visual retest.
+- These runs separate model-plan, actual-render, paid-provider and decoded-media
+  evidence. Preserve that distinction when presenting the demo.
 
 No recording-media files, API keys, provider settings or private job payloads are
 committed. The commercial SaaS does not acquire the local music service by copying

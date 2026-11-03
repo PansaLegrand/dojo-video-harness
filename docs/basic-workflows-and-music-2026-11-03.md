@@ -5,6 +5,9 @@ already supplies the needed rendering/mixing primitives; no new engine package
 or agent framework is introduced. The commercial editor gets a neutral extension
 slot; its multi-user worker/billing system is not replaced by this local host.
 
+The later [presentation rehearsal](presentation-rehearsal-2026-11-03.md) found a
+valid-color rendering defect; consumers now pin the published engine 1.1.2 fix.
+
 ## Basic editing and one long instruction
 
 Text, trim/split, source-clock editing and subtitle UI continue to use the shared
