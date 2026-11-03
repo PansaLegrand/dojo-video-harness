@@ -1,0 +1,122 @@
+{
+  "passed": true,
+  "model": "synthetic responses",
+  "source": "Xiph.Org Digital Show & Tell, Monty Montgomery",
+  "license": "CC BY-SA 3.0",
+  "humanAcceptance": "pending",
+  "reports": [
+    {
+      "name": "speech-excerpt",
+      "frames": 306,
+      "sourceSha256": "cf67154af3f5cc2e7b362a60caaca1eb7a52cb132e9c32bcff0ca0e3c90cb60b",
+      "outputSha256": "8a79e746587d15db5a8bd60e89de3a7470e132a23ab8e100ac1357ffd776700b",
+      "revision": 3,
+      "documentHash": "sha256:5253aa6363336b7b647649930554c8e6cfa625fc96460ee06b4c3411dc0d1161",
+      "audio": [
+        {
+          "time": 1,
+          "correlation": 0.9997915165914224,
+          "lag": 0,
+          "gain": 1.0006448248890654,
+          "lagMs": 0
+        },
+        {
+          "time": 8.2,
+          "correlation": 0.9999307805463945,
+          "lag": 0,
+          "gain": 1.0007762182515723,
+          "lagMs": 0
+        }
+      ],
+      "pixels": [
+        {
+          "time": 1,
+          "meanAbsoluteError": 1.6994357638888888
+        },
+        {
+          "time": 8.2,
+          "meanAbsoluteError": 1.9040798611111112
+        }
+      ]
+    },
+    {
+      "name": "portrait-montage",
+      "frames": 360,
+      "sourceSha256": "cf67154af3f5cc2e7b362a60caaca1eb7a52cb132e9c32bcff0ca0e3c90cb60b",
+      "outputSha256": "d06dbae0bf503b5b87c89860877f74fa242bcb0a70f09e73ebd0edb53d6d76d4",
+      "revision": 3,
+      "documentHash": "sha256:b7d72e5d7db7984b97ad89df30da1a975994ce56e1f0593eb965f914eab16a35",
+      "audio": [
+        {
+          "time": 1,
+          "correlation": 0.9655359746065666,
+          "lag": 1,
+          "gain": 0.9597936480806446,
+          "lagMs": 0.125
+        },
+        {
+          "time": 10,
+          "correlation": 0.9625839820971549,
+          "lag": 7,
+          "gain": 0.9619968527838929,
+          "lagMs": 0.875
+        }
+      ],
+      "pixels": [
+        {
+          "time": 1,
+          "meanAbsoluteError": 3.0317925347222223
+        },
+        {
+          "time": 10,
+          "meanAbsoluteError": 3.4479166666666665
+        }
+      ]
+    },
+    {
+      "name": "longer-speech",
+      "frames": 1800,
+      "sourceSha256": "cf67154af3f5cc2e7b362a60caaca1eb7a52cb132e9c32bcff0ca0e3c90cb60b",
+      "outputSha256": "24ead992e85e56eb10f3156fbb03e88955e328922df7b80a9bb225bc8e03d90b",
+      "revision": 3,
+      "documentHash": "sha256:e592e155677fec30dfd9043459bc6d7c349b2dd49a661fa58dd025a379469077",
+      "audio": [
+        {
+          "time": 1,
+          "correlation": 0.9566260131423567,
+          "lag": -23,
+          "gain": 0.9517523916573621,
+          "lagMs": -2.875
+        },
+        {
+          "time": 30,
+          "correlation": 0.9992408273087457,
+          "lag": -24,
+          "gain": 1.0007205702281619,
+          "lagMs": -3
+        },
+        {
+          "time": 58,
+          "correlation": 0.9823583700397461,
+          "lag": -21,
+          "gain": 0.98217198982014,
+          "lagMs": -2.625
+        }
+      ],
+      "pixels": [
+        {
+          "time": 1,
+          "meanAbsoluteError": 2.1809895833333335
+        },
+        {
+          "time": 30,
+          "meanAbsoluteError": 0.8136935763888888
+        },
+        {
+          "time": 58,
+          "meanAbsoluteError": 2.1334635416666665
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,16 @@
 
 Started: 2026-11-01. Last updated: 2026-11-02. The harness plan remains the acceptance contract.
 
+## November 3 follow-up
+
+[Readable overlays](readable-overlays-2026-11-03.md) add deterministic preparation
+defaults with 18 focused tests and three actual browser review/export cases.
+[Real-media acceptance](real-media-acceptance-2026-11-03.md) adds three licensed
+real-footage workflows with independent decoded output and saved-revision checks.
+These advance H-03/H-04/H-06 subsets; live-model adoption, physical-phone breadth
+and final human acceptance remain open. Engine 1.1.3 candidate qualification is
+separate from npm publication and registry-installed consumer adoption.
+
 | Increment | Change                                                                                                                                                             | Proof                                                                                                                                           | Status                                                                         |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | H-01      | Capability and scope inventory in `readiness-capabilities.md`                                                                                                      | Catalog/scenario/test paths checked against source; no live quality claim                                                                       | Inventory complete                                                             |

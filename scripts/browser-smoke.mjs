@@ -1,5 +1,9 @@
 import { setupMusicProof } from "./lib/music-browser-proof.mjs";
 import {
+  realMediaReply,
+  verifyRealMedia,
+} from "./lib/real-media-browser-proof.mjs";
+import {
   overlayReply,
   verifyReadableOverlays,
 } from "./lib/readable-overlay-browser-proof.mjs";
@@ -69,7 +73,9 @@ const provider = createServer(async (req, res) => {
   let name = "propose_edit",
     args;
   const musicReply =
-    overlayReply(context, body) ?? musicProof.modelReply(context, body);
+    realMediaReply(context, body) ??
+    overlayReply(context, body) ??
+    musicProof.modelReply(context, body);
   if (musicReply) {
     name = musicReply.name;
     args = musicReply.args;
@@ -239,7 +245,7 @@ async function until(fn) {
   }
   throw last ?? new Error("Timed out");
 }
-try {
+checksBlock: try {
   await until(async () => {
     const r = await fetch(base + "/api/config");
     return r.ok;
@@ -272,6 +278,13 @@ try {
       body: '<html><body style="background:#000;color:#fff">Tutorial</body></html>',
     }),
   );
+  if (process.env.REAL_MEDIA_ONLY === "1") {
+    if (!process.env.REAL_MEDIA_FILE)
+      throw new Error("REAL_MEDIA_ONLY requires REAL_MEDIA_FILE");
+    await verifyRealMedia({ page, api, base, output, check });
+    check("no browser exceptions", errors.length === 0);
+    break checksBlock;
+  }
   await page.goto(`${base}/ja/applications/video-edit-ai`);
   await page.getByRole("heading", { name: "404", exact: true }).waitFor();
   check(
@@ -298,8 +311,18 @@ try {
     baseRevision: state.revision,
     baseHash: state.documentHash,
     commands: [
-      { type: "set", target: { kind: "format" }, path: ["width"], value: 320 },
-      { type: "set", target: { kind: "format" }, path: ["height"], value: 180 },
+      {
+        type: "set",
+        target: { kind: "format" },
+        path: ["width"],
+        value: 320,
+      },
+      {
+        type: "set",
+        target: { kind: "format" },
+        path: ["height"],
+        value: 180,
+      },
       {
         type: "set",
         target: { kind: "format" },
@@ -629,6 +652,7 @@ try {
   });
   await musicProof.verify({ page, api, base, tmp, output, check });
   await verifyReadableOverlays({ page, api, base, output, check });
+  await verifyRealMedia({ page, api, base, output, check });
   check("no browser exceptions", errors.length === 0);
   await writeFile(
     path.join(output, "report.json"),

@@ -1,0 +1,14 @@
+{
+  "title": "Digital Show & Tell",
+  "creator": "Monty Montgomery / Xiph.Org Foundation",
+  "sourcePage": "https://xiph.org/video/vid2.shtml",
+  "mediaUrl": "https://downloads.xiph.org/video/Digital_Show_and_Tell-360p.webm",
+  "captionUrl": "https://xiph.org/video/02-Digital_Show_and_Tell.en.vtt",
+  "license": "CC BY-SA 3.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "changes": "Excerpt at source 8–98 seconds; normalized to 640x360 30 fps H.264/AAC BT.709 for controlled qualification. Subsequent tests trim, crop, overlay text and change gain.",
+  "originalSha256": "842542c0eb922c6317409fc7df1171f1cad6c753795ea954449dd8d873fb5b5c",
+  "captionSha256": "2f709e0fc9b358bb637066300a9682088207d43339e3e6eca8cbd5d78c7952dd",
+  "derivedSha256": "cf67154af3f5cc2e7b362a60caaca1eb7a52cb132e9c32bcff0ca0e3c90cb60b",
+  "physicalPhoneRecording": false
+}

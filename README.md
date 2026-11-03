@@ -134,6 +134,10 @@ npm start
 - Proposal review with synchronized before/after previews, explicit apply,
   selective undo, structured questions, cancellation, and the product’s quick-edit controls. Tool events remain available through the local API.
 - Provider-backed captions and translation, with persisted source-bound receipts.
+- Readable title, lower-third and supplied-text caption preparation with explicit
+  bounds and responsive defaults; all edits still require review and Apply.
+  See [layout checks](docs/readable-overlays-2026-11-03.md) and
+  [bounded real-footage acceptance](docs/real-media-acceptance-2026-11-03.md).
 - One-instruction workflows for joining imported clips, overlaying a logo, generating
   and translating captions, then exporting the reviewed revision.
 - Approved instrumental music generation through Kie V6, with local storage and
