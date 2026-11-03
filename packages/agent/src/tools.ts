@@ -45,8 +45,18 @@ export function createVideoTools(
           kind: { type: "string", enum: ["title", "lowerThird", "caption"] },
           text: { type: "string", maxLength: 240 },
           subtitle: { type: "string", maxLength: 120 },
-          from: { type: "integer", minimum: 0 },
-          duration: { type: "integer", minimum: 1 },
+          from: {
+            type: "integer",
+            minimum: 0,
+            description:
+              "Start in integer composition frames, using the inspected project fps.",
+          },
+          duration: {
+            type: "integer",
+            minimum: 1,
+            description:
+              "Length in composition frames, not seconds. Convert requested seconds using the inspected project fps.",
+          },
         },
         ["itemId", "trackId", "kind", "text", "from", "duration"],
       ),

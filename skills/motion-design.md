@@ -8,6 +8,8 @@ wrapping and a contrasting plate without asking the user for geometry. Include
 its returned command in `propose_edit`; it never applies an edit. If copy exceeds
 the readable limits, ask for shorter text or separate cards rather than truncating
 it. Real speech captions still use source-bound `captionSource` evidence.
+The helper's `from` and `duration` are composition frames; inspect the project
+fps and convert requested seconds before preparing the command.
 
 Choose a clear hierarchy, readable text, and intentional timing. Read the current
 canvas and existing style before proposing. Use the documented macro schema;
