@@ -86,3 +86,33 @@ targets need no repeated identification, while unresolved competing referents
 still warrant clarification. Enlargement guidance calls out text-fit bounds.
 This adds no working copy, referent registry, or forced target selection.
 The verification pass retains the same prompts and grading thresholds.
+
+## Verification result
+
+The corrected candidate `7555db5` passed both conversations: **8/8 turns**, with no
+clarification, duplicate title, changed target identity, or unrelated document edit.
+All eight saved scenes rendered in Chromium 148.0.7778.96. Red-letter bounds grew
+from 50 × 17 px to 105 × 36 px in the single-text case and to 87 × 30 px with the
+other text present. Yellow backing remained visible. The final two-object frame
+was also inspected visually: "Hello" is red on yellow; "Keep me" remains white.
+This inspection does not substitute for the user's separate quality acceptance.
+
+Verification evidence:
+`test-results/corrections/2026-11-04T06-27-26.929Z-6513a5b3`.
+This pass used 12 requests, 91,753 input tokens and 1,780 output tokens. Combined
+with the retained initial failure: **18/32 requests**, 136,774 input tokens and
+2,887 output tokens. No further paid tests were run.
+
+Local validation: 362 tests, UI hash checks, TypeScript and production build pass.
+The baseline reference evaluation also passed all 18 scenarios; the new reference
+conversations passed eight rendered-frame checks. These are distinct from live
+model inference. The [machine-readable report](reports/conversational-corrections-2026-11-04.json)
+retains both live results and render hashes. Temporary reference-fixture failures
+(schema normalization and test command compilation) were corrected before the
+frozen live candidate; their ignored local artifacts remain available.
+
+For this bounded case, the existing history and current document were sufficient.
+The demonstrated failure was choosing the intended property within the right
+object. Ordinary editing defaults fixed it without a new continuity subsystem.
+Next useful coverage is corrections to an unapplied proposal and competing recent
+text referents; neither is claimed to pass here.

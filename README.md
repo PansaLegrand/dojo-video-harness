@@ -238,6 +238,13 @@ The [focused lower-third live gate](docs/lower-third-qualification-2026-11-04.md
 finished at 11/12 after local fixes; it is not yet qualified. The report retains
 the failures, rendering evidence, request budget and remaining placement issue.
 
+A [bounded conversational-correction diagnostic](docs/conversational-corrections-2026-11-04.md)
+passed two live four-turn conversations: add text → change its color → change its
+backing → enlarge it, with no selection or repeated target identification. It
+preserved the same object and unrelated text, and verified rendered changes.
+This covers applied edits in short conversations; pending proposals and long
+histories remain unqualified.
+
 To check your own changes:
 
 ```sh

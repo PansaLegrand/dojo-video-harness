@@ -1,0 +1,311 @@
+{
+  "date": "2026-11-04",
+  "status": "bounded-diagnostic-passed-after-prompt-fix",
+  "model": "openai/gpt-6-sol",
+  "endpoint": "https://ai-gateway.vercel.sh/v1",
+  "taskMaxRequests": 32,
+  "requestsUsed": 18,
+  "inputTokens": 136774,
+  "outputTokens": 2887,
+  "productionChange": "Harness prompt text-editing defaults only; no duplicate working object or persistent target registry",
+  "humanAcceptance": "pending",
+  "scope": "Two four-turn conversations with applied edits, no selection or explicit run reference, and host reopened per turn. Not a repeated reliability qualification, long-history or unapplied-proposal gate.",
+  "runs": [
+    {
+      "directory": "test-results/corrections/2026-11-04T06-25-02.242Z-e0a8b954",
+      "commit": "996302a908221a496dd0b007c0062d2536014e9e",
+      "sourceHash": "ef7ef05d9a13fb83103a1d97bc87074d863f751f4ce932043d026334a77186e5",
+      "requests": 6,
+      "inputTokens": 45021,
+      "outputTokens": 1107,
+      "structuralPassed": false,
+      "renderPassed": false,
+      "sessions": [
+        {
+          "scenario": "single-text",
+          "target": {
+            "itemId": "hello-title",
+            "textId": "hello-title:text"
+          },
+          "passed": false,
+          "turns": [
+            {
+              "turn": 0,
+              "prompt": "Add a title saying \"Hello\" for the first five seconds, with a background behind the text. Preserve everything already in the project.",
+              "passed": true
+            },
+            {
+              "turn": 1,
+              "prompt": "Make it red.",
+              "passed": false,
+              "error": "{\"id\":\"question-1\",\"question\":\"Should I make the \u201cHello\u201d text red or the background behind it red?\",\"options\":[{\"id\":\"text-red\",\"label\":\"Make the \u201cHello\u201d text red\",\"targetItemIds\":[\"hello-title\"]},{\"id\":\"background-red\",\"label\":\"Make the title\u2019s background red\",\"targetItemIds\":[\"hello-title\"]}],\"allowText\":true}\n+ actual - expected\n\n+ 'needs_input'\n- 'awaiting_review'"
+            }
+          ]
+        },
+        {
+          "scenario": "with-other-text",
+          "target": {
+            "itemId": "hello-title",
+            "textId": "hello-title:text"
+          },
+          "passed": false,
+          "turns": [
+            {
+              "turn": 0,
+              "prompt": "Add a title saying \"Hello\" for the first five seconds, with a background behind the text. Preserve everything already in the project.",
+              "passed": true
+            },
+            {
+              "turn": 1,
+              "prompt": "Make it red.",
+              "passed": false,
+              "error": "Only requested style properties may change\n+ actual - expected ... Lines skipped\n\n  {\n    id: 'hello-title',\n...\n      id: 'hello-title',\n      style: {\n+       backgroundColor: 'rgba(255,0,0,0.88)',\n-       backgroundColor: 'rgba(15,23,42,0.88)',\n        borderRadius: 9,\n...\n    },\n    trackId: 'visual'\n  }"
+            }
+          ]
+        }
+      ],
+      "render": [
+        {
+          "scenario": "single-text",
+          "passed": false,
+          "frames": [
+            {
+              "turn": 0,
+              "image": "single-text-0.png",
+              "sceneSha256": "808cc00105a988d289deee5d2c28b88250d90f2e01e1d58f1f293e2e34528b89",
+              "imageSha256": "b450e00433ddf4dd8b012c9f23426d0e4029fd3bc4c4e8320d0ef94c42da5458",
+              "pixels": {
+                "red": {
+                  "count": 0,
+                  "width": 0,
+                  "height": 0
+                },
+                "yellow": 0
+              }
+            }
+          ],
+          "error": "ENOENT: no such file or directory, open '/Users/sa/Downloads/Github/dojo-video-harness/test-results/corrections/2026-11-04T06-25-02.242Z-e0a8b954/single-text-1-scene.json'"
+        },
+        {
+          "scenario": "with-other-text",
+          "passed": false,
+          "frames": [
+            {
+              "turn": 0,
+              "image": "with-other-text-0.png",
+              "sceneSha256": "3a2a6e4e88b8b58c19932dd1cbc62348a54d85212b9a5ff8669e913f556e4422",
+              "imageSha256": "4fd4f021bb31cd1102c52a7cb0ad6d39fc06d9ec548f750519304be906220116",
+              "pixels": {
+                "red": {
+                  "count": 0,
+                  "width": 0,
+                  "height": 0
+                },
+                "yellow": 0
+              }
+            }
+          ],
+          "error": "ENOENT: no such file or directory, open '/Users/sa/Downloads/Github/dojo-video-harness/test-results/corrections/2026-11-04T06-25-02.242Z-e0a8b954/with-other-text-1-scene.json'"
+        }
+      ]
+    },
+    {
+      "directory": "test-results/corrections/2026-11-04T06-27-26.929Z-6513a5b3",
+      "commit": "7555db52c5b07972a1828340b2698b6433ef14e7",
+      "sourceHash": "1e8a02dfca155bd4f18ae3f368ce846a32c5850d13e9c5b339e85082ae7514f2",
+      "requests": 12,
+      "inputTokens": 91753,
+      "outputTokens": 1780,
+      "structuralPassed": true,
+      "renderPassed": true,
+      "sessions": [
+        {
+          "scenario": "single-text",
+          "target": {
+            "itemId": "hello-title",
+            "textId": "hello-title:text"
+          },
+          "passed": true,
+          "turns": [
+            {
+              "turn": 0,
+              "prompt": "Add a title saying \"Hello\" for the first five seconds, with a background behind the text. Preserve everything already in the project.",
+              "passed": true
+            },
+            {
+              "turn": 1,
+              "prompt": "Make it red.",
+              "passed": true
+            },
+            {
+              "turn": 2,
+              "prompt": "Use yellow behind it.",
+              "passed": true
+            },
+            {
+              "turn": 3,
+              "prompt": "Make it bigger.",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "scenario": "with-other-text",
+          "target": {
+            "itemId": "hello-title",
+            "textId": "hello-title:text"
+          },
+          "passed": true,
+          "turns": [
+            {
+              "turn": 0,
+              "prompt": "Add a title saying \"Hello\" for the first five seconds, with a background behind the text. Preserve everything already in the project.",
+              "passed": true
+            },
+            {
+              "turn": 1,
+              "prompt": "Make it red.",
+              "passed": true
+            },
+            {
+              "turn": 2,
+              "prompt": "Use yellow behind it.",
+              "passed": true
+            },
+            {
+              "turn": 3,
+              "prompt": "Make it bigger.",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "render": [
+        {
+          "scenario": "single-text",
+          "passed": true,
+          "frames": [
+            {
+              "turn": 0,
+              "image": "single-text-0.png",
+              "sceneSha256": "808cc00105a988d289deee5d2c28b88250d90f2e01e1d58f1f293e2e34528b89",
+              "imageSha256": "b450e00433ddf4dd8b012c9f23426d0e4029fd3bc4c4e8320d0ef94c42da5458",
+              "pixels": {
+                "red": {
+                  "count": 0,
+                  "width": 0,
+                  "height": 0
+                },
+                "yellow": 0
+              }
+            },
+            {
+              "turn": 1,
+              "image": "single-text-1.png",
+              "sceneSha256": "27e1104fe7ac27c191cea4e317f0c16a8bcb584a33bb47f6029a58c3e9479286",
+              "imageSha256": "d4439592d645d1f8bef57704054ed2bd733a4498e5bdc4b2a6e2b6465fb462dc",
+              "pixels": {
+                "red": {
+                  "count": 287,
+                  "width": 49,
+                  "height": 17
+                },
+                "yellow": 0
+              }
+            },
+            {
+              "turn": 2,
+              "image": "single-text-2.png",
+              "sceneSha256": "e32f1b4d5b632e87181917dbcfe7c2f5e89e817a932928c19476ff6a09c2ea9c",
+              "imageSha256": "4eec633f40b69b878e0ebab1d7c76d4df0413e9604570f941a01f7b249c3558b",
+              "pixels": {
+                "red": {
+                  "count": 328,
+                  "width": 50,
+                  "height": 17
+                },
+                "yellow": 27609
+              }
+            },
+            {
+              "turn": 3,
+              "image": "single-text-3.png",
+              "sceneSha256": "c7d9ebf0271dd77f60d2cec854b820d72176624c62fc80f10906c42cc3adef24",
+              "imageSha256": "e67fb7b5e889a69ba1525e6496e3958a4494cdc67b89762d1500cf9b8c488437",
+              "pixels": {
+                "red": {
+                  "count": 1503,
+                  "width": 105,
+                  "height": 36
+                },
+                "yellow": 48518
+              }
+            }
+          ]
+        },
+        {
+          "scenario": "with-other-text",
+          "passed": true,
+          "frames": [
+            {
+              "turn": 0,
+              "image": "with-other-text-0.png",
+              "sceneSha256": "3a2a6e4e88b8b58c19932dd1cbc62348a54d85212b9a5ff8669e913f556e4422",
+              "imageSha256": "4fd4f021bb31cd1102c52a7cb0ad6d39fc06d9ec548f750519304be906220116",
+              "pixels": {
+                "red": {
+                  "count": 0,
+                  "width": 0,
+                  "height": 0
+                },
+                "yellow": 0
+              }
+            },
+            {
+              "turn": 1,
+              "image": "with-other-text-1.png",
+              "sceneSha256": "3fbb8a028011c53950ddd50e282d2037c1af17bf2934e102060fbfe2d07fc5dd",
+              "imageSha256": "6ad7f9b3a394dda3c3b8bc5887c1a71248fc69596bc7b7e98ab5e918aa201255",
+              "pixels": {
+                "red": {
+                  "count": 287,
+                  "width": 49,
+                  "height": 17
+                },
+                "yellow": 0
+              }
+            },
+            {
+              "turn": 2,
+              "image": "with-other-text-2.png",
+              "sceneSha256": "a0098a049de00712a0ae9eabff07d8a4ed9cc02609ee83ecfe5ab42e12a9965d",
+              "imageSha256": "1fac2569865feb91b0c970c4e8dff8ae42dda9180205c68648149ce2e21e0265",
+              "pixels": {
+                "red": {
+                  "count": 328,
+                  "width": 50,
+                  "height": 17
+                },
+                "yellow": 27609
+              }
+            },
+            {
+              "turn": 3,
+              "image": "with-other-text-3.png",
+              "sceneSha256": "ada42b4fedf7edc1ed9bf36197f2ec69004c66d65054247a6a26da4f81137ed3",
+              "imageSha256": "790494db1bd104861dddd95823349a49364f54b4cab88cec70bb7378c5473e41",
+              "pixels": {
+                "red": {
+                  "count": 1034,
+                  "width": 87,
+                  "height": 30
+                },
+                "yellow": 40643
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
