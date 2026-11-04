@@ -159,12 +159,6 @@ try {
                       ],
                     }),
                   };
-              // Reference mode supplies a known valid layout independently of the helper's default caption reservation.
-              if (test.id === "existing-captions") {
-                const value = JSON.parse(response.arguments);
-                value.commands[0].node.style.top = 160;
-                response.arguments = JSON.stringify(value);
-              }
               return { text: "", calls: [{ id: randomUUID(), ...response }] };
             }
             const bytes = Buffer.byteLength(

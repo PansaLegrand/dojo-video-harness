@@ -10,6 +10,11 @@ the readable limits, ask for shorter text or separate cards rather than truncati
 it. Real speech captions still use source-bound `captionSource` evidence.
 The helper's `from` and `duration` are composition frames; inspect the project
 fps and convert requested seconds before preparing the command.
+The lower-third helper reserves space above active caption containers. Keep that
+prepared placement unless the user asks for a change. A lower-third belongs in
+the lower portion of the picture; moving it to the top creates a different
+graphic. If captions leave insufficient room, ask for shorter copy or permission
+to use another placement. Preserve existing caption text, styling and timing.
 
 Choose a clear hierarchy, readable text, and intentional timing. Read the current
 canvas and existing style before proposing. Use the documented macro schema;

@@ -13,6 +13,11 @@ import { compileNativeAgentResult } from "../packages/core/src/lib/video-project
 import { executeVideoProjectCommands } from "../packages/core/src/lib/video-project/commands";
 import { compileVideoProjectDocument } from "../packages/core/src/lib/video-project/compilation";
 import { createVideoTools } from "../packages/agent/src/tools";
+import {
+  lowerThirdCases,
+  lowerThirdFixture,
+  gradeLowerThird,
+} from "../evals/agent/lower-third";
 
 const variants = [
   [640, 360],
@@ -22,6 +27,53 @@ const variants = [
   [1080, 1080],
 ];
 describe("readable overlay proposals", () => {
+  it("places a lower-third above existing caption bounds without changing captions", async () => {
+    const test = lowerThirdCases[2],
+      document = lowerThirdFixture(test),
+      before = structuredClone(document);
+    const command = prepareReadableOverlay(document, {
+      itemId: "lower",
+      trackId: "visual",
+      kind: "lowerThird",
+      text: "Sarah Chen",
+      subtitle: "Product Designer",
+      from: 0,
+      duration: 150,
+    });
+    const result = await compileNativeAgentResult(
+      {
+        contract: "video-project-commands",
+        version: 1,
+        baseRevision: 0,
+        baseHash: await hashVideoProjectDocument(document),
+        document,
+        context: { selectedItemIds: [], playheadFrame: 0 },
+      },
+      { summary: "Introduce Sarah", commands: [command] },
+    );
+    expect(() =>
+      gradeLowerThird(
+        test,
+        before,
+        executeVideoProjectCommands(document, result.proposal!.commands)
+          .document,
+      ),
+    ).not.toThrow();
+    expect(document).toEqual(before);
+    const crowded = structuredClone(document);
+    crowded.items.find((item) => item.caption)!.node.style!.top = 170;
+    expect(() =>
+      prepareReadableOverlay(crowded, {
+        itemId: "lower",
+        trackId: "visual",
+        kind: "lowerThird",
+        text: "Sarah Chen",
+        subtitle: "Product Designer",
+        from: 0,
+        duration: 150,
+      }),
+    ).toThrow(/No readable lower-third space/);
+  });
   it("rejects a zero-area macro before review and accepts a usable prepared replacement", async () => {
     const document = createVideoProjectDocument({
       width: 640,

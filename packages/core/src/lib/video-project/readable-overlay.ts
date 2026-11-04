@@ -1,5 +1,11 @@
 import { z } from "zod/v3";
 import { sceneNodeSchema } from "@dojo-video-engine/schema";
+import {
+  evaluateScene,
+  layoutScene,
+  type LayoutBox,
+} from "@dojo-video-engine/core";
+import { compileVideoProjectDocument } from "./compilation";
 import type { VideoProjectDocument } from "./document";
 
 export const readableOverlaySchema = z
@@ -107,7 +113,57 @@ export function prepareReadableOverlay(
           margin + 2 * lineHeight + 3 * padding,
         )
       : margin;
-  const top = input.kind === "title" ? margin : height - bottom - boxHeight;
+  let top = input.kind === "title" ? margin : height - bottom - boxHeight;
+  if (input.kind === "lowerThird") {
+    const visibleTracks = new Set(
+      document.tracks.filter((track) => !track.hidden).map((track) => track.id),
+    );
+    const captions = document.items.filter(
+      (item) =>
+        item.caption &&
+        visibleTracks.has(item.trackId) &&
+        (item.node.from ?? 0) < input.from + input.duration &&
+        (item.node.from ?? 0) + (item.node.duration ?? 0) > input.from,
+    );
+    if (captions.length) {
+      const { scene } = compileVideoProjectDocument(
+        document,
+        Object.fromEntries(
+          Object.values(document.assets)
+            .filter((asset) => asset.source === "local")
+            .map((asset) => [asset.id, `asset:${asset.id}`]),
+        ),
+      );
+      const obstacles: LayoutBox[] = [];
+      for (const item of captions) {
+        const start = Math.max(input.from, item.node.from ?? 0);
+        const end = Math.min(
+          input.from + input.duration,
+          (item.node.from ?? 0) + (item.node.duration ?? 0),
+        );
+        const visit = (box: LayoutBox) => {
+          if (box.node.id === item.node.id) obstacles.push(box);
+          box.children.forEach(visit);
+        };
+        layoutScene(
+          evaluateScene(scene, Math.floor((start + end - 1) / 2)),
+        ).boxes.forEach(visit);
+      }
+      for (const box of obstacles.sort((a, b) => b.y - a.y)) {
+        if (
+          margin < box.x + box.width &&
+          margin + boxWidth > box.x &&
+          top < box.y + box.height + padding &&
+          top + boxHeight > box.y - padding
+        )
+          top = box.y - padding - boxHeight;
+      }
+      if (top < Math.max(margin, height * 0.4))
+        throw new Error(
+          "No readable lower-third space remains above the captions. Ask for shorter copy or permission to use a different placement; do not move it to the top of the video.",
+        );
+    }
+  }
   const textStyle = (size: number, top: number, height: number) => ({
     position: "absolute" as const,
     left: padding,
