@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-04",
+  "status": "editor-behavior-verified",
+  "testsPassed": 368,
+  "browserChecksPassed": 52,
+  "build": "passed",
+  "modelBoundary": "Scripted provider HTTP; no live-model reliability claim",
+  "paidProviderCalls": 0,
+  "source": "Generated four-second 640x360 H264/AAC color-and-tone fixture",
+  "cases": [
+    {
+      "case": "countdown-before",
+      "timelineItems": 2,
+      "videoAssets": 1,
+      "graphicType": "div",
+      "from": 0,
+      "duration": 90,
+      "combinedExport": "test-results/intro-outro-full/combined-countdown-before.mp4",
+      "documentHash": "sha256:b280e0cce16a0782a59cdca3d9758e6a080586231dd4fef3c25fcf05f1147a2e",
+      "videoColor": [16, 99, 164],
+      "graphicColor": [19, 28, 40]
+    },
+    {
+      "case": "text-after",
+      "timelineItems": 2,
+      "videoAssets": 1,
+      "graphicType": "div",
+      "from": 120,
+      "duration": 60,
+      "combinedExport": "test-results/intro-outro-full/combined-text-after.mp4",
+      "documentHash": "sha256:7b923bde72558949dab349436e408edca4805751801bb5c1cca3eaee242b8dc1",
+      "videoColor": [16, 99, 164],
+      "graphicColor": [24, 32, 49]
+    }
+  ],
+  "checks": [
+    "One video asset and two timeline items",
+    "Sequential before/after insertion and exact combined duration",
+    "Pointer dragging preserves grouped animation and original footage",
+    "Native head/tail trim controls and Undo",
+    "Split and nested text edit in kernel tests",
+    "Reload preserves editable document",
+    "Combined MP4 independently decoded and original audio remains source-bound",
+    "Text animation fade verified using decoded frames",
+    "Export does not add another video asset"
+  ],
+  "limits": [
+    "Trimming crops animation rather than retiming all beats",
+    "Moves and trims do not automatically ripple neighboring items",
+    "No automatic standalone intro MP4 asset is created"
+  ]
+}

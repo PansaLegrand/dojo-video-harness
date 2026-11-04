@@ -1,3 +1,7 @@
+import {
+  introOutroReply,
+  verifyIntroOutro,
+} from "./lib/intro-outro-browser-proof.mjs";
 import { setupMusicProof } from "./lib/music-browser-proof.mjs";
 import {
   realMediaReply,
@@ -73,6 +77,7 @@ const provider = createServer(async (req, res) => {
   let name = "propose_edit",
     args;
   const musicReply =
+    introOutroReply(context) ??
     realMediaReply(context, body) ??
     overlayReply(context, body) ??
     musicProof.modelReply(context, body);
@@ -305,6 +310,11 @@ checksBlock: try {
       body: '<html><body style="background:#000;color:#fff">Tutorial</body></html>',
     }),
   );
+  if (process.env.INTRO_OUTRO_ONLY === "1") {
+    await verifyIntroOutro({ page, api, base, tmp, output, check });
+    check("no browser exceptions", errors.length === 0);
+    break checksBlock;
+  }
   if (process.env.REAL_MEDIA_ONLY === "1") {
     if (!process.env.REAL_MEDIA_FILE)
       throw new Error("REAL_MEDIA_ONLY requires REAL_MEDIA_FILE");
@@ -722,6 +732,7 @@ checksBlock: try {
   });
   await musicProof.verify({ page, api, base, tmp, output, check });
   await verifyReadableOverlays({ page, api, base, output, check });
+  await verifyIntroOutro({ page, api, base, tmp, output, check });
   await verifyRealMedia({ page, api, base, output, check });
   check("no browser exceptions", errors.length === 0);
   await writeFile(

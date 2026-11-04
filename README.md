@@ -139,6 +139,10 @@ npm start
   bounds and responsive defaults; chat applies them without a confirmation click.
   See [layout checks](docs/readable-overlays-2026-11-03.md) and
   [bounded real-footage acceptance](docs/real-media-acceptance-2026-11-03.md).
+- Native countdowns and animated text can be separate, editable timeline clips
+  before or after footage. They are grouped graphics, not automatically generated
+  MP4 assets. Move, trim, edit their contents, and export the combined timeline.
+  See the [intro/outro behavior tests](docs/intro-outro-items-2026-11-04.md).
 - One-instruction workflows for joining imported clips, overlaying a logo, generating
   and translating captions, then exporting the reviewed revision.
 - Approved instrumental music generation through Kie V6, with local storage and
