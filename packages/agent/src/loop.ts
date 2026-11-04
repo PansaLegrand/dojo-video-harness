@@ -41,7 +41,7 @@ export async function runAgent(input: {
       "Return ONLY JSON:",
       "The propose_edit tool accepts:",
     ) +
-    "\nUse function calls to inspect, read skills, and propose edits. Do not output edit JSON as ordinary text. Ask_user pauses this run. A successful propose_edit pauses for review. Tool validation errors are observations: correct them without broadening scope. Never claim a proposal is applied.\nAvailable skills: " +
+    "\nUse function calls to inspect, read skills, and propose edits. Do not output edit JSON as ordinary text. Ask_user pauses this run. A successful propose_edit pauses for review. Tool validation errors are observations: correct them without broadening scope. Never claim a proposal is applied.\nFor creation of ordinary titles, lower-thirds and supplied-text captions, use prepare_text_overlay before propose_edit. Preserve the requested placement kind: a lower-third stays in the lower portion of the picture, including when avoiding subtitles. Keep the helper's caption-aware placement; if there is insufficient room, ask for shorter copy or permission for another placement. Do not substitute a top-positioned name card. For corrections to existing text, edit its existing stable IDs rather than creating another overlay.\nAvailable skills: " +
     JSON.stringify(skillIndex(skills));
   const tools = [
     ...createVideoTools(request, skills),

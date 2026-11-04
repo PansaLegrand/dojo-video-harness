@@ -1,9 +1,9 @@
 {
-  "status": "awaiting-final-live-run-budget",
+  "status": "not-qualified-final-live-gate-11-of-12",
   "maxRequestsInitiallyDeclared": 72,
-  "requestsUsed": 53,
-  "inputTokens": 431864,
-  "outputTokens": 11147,
+  "requestsUsed": 76,
+  "inputTokens": 618498,
+  "outputTokens": 15861,
   "runs": [
     {
       "id": "2026-11-04T01-09-08.136Z-430befeb",
@@ -24,7 +24,21 @@
       "failedRenderFrames": 0,
       "accepted": false,
       "reportSha256": "426cc58c2b6e12617c42b6c0a9c41e40f77347933150505f673310280f73df07"
+    },
+    {
+      "id": "2026-11-04T03-59-38.703Z-fd642b7c",
+      "commit": "89a1b0ff5ed97b87e44a351c7c176957fc5abcd1",
+      "semanticPassed": 11,
+      "totalTrials": 12,
+      "renderedFrames": 15,
+      "failedRenderFrames": 0,
+      "accepted": false,
+      "reportSha256": "7723298ac2c5fb2547f298aac4eb6f4f5c95594b3d70de4569cc2bcb0aed6d9c",
+      "failure": "One existing-caption trial proposed a top-positioned name card rather than a lower-third."
     }
   ],
-  "humanReview": "pending"
+  "humanReview": "pending",
+  "approvedFinalRunMaxRequests": 36,
+  "approvedOverallMaxRequests": 89,
+  "followup": "Placement guidance moved into always-visible agent instructions; locally checked, not live-qualified."
 }
