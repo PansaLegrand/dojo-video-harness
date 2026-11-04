@@ -1,0 +1,30 @@
+{
+  "status": "awaiting-final-live-run-budget",
+  "maxRequestsInitiallyDeclared": 72,
+  "requestsUsed": 53,
+  "inputTokens": 431864,
+  "outputTokens": 11147,
+  "runs": [
+    {
+      "id": "2026-11-04T01-09-08.136Z-430befeb",
+      "commit": "3c4c410ad2d8dc72b3209ac4469c8a10b4333198",
+      "semanticPassed": 12,
+      "totalTrials": 12,
+      "renderedFrames": 18,
+      "failedRenderFrames": 3,
+      "accepted": false,
+      "reportSha256": "1ab45693325167b8f077524d2428f611064f873a137eda29dfee26a5f2a48c3c"
+    },
+    {
+      "id": "2026-11-04T01-18-55.123Z-a497ec96",
+      "commit": "1033743c71c588fe8253716ea4e657a2b7681457",
+      "semanticPassed": 11,
+      "totalTrials": 12,
+      "renderedFrames": 15,
+      "failedRenderFrames": 0,
+      "accepted": false,
+      "reportSha256": "426cc58c2b6e12617c42b6c0a9c41e40f77347933150505f673310280f73df07"
+    }
+  ],
+  "humanReview": "pending"
+}
