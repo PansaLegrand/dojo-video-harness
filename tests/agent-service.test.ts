@@ -31,7 +31,10 @@ const propose = (color = "#2563eb"): ModelReply => ({
     },
   ],
 });
-async function fixture(model: LanguageModel) {
+async function fixture(
+  model: LanguageModel,
+  mode: "review" | "direct" = "review",
+) {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-service-"));
   roots.push(root);
   const store = new ProjectStore(root);
@@ -69,7 +72,12 @@ async function fixture(model: LanguageModel) {
     scope: { kind: "selection", itemIds: ["title"] },
     context: { selectedItemIds: ["title"], playheadFrame: 0 },
   };
-  return { store, p, input, agent: new AgentService(store, model, []) };
+  return {
+    store,
+    p,
+    input,
+    agent: new AgentService(store, model, [], undefined, mode),
+  };
 }
 async function settle(store: ProjectStore, id: string) {
   for (let i = 0; i < 200; i++) {
@@ -458,4 +466,95 @@ it("captures one model instance per run even when provider settings change betwe
   );
   expect(oldModel.complete).toHaveBeenCalledTimes(2);
   expect(newModel.complete).not.toHaveBeenCalled();
+});
+
+it("direct editing survives restart and applies once through the guarded path with undo", async () => {
+  const model = { complete: vi.fn(async () => propose()) };
+  const { store, p, input, agent } = await fixture(model, "direct");
+  const started = await agent.start(p.id, input);
+  await agent.start(p.id, input);
+  const ready = await settle(store, p.id);
+  expect(ready.runs[0]).toMatchObject({
+    status: "ready",
+    proposal: { impact: "direct" },
+  });
+  // Browser owns the final save boundary: no server mutation over a local draft.
+  expect(ready.documentHash).toBe(p.documentHash);
+  const reopened = new ProjectStore(store.directory);
+  await reopened.init();
+  const host = new AgentService(reopened, model, [], undefined, "direct");
+  const comparison = await host.review(p.id, started.run.id);
+  const apply = {
+    operationId: "direct-apply",
+    baseRevision: ready.revision,
+    baseHash: ready.documentHash,
+    reviewBasis: comparison.review.basis,
+  };
+  await host.apply(p.id, started.run.id, apply);
+  await host.apply(p.id, started.run.id, apply);
+  const saved = await reopened.read(p.id);
+  expect(saved.revision).toBe(ready.revision + 1);
+  expect(saved.document.items[0].node.style?.color).toBe("#2563eb");
+  await host.undo(p.id, started.run.id, {
+    operationId: "direct-undo",
+    baseRevision: saved.revision,
+    baseHash: saved.documentHash,
+  });
+  expect((await reopened.read(p.id)).document.items[0].node.style?.color).toBe(
+    "#ffffff",
+  );
+  expect(model.complete).toHaveBeenCalledTimes(1);
+});
+it("direct application rejects a stale basis without overwriting a manual edit", async () => {
+  const { store, p, input, agent } = await fixture(
+    { complete: async () => propose() },
+    "direct",
+  );
+  const started = await agent.start(p.id, input);
+  const ready = await settle(store, p.id);
+  const comparison = await agent.review(p.id, started.run.id);
+  await store.commit(p.id, {
+    operationId: "manual-while-applying",
+    baseRevision: ready.revision,
+    baseHash: ready.documentHash,
+    commands: [
+      {
+        type: "set",
+        target: { kind: "node", itemId: "title", nodeId: "title" },
+        path: ["style", "color"],
+        value: "#ff0000",
+      },
+    ],
+  });
+  await expect(
+    agent.apply(p.id, started.run.id, {
+      operationId: "stale-direct",
+      baseRevision: ready.revision,
+      baseHash: ready.documentHash,
+      reviewBasis: comparison.review.basis,
+    }),
+  ).rejects.toThrow(/Refresh/);
+  await expect(agent.review(p.id, started.run.id)).rejects.toThrow();
+  expect((await store.read(p.id)).document.items[0].node.style?.color).toBe(
+    "#ff0000",
+  );
+});
+it("cancelled direct edits cannot apply on a later browser poll", async () => {
+  const { store, p, input, agent } = await fixture(
+    { complete: async () => propose() },
+    "direct",
+  );
+  const started = await agent.start(p.id, input);
+  const ready = await settle(store, p.id);
+  const comparison = await agent.review(p.id, started.run.id);
+  await agent.cancel(p.id, started.run.id);
+  await expect(
+    agent.apply(p.id, started.run.id, {
+      operationId: "cancelled-direct",
+      baseRevision: ready.revision,
+      baseHash: ready.documentHash,
+      reviewBasis: comparison.review.basis,
+    }),
+  ).rejects.toThrow(/no longer actionable/);
+  expect((await store.read(p.id)).documentHash).toBe(p.documentHash);
 });

@@ -3,7 +3,7 @@
 ```text
 React manual controls ───────────┐
                                ├─ typed commands ─ project document ─ Dojo Video Engine Scene
-Chat ─ agent loop ─ proposal ─ review/approval ───────┘                    │
+Chat ─ agent loop ─ validated edit ─ guarded apply ──┘                    │
                                                                           preview/export
 ```
 
@@ -53,3 +53,15 @@ Its source, rendering fixes, and release artifacts belong to the engine reposito
 `config/engine-release.json` records the release commit and package integrity;
 `package-lock.json` pins the actual dependency graph. No engine TypeScript aliases
 or vendored renderer source are needed to run this checkout.
+
+Ordinary editor chat uses direct application: `createLocalApi` selects the host's
+`direct` mode, which marks validated edits `ready` with `impact: direct`. The
+existing shared chat controller waits for local drafts/pending saves, prepares a
+comparison basis internally, applies once, and accepts the resulting snapshot.
+There is no required approval click. Compare and selective Undo remain available.
+The server never commits behind an unsaved browser interaction. Stale or conflicting
+edits still fail; paid tools do not gain permission from direct editing. Existing
+review-mode runs and separate paid/cloud workflows keep their original semantics.
+Standalone `AgentService` defaults to review mode for integrations and evaluation
+hosts that explicitly control application. An API-only client must perform the
+same guarded review/apply calls; `ready` alone does not mean a saved edit.

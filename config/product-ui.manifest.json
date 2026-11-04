@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceRepository": "dojo-video-web",
-  "sourceCommit": "123070f4788b063ba6ec590339442430bd06bcb5",
+  "sourceCommit": "c16653156e8d596c6d083b298bebd1698b3a2f56",
   "transforms": [
     "engine namespace/path rename",
     "local user import boundary",
@@ -402,8 +402,8 @@
     {
       "source": "components/editor/motionforge/video-workspace-chat.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/video-workspace-chat.tsx",
-      "sourceHash": "0cef37ff705f7883151fd5073cacbd3f10ca0a54e9909bb31f9a168b8616fc84",
-      "outputHash": "0cef37ff705f7883151fd5073cacbd3f10ca0a54e9909bb31f9a168b8616fc84"
+      "sourceHash": "be88881bae70d278430a0d12ebe7c775a082f946259378e464975b1c67c1fa59",
+      "outputHash": "be88881bae70d278430a0d12ebe7c775a082f946259378e464975b1c67c1fa59"
     },
     {
       "source": "components/editor/motionforge/workspace-copy.ts",

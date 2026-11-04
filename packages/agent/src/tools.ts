@@ -63,7 +63,7 @@ export function createVideoTools(
       execute: async (args) =>
         observed({
           command: prepareReadableOverlay(document, args),
-          next: "Include this command in propose_edit, then compare and approve. No edit has been applied.",
+          next: "Include this command in propose_edit. The host handles application; preparation has not applied an edit.",
         }),
     },
     {
@@ -162,7 +162,7 @@ export function createVideoTools(
       name: "propose_edit",
       effect: "propose",
       description:
-        "Validate an editing proposal. On success pause for review. Does not commit.",
+        "Validate editing commands and hand them to the host for application or review. The tool itself does not commit.",
       parameters: nativeAgentResponseSchema({
         clarification: true,
         composition: true,

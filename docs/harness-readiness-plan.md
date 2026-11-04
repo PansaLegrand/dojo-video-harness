@@ -1,5 +1,11 @@
 # Harness readiness plan for user-reviewed video editing
 
+2026-11-04 policy update: the user requested **instruct and edit** for ordinary
+local chat changes. The editor now applies validated commands automatically with
+Undo and optional comparison. See [direct-editing evidence](direct-editing-2026-11-04.md).
+The original plan and qualification gates below describe the earlier explicit
+review mode, which remains available to evaluation hosts and paid/cloud workflows.
+
 Date: 2026-11-01
 
 Last reviewed: 2026-11-02

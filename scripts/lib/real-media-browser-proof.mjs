@@ -246,19 +246,15 @@ export async function verifyRealMedia({ page, api, base, output, check }) {
         `Apply supplied source windows for case ${cases.indexOf(plan) + 1}`,
       );
     await page.getByRole("button", { name: "Send", exact: true }).click();
-    const review = page.getByRole("button", {
-      name: "Review changes",
-      exact: true,
-    });
-    await review.waitFor({ timeout: 60000 });
-    assert.equal(
+    await page
+      .locator('[data-run-status="applied"]')
+      .first()
+      .waitFor({ timeout: 60000 });
+    assert.notEqual(
       (await api(`/api/projects/${id}/document`)).documentHash,
       state.documentHash,
+      "Instruction applies without confirmation",
     );
-    await review.click();
-    await page
-      .getByRole("button", { name: "Apply changes", exact: true })
-      .click();
     const applied = await api(`/api/projects/${id}/document`);
     await page.reload();
     await page.getByTestId("dojo-video-engine-editor").waitFor();

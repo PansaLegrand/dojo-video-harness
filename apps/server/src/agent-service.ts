@@ -47,7 +47,12 @@ export class AgentService {
     private store: ProjectStore,
     private model: LanguageModel | (() => LanguageModel),
     private skills: Skill[],
-    private extraTools?: (projectId: string, runId: string, request: NativeAgentRequest) => AgentTool[],
+    private extraTools?: (
+      projectId: string,
+      runId: string,
+      request: NativeAgentRequest,
+    ) => AgentTool[],
+    private applicationMode: "review" | "direct" = "review",
   ) {}
   async start(projectId: string, raw: unknown) {
     const input = agentRunInputSchema.parse(raw),
@@ -194,13 +199,17 @@ export class AgentService {
     await this.store.transaction(projectId, (p) => {
       const r = runOf(p, id);
       if (r.status !== "running") return;
+      // The editor applies direct runs once local drafts are saved, using the same
+      // checked basis as explicit review. Never commit behind an active browser draft.
       r.proposal = result.proposal
-        ? { ...result.proposal, impact: "review" }
+        ? { ...result.proposal, impact: this.applicationMode }
         : null;
       r.clarification = result.clarification;
       r.status =
         result.outcome === "proposal"
-          ? "awaiting_review"
+          ? this.applicationMode === "direct"
+            ? "ready"
+            : "awaiting_review"
           : result.outcome === "needs_input"
             ? "needs_input"
             : "completed";
@@ -307,7 +316,13 @@ export class AgentService {
     return this.store.transaction(projectId, async (p) => {
       const r = runOf(p, id);
       if (r.status === "applied") return snapshot(p);
-      if (!r.proposal || r.status !== "awaiting_review")
+      if (
+        !r.proposal ||
+        !(
+          r.status === "awaiting_review" ||
+          (r.status === "ready" && r.proposal.impact === "direct")
+        )
+      )
         throw new HttpError("This proposal is no longer actionable.", 409);
       if (
         p.revision !== input.baseRevision ||

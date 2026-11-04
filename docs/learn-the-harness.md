@@ -59,13 +59,15 @@ Example: “Make the opening title blue.”
 2. The model may inspect `title-1` and read `precise-editing`.
 3. It calls `propose_edit` with a typed color change.
 4. The kernel validates the target, field, locks, scope, and resulting document.
-5. The run pauses. The user compares before/after previews.
-6. Apply checks the exact reviewed basis and commits through the same command
-   system used by manual controls.
+5. The editor waits for any active manual draft to save, then prepares the
+   comparison basis and calls Apply automatically. No confirmation is required.
+6. Apply checks the exact basis and commits through the same command system used
+   by manual controls. The user sees the change and can Compare or Undo afterward.
 
 If the user manually edits another property while thinking, review can rebase
 the proposal. If the reviewed document changes afterward, Apply refuses until
-the comparison is refreshed. A model's “done” text never constitutes a commit.
+the comparison is refreshed. A model's “done” text never constitutes a commit. Headless reference evaluations
+retain explicit review mode; paid/cloud workflows keep their separate approvals.
 
 ## 6. Questions are durable state
 

@@ -5,7 +5,7 @@
 
 A local, English-only open-source video editor with a small TypeScript editing agent. It shares DojoClip’s Next.js App Router, React 18, Tailwind 3, and editor components, with a simpler local host.
 Bring your own LLM and transcription providers. Edit the same timeline by hand
-or through chat, review the result, and export through [Dojo Video Engine](https://github.com/PansaLegrand/dojo-video-engine) in your browser.
+or through chat, see changes directly, and export through [Dojo Video Engine](https://github.com/PansaLegrand/dojo-video-engine) in your browser.
 
 The agent is intentionally understandable: a model adapter, typed function calls,
 a tool registry, Markdown skills, bounded execution, and explicit user decisions.
@@ -131,11 +131,12 @@ npm start
   read a skill, search transcript evidence, propose an edit, or ask a question.
 - Desktop chat resizes from its left edge, up to half the window width; the left
   panel toggle stays at the bottom of the tool rail. Narrow screens retain the chat drawer.
-- Proposal review with synchronized before/after previews, explicit apply,
-  selective undo, structured questions, cancellation, and the product’s quick-edit controls. Tool events remain available through the local API.
+- Instruct and edit: ordinary local chat edits apply automatically, with selective
+  Undo and optional before/after comparison. Structured questions resolve missing
+  information; cancellation and the product’s quick-edit controls remain available. Tool events remain available through the local API.
 - Provider-backed captions and translation, with persisted source-bound receipts.
 - Readable title, lower-third and supplied-text caption preparation with explicit
-  bounds and responsive defaults; all edits still require review and Apply.
+  bounds and responsive defaults; chat applies them without a confirmation click.
   See [layout checks](docs/readable-overlays-2026-11-03.md) and
   [bounded real-footage acceptance](docs/real-media-acceptance-2026-11-03.md).
 - One-instruction workflows for joining imported clips, overlaying a logo, generating
@@ -229,7 +230,12 @@ endpoint, without automatic fallback or paid retries. A bounded ElevenLabs probe
 also verified genuine source-bound word timestamps; see the
 [ASR and recovery evidence](docs/readiness-report-2026-11-02.md).
 
-The supported milestone is **propose → compare → approve → apply**. Paired real-media
+The editor flow is **instruct → edit → undo if needed**. Ordinary local edits use
+the existing validated save path automatically, once manual drafts are saved.
+Paid/cloud workflows retain their consent and approval steps. The earlier live
+qualification reports used explicit review mode; see the
+[direct-editing checks](docs/direct-editing-2026-11-04.md) for the current browser flow.
+Paired real-media
 human acceptance and broader editing coverage remain open. The agent can correct
 tool validation errors, but does not autonomously render, inspect, and revise its
 own output. Follow the [readiness plan](docs/harness-readiness-plan.md) before a launch.
@@ -287,7 +293,8 @@ See [architecture](docs/architecture.md), [extension guide](docs/extending.md),
 
 The [harness readiness plan](docs/harness-readiness-plan.md) defines the ordered
 work, test matrix, acceptance criteria, and engine handoff for the current
-user-reviewed editing workflow. It separates planned coverage from existing tests.
+editing workflow. Its original review-mode qualification remains separately identified
+from the current direct-editing browser checks. It separates planned coverage from existing tests.
 
 Use `npm run verify:milestone` for the complete local gate. Before a launch, use
 `npm run verify:milestone -- --live` on a clean committed candidate with your GPT

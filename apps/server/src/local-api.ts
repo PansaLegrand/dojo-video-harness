@@ -79,6 +79,7 @@ export async function createLocalApi() {
       ...musicTools(music, projectId, runId, request),
       workflows.tool(projectId, runId),
     ],
+    "direct",
   );
   type Task = {
     id: string;

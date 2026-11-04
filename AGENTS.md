@@ -25,7 +25,7 @@ capability is accepted; mark plan items complete only with the required evidence
 
 ```text
 manual UI → validated commands → ProjectDocument → compiled Scene → engine
-chat → GPT/tools → proposal → comparison/approval → the same command system
+chat → GPT/tools → validated edit → automatic guarded apply → the same command system
 ```
 
 The ProjectDocument is the editing authority. Scene is a derived rendering view.
@@ -53,8 +53,11 @@ it does not own the domain's commit semantics.
 | `tsconfig.json`, `config/aliases.ts`, `vitest.config.ts`                                      | Source-workspace resolution and test discovery                                           |
 
 The current loop already supports model → tool → observation and bounded validation
-correction. A successful `propose_edit` pauses for human review; it is not an
-autonomous render/inspect/revise loop. Multiple commands may form one proposal.
+correction. Ordinary local editor requests apply automatically after the browser
+saves active manual edits. Compare and Undo remain available afterward. The model
+returns validated commands; the host controls application. Headless evaluation
+hosts default to review mode, and paid/cloud workflows retain their approvals.
+This is not an autonomous render/inspect/revise loop. Multiple commands may form one proposal.
 Use the readiness plan to qualify this actual workflow before broadening claims.
 
 ## Startup and development commands
@@ -95,10 +98,11 @@ synthetic provider HTTP. Inspect visual/interaction states for UI changes.
 
 ## Invariants to preserve
 
-- A model proposal never commits the saved document. Validate model JSON at runtime,
+- Model output alone never commits the saved document. The editor automatically
+  applies validated local edits through the existing guarded host endpoint. Validate model JSON at runtime,
   then validate commands, target identity, scope, locks and source evidence.
 - Manual and chat edits share the command kernel and history. Preserve revision/hash
-  guards and the exact reviewed basis at Apply; stale reviews must not overwrite
+  guards and the exact checked basis at Apply, including automatic application; stale runs must not overwrite
   newer manual edits.
 - Preserve operation identity and immutable receipts. Duplicate start, answer,
   Apply or undo must not create another effect; changed inputs under the same

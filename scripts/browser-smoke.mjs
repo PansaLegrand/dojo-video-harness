@@ -176,6 +176,33 @@ const provider = createServer(async (req, res) => {
       ],
     };
   }
+  if (
+    ["Use yellow behind it.", "Make it bigger."].includes(context.instruction)
+  ) {
+    assert(
+      context.document.items.some(
+        (item) => item.id === "title" && item.node.text === "Launch Day",
+      ),
+      "Corrections see the current saved title",
+    );
+    name = "propose_edit";
+    args = {
+      summary: context.instruction,
+      commands: [
+        {
+          type: "set",
+          target: { kind: "node", itemId: "title", nodeId: "title" },
+          path: [
+            "style",
+            context.instruction === "Make it bigger."
+              ? "fontSize"
+              : "backgroundColor",
+          ],
+          value: context.instruction === "Make it bigger." ? 44 : "#ffff00",
+        },
+      ],
+    };
+  }
   res.end(
     JSON.stringify({
       status: "completed",
@@ -383,16 +410,25 @@ checksBlock: try {
     .getByRole("textbox", { name: "Message video agent", exact: true })
     .fill("Make the title blue");
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Review changes", exact: true })
-    .waitFor();
-  check(
-    "model output remains unapplied until approval",
-    (await api(`/api/projects/${id}/document`)).document.items[0].node.style
-      .color === "#ffffff",
+  await until(
+    async () =>
+      (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+        .color === "#2563eb",
   );
+  await page.locator('[data-run-status="applied"]').first().waitFor();
+  check(
+    "instruction edits the document without Review or Apply clicks",
+    (await page.getByRole("dialog", { name: "Review this edit" }).count()) ===
+      0,
+  );
+  await page.screenshot({
+    path: path.join(output, "direct-edit.png"),
+    fullPage: true,
+  });
+  // Comparison remains available after editing; it is not an approval gate.
   await page
-    .getByRole("button", { name: "Review changes", exact: true })
+    .getByRole("button", { name: "Compare", exact: true })
+    .first()
     .click();
   const review = page.getByRole("dialog", { name: "Review this edit" });
   await review.waitFor();
@@ -400,15 +436,6 @@ checksBlock: try {
     path: path.join(output, "review.png"),
     fullPage: true,
   });
-  await review
-    .getByRole("button", { name: "Apply changes", exact: true })
-    .click();
-  await until(
-    async () =>
-      (await api(`/api/projects/${id}/document`)).document.items[0].node.style
-        .color === "#2563eb",
-  );
-  check("review commits through real local persistence", true);
   await page.reload();
   await page.getByTestId("dojo-video-engine-editor").waitFor();
   check(
@@ -442,51 +469,94 @@ checksBlock: try {
     await pending.getByRole("button", { name: /Green/ }).isVisible(),
   );
   await pending.getByRole("button", { name: /Green/ }).click();
-  await page
-    .getByRole("button", { name: "Review changes", exact: true })
-    .waitFor();
-  check("question answer resumes a linked run", modelCalls === 3);
-  // Cancel the second review; original applied edit remains intact.
-  const waiting = page.locator('[data-run-status="awaiting_review"]');
-  await waiting.getByRole("button", { name: "Cancel", exact: true }).click();
   await until(
     async () =>
-      !(await api(`/api/projects/${id}/agent-runs`)).runs.some(
-        (r) => r.status === "awaiting_review",
-      ),
+      (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+        .color === "#16a34a",
   );
   check(
-    "cancelled review leaves the prior applied color intact",
-    (await api(`/api/projects/${id}/document`)).document.items[0].node.style
-      .color === "#2563eb",
+    "question answer resumes and applies a linked run without confirmation",
+    modelCalls === 3,
+  );
+  const greenRun = (await api(`/api/projects/${id}/agent-runs`)).runs.find(
+    (run) => run.status === "applied" && run.clarificationParentRunId,
+  );
+  await page
+    .locator(`[data-run-id="${greenRun.id}"]`)
+    .getByRole("button", { name: "Undo this edit", exact: true })
+    .click();
+  await until(
+    async () =>
+      (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+        .color === "#2563eb",
+  );
+  check(
+    "Undo restores the prior color without another model request",
+    modelCalls === 3,
   );
   await page
     .getByRole("textbox", { name: "Message video agent", exact: true })
     .fill("Change the title words to Launch Day, keeping the current blue.");
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Review changes", exact: true })
-    .waitFor();
-  check(
-    "follow-up chat receives current document and prior conversation",
-    followupReceivedContext,
-  );
-  await page.reload();
-  await page
-    .getByRole("button", { name: "Review changes", exact: true })
-    .click();
-  await review
-    .getByRole("button", { name: "Apply changes", exact: true })
-    .click();
   await until(
     async () =>
       (await api(`/api/projects/${id}/document`)).document.items[0].node
         .text === "Launch Day",
   );
   check(
-    "follow-up review survives reload and preserves earlier edits",
+    "follow-up chat receives current document and prior conversation",
+    followupReceivedContext,
+  );
+  await page.reload();
+  await page.getByTestId("dojo-video-engine-editor").waitFor();
+  check(
+    "direct follow-up survives reload and preserves earlier edits",
     (await api(`/api/projects/${id}/document`)).document.items[0].node.style
       .color === "#2563eb",
+  );
+  for (const [instruction, property, value] of [
+    ["Use yellow behind it.", "backgroundColor", "#ffff00"],
+    ["Make it bigger.", "fontSize", 44],
+  ]) {
+    await page
+      .getByRole("textbox", { name: "Message video agent", exact: true })
+      .fill(instruction);
+    await page.getByRole("button", { name: "Send", exact: true }).click();
+    await until(
+      async () =>
+        (await api(`/api/projects/${id}/document`)).document.items[0].node
+          .style[property] === value,
+    );
+    check(
+      `direct correction: ${instruction}`,
+      (await page.getByRole("dialog", { name: "Review this edit" }).count()) ===
+        0,
+    );
+  }
+  await page.screenshot({
+    path: path.join(output, "direct-corrections.png"),
+    fullPage: true,
+  });
+  const largerRun = (await api(`/api/projects/${id}/agent-runs`)).runs.find(
+    (run) => run.status === "applied" && run.instruction === "Make it bigger.",
+  );
+  const callsBeforeUndo = modelCalls;
+  await page
+    .locator(`[data-run-id="${largerRun.id}"]`)
+    .getByRole("button", { name: "Undo this edit", exact: true })
+    .click();
+  await until(
+    async () =>
+      (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+        .fontSize === 28,
+  );
+  check(
+    "undo one direct correction preserves preceding color and backing",
+    (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+      .backgroundColor === "#ffff00" &&
+      (await api(`/api/projects/${id}/document`)).document.items[0].node.style
+        .color === "#2563eb" &&
+      modelCalls === callsBeforeUndo,
   );
   const audio = path.join(tmp, "speech.wav");
   execFileSync("ffmpeg", [

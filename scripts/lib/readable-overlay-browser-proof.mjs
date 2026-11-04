@@ -85,19 +85,15 @@ export async function verifyReadableOverlays({
       .getByRole("textbox", { name: "Message video agent" })
       .fill(overlayInstruction);
     await page.getByRole("button", { name: "Send", exact: true }).click();
-    const review = page.getByRole("button", {
-      name: "Review changes",
-      exact: true,
-    });
-    await review.waitFor({ timeout: 60000 });
-    assert.equal(
+    await page
+      .locator('[data-run-status="applied"]')
+      .first()
+      .waitFor({ timeout: 60000 });
+    assert.notEqual(
       (await api(`/api/projects/${id}/document`)).documentHash,
       state.documentHash,
+      "Instruction applies without confirmation",
     );
-    await review.click();
-    await page
-      .getByRole("button", { name: "Apply changes", exact: true })
-      .click();
     const applied = await api(`/api/projects/${id}/document`);
     assert.equal(applied.document.items.length, 3);
     const lower = applied.document.items.find(

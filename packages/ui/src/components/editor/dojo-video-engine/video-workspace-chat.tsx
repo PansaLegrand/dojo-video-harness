@@ -205,7 +205,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       const snapshot = await controller.prepareAgentContext(); if (!current(epoch)) return;
       if (!undoAttempts.current.has(run.id)) undoAttempts.current.set(run.id, { operationId: crypto.randomUUID(), baseRevision: snapshot.revision, baseHash: snapshot.documentHash });
       await videoProjectRequest(endpoint + "/" + encodeURIComponent(run.id) + "/undo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(undoAttempts.current.get(run.id)) });
-      if (!current(epoch)) return; undoAttempts.current.delete(run.id); await refresh();
+      if (!current(epoch)) return; undoAttempts.current.delete(run.id); await controller.refresh(); await refresh();
     } catch (cause) { if (!current(epoch)) return; if (definitiveRejection(cause)) undoAttempts.current.delete(run.id); setError(messageFor(cause, "The proposal could not be applied.")); }
     finally { if (current(epoch)) { setBusy(null); inFlight.current.delete(run.id); } }
   }

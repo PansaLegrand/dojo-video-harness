@@ -1,5 +1,11 @@
 # Agent milestone testing
 
+Runtime policy update (2026-11-04): ordinary editor chat now uses
+[instruct → edit with Undo](direct-editing-2026-11-04.md). The browser suite tests
+automatic guarded application, follow-up edits, and selective Undo. The reference
+and earlier live-model suites below still use an explicit review-mode host; their
+no-pre-approval-mutation checks describe that mode, not a required editor click.
+
 For the completed baseline/extended live run through the explicitly selected
 Gateway fallback, see [Gateway readiness evidence](gateway-readiness-report.md).
 The earlier Kie failures remain separate; no runtime fallback was introduced.
