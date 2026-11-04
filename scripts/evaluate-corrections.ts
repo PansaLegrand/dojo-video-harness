@@ -32,6 +32,17 @@ const fingerprint = async () => {
   return hash.digest("hex");
 };
 const sourceHash = await fingerprint();
+// A deliberate verification pass shares the same task allowance; never reset spent calls.
+const priorRequests = Number(process.env.CORRECTION_PRIOR_REQUESTS ?? 0);
+assert(
+  Number.isInteger(priorRequests) && priorRequests >= 0 && priorRequests < 32,
+);
+const priorInputBytes = Number(process.env.CORRECTION_PRIOR_INPUT_BYTES ?? 0);
+const priorOutputTokens = Number(
+  process.env.CORRECTION_PRIOR_OUTPUT_TOKENS ?? 0,
+);
+assert(Number.isInteger(priorInputBytes) && priorInputBytes >= 0);
+assert(Number.isInteger(priorOutputTokens) && priorOutputTokens >= 0);
 const output = path.resolve(
   "test-results/corrections",
   `${new Date().toISOString().replace(/:/g, "-")}-${randomUUID().slice(0, 8)}`,
@@ -60,6 +71,9 @@ const report = () => ({
   model: live ? model : null,
   budget: {
     maxRequests: 32,
+    priorRequests,
+    priorInputBytes,
+    priorOutputTokens,
     maxRequestsPerTurn: 4,
     maxInputBytes: 3_000_000,
     maxOutputTokens: 65_536,
@@ -105,10 +119,10 @@ for (const distractor of [false, true]) {
               JSON.stringify({ messages, tools }),
             );
             if (
-              requests >= 32 ||
+              requests + priorRequests >= 32 ||
               turnRequests >= 4 ||
-              inputBytes + bytes > 3_000_000 ||
-              outputTokens + 8192 > 65_536
+              inputBytes + priorInputBytes + bytes > 3_000_000 ||
+              outputTokens + priorOutputTokens + 8192 > 65_536
             ) {
               stopped = true;
               throw new Error("Declared diagnostic budget exhausted");
