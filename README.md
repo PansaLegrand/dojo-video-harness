@@ -234,6 +234,10 @@ human acceptance and broader editing coverage remain open. The agent can correct
 tool validation errors, but does not autonomously render, inspect, and revise its
 own output. Follow the [readiness plan](docs/harness-readiness-plan.md) before a launch.
 
+The [focused lower-third live gate](docs/lower-third-qualification-2026-11-04.md)
+finished at 11/12 after local fixes; it is not yet qualified. The report retains
+the failures, rendering evidence, request budget and remaining placement issue.
+
 To check your own changes:
 
 ```sh
