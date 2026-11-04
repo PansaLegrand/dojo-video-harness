@@ -231,8 +231,13 @@ export function gradeLowerThird(
           box.y + box.height <= test.height + 0.5,
         "Graphic leaves canvas",
       );
-      if (box.node.type === "text")
+      if (box.node.type === "text") {
         assert(Number(box.node.style.fontSize) >= 14, "Text too small");
+        assert(
+          box.width > 0 && box.height > 0,
+          "Text has no usable layout area",
+        );
+      }
     }
     const textBoxes = ink.filter((box) => box.node.type === "text");
     assert(

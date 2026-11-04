@@ -95,8 +95,9 @@ const report = () => ({
   outputTokens,
   plannedTrials: 12,
   trials,
-  passed: trials.length === 12 && trials.every((trial) => trial.passed),
+  semanticPassed: trials.length === 12 && trials.every((trial) => trial.passed),
   humanAcceptance: "pending",
+  renderAcceptance: "separate render-evidence.json required",
 });
 await writeFile(
   path.join(output, "report.json"),
@@ -352,11 +353,11 @@ try {
 console.log(
   JSON.stringify({
     output,
-    passed: report().passed,
+    passed: report().semanticPassed,
     trials: trials.length,
     requests,
     inputTokens,
     outputTokens,
   }),
 );
-if (!report().passed) process.exitCode = 1;
+if (!report().semanticPassed) process.exitCode = 1;

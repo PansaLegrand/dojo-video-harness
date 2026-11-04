@@ -22,6 +22,62 @@ const variants = [
   [1080, 1080],
 ];
 describe("readable overlay proposals", () => {
+  it("rejects a zero-area macro before review and accepts a usable prepared replacement", async () => {
+    const document = createVideoProjectDocument({
+      width: 640,
+      height: 360,
+      fps: 30,
+      durationInFrames: 300,
+    });
+    const request = {
+      contract: "video-project-commands" as const,
+      version: 1 as const,
+      baseRevision: 0,
+      baseHash: await hashVideoProjectDocument(document),
+      document,
+      context: { selectedItemIds: [], playheadFrame: 0 },
+    };
+    await expect(
+      compileNativeAgentResult(request, {
+        summary: "Introduce Sarah",
+        commands: [
+          {
+            type: "insertGraphic",
+            itemId: "lower",
+            trackId: "visual",
+            name: "Name",
+            node: {
+              macro: "lowerThird",
+              title: "Sarah Chen",
+              subtitle: "Product Designer",
+              from: 0,
+              duration: 150,
+              palette: "slate",
+              look: "solid",
+              align: "left",
+              tempo: "calm",
+            },
+          },
+        ],
+      }),
+    ).rejects.toThrow(/no usable layout area/);
+    expect(document.items).toHaveLength(0);
+    const replacement = prepareReadableOverlay(document, {
+      itemId: "lower",
+      trackId: "visual",
+      kind: "lowerThird",
+      text: "Sarah Chen",
+      subtitle: "Product Designer",
+      from: 0,
+      duration: 150,
+    });
+    const result = await compileNativeAgentResult(request, {
+      summary: "Introduce Sarah",
+      commands: [replacement],
+    });
+    expect(result.outcome).toBe("proposal");
+    expect(document.items).toHaveLength(0);
+  });
   for (const [width, height] of variants)
     for (const kind of ["title", "lowerThird", "caption"] as const) {
       it(`${kind} remains bounded on ${width}x${height} and applies through review commands`, async () => {

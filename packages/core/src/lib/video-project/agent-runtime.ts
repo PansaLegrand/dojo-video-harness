@@ -1,5 +1,13 @@
 import { z } from "zod/v3";
-import { sceneNodeSchema, type SceneNodeInput } from "@dojo-video-engine/schema";
+import {
+  evaluateScene,
+  layoutScene,
+  type LayoutBox,
+} from "@dojo-video-engine/core";
+import {
+  sceneNodeSchema,
+  type SceneNodeInput,
+} from "@dojo-video-engine/schema";
 import { expandVideoAgentSceneMacros } from "@/lib/video-agent/scene-macros";
 import { expandAnimationPresets } from "@/lib/video-agent/animation-presets";
 import { extractVideoAgentModelJson } from "@/lib/video-agent/model-json";
@@ -433,12 +441,47 @@ export async function compileNativeAgentResult(
   const execution = executeVideoProjectCommands(base, normalizedCommands);
   if ((await hashVideoProjectDocument(execution.document)) === request.baseHash)
     throw new Error("The proposed commands did not change the project.");
-  compileVideoProjectDocument(
+  const { scene: proposalScene } = compileVideoProjectDocument(
     execution.document,
     Object.fromEntries(
       Object.keys(base.assets).map((key) => [key, `asset:${key}`]),
     ),
   );
+  // A valid macro can still allocate no space to its text (e.g. padding larger
+  // than a small lower-third plate). Return an observation before user review.
+  const graphicIds = new Set(
+    parsed.commands
+      .filter((command) => command.type === "insertGraphic")
+      .map((command) => command.itemId),
+  );
+  for (const item of execution.document.items.filter((item) =>
+    graphicIds.has(item.id),
+  )) {
+    const textIds = new Set<string>();
+    const collect = (node: SceneNodeInput) => {
+      if (node.type === "text" && node.text?.trim()) textIds.add(node.id);
+      node.children?.forEach(collect);
+    };
+    collect(item.node);
+    if (!textIds.size) continue;
+    const frame =
+      (item.node.from ?? 0) + Math.floor((item.node.duration ?? 1) / 2);
+    const inspect = (box: LayoutBox, visible = true) => {
+      visible = visible && box.node.style.opacity !== 0;
+      if (
+        visible &&
+        textIds.has(box.node.id) &&
+        (box.width <= 0 || box.height <= 0)
+      )
+        throw new Error(
+          "Graphic text has no usable layout area. Use prepare_text_overlay for an ordinary title or lower-third, or give its text and container explicit usable bounds.",
+        );
+      box.children.forEach((child) => inspect(child, visible));
+    };
+    layoutScene(evaluateScene(proposalScene, frame)).boxes.forEach((box) =>
+      inspect(box),
+    );
+  }
   return {
     contract: VIDEO_PROJECT_AGENT_CONTRACT,
     version: 1,

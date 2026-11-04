@@ -69,21 +69,28 @@ try {
         );
       }
     for (const frame of [15, 75, 135]) {
-      const png = Buffer.from(
-        await page.evaluate(({ scene, frame }) => window.render(scene, frame), {
-          scene,
+      try {
+        const png = Buffer.from(
+          await page.evaluate(
+            ({ scene, frame }) => window.render(scene, frame),
+            {
+              scene,
+              frame,
+            },
+          ),
+        );
+        const name = file.replace("-scene.json", `-frame-${frame}.png`);
+        await writeFile(path.join(output, name), png);
+        evidence.push({
+          scene: file,
           frame,
-        }),
-      );
-      const name = file.replace("-scene.json", `-frame-${frame}.png`);
-      await writeFile(path.join(output, name), png);
-      evidence.push({
-        scene: file,
-        frame,
-        image: name,
-        sceneSha256: createHash("sha256").update(bytes).digest("hex"),
-        imageSha256: createHash("sha256").update(png).digest("hex"),
-      });
+          image: name,
+          sceneSha256: createHash("sha256").update(bytes).digest("hex"),
+          imageSha256: createHash("sha256").update(png).digest("hex"),
+        });
+      } catch (error) {
+        evidence.push({ scene: file, frame, error: error.message });
+      }
     }
   }
   await writeFile(
@@ -91,6 +98,7 @@ try {
     JSON.stringify(
       {
         browser: browser.version(),
+        passed: evidence.every((item) => !item.error),
         source: "synthetic local clips; no media sent to model",
         evidence,
       },
@@ -98,7 +106,13 @@ try {
       2,
     ),
   );
-  console.log(`Rendered ${evidence.length} evidence frames.`);
+  console.log(
+    JSON.stringify({
+      frames: evidence.length,
+      failed: evidence.filter((item) => item.error).length,
+    }),
+  );
+  if (evidence.some((item) => item.error)) process.exitCode = 1;
 } finally {
   await browser?.close();
   await server.close();
