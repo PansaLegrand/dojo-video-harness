@@ -374,6 +374,17 @@ try {
             .length >= 5
         : graphic.node.extension?.name === "dojo.three-scene",
     );
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector(".editor-preview-stage canvas");
+      if (!canvas?.width) return false;
+      const data = canvas
+        .getContext("2d")
+        .getImageData(0, 0, canvas.width, canvas.height).data;
+      let white = 0;
+      for (let i = 0; i < data.length; i += 4)
+        if (data[i] > 180 && data[i + 1] > 180 && data[i + 2] > 180) white++;
+      return white > 200;
+    });
     const color = kind === "svg" ? "red" : "blue";
     const beforePixels = await pixels(color);
     const recolored = await ask(
