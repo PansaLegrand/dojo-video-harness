@@ -8,6 +8,7 @@ import {
 } from "./composition-schema";
 import { assertEditorComposition } from "./composition-validation";
 import { motionTemplateIdSchema } from "@/lib/motion-graphics/catalog";
+import { validateThreeLayers } from "@dojo-video-engine/three/schema";
 import { z } from "zod/v3";
 import { bundledEditorFontMetadata } from "./fonts";
 import { estimateCaptionWords } from "./caption-words";
@@ -279,6 +280,7 @@ export function parseEditorDocument(input: unknown): EditorDocument {
 
 /** Shared semantic checks after either native document schema has parsed its fields. */
 export function assertEditorDocumentStructure(document: EditorDocument): void {
+  validateThreeLayers(document.items.map((item) => item.node));
   if (JSON.stringify(document).length > 4_000_000)
     throw new Error("The editing document exceeds 4 MB.");
   const tracks = new Set(document.tracks.map((t) => t.id));

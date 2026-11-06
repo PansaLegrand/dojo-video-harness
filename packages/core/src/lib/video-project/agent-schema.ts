@@ -30,6 +30,15 @@ export const nativeGraphicSchema = z
     node: z.record(z.unknown()),
   })
   .strict();
+export const nativeSvgSchema = nativeGraphicSchema
+  .omit({ node: true })
+  .extend({
+    type: z.literal("insertSvg"),
+    svg: z.string().min(1).max(128_000),
+    from: z.number().int().nonnegative(),
+    duration: z.number().int().positive(),
+  })
+  .strict();
 const motionEditSchema = z
   .object({
     type: z.literal("updateMotionGraphic"),
@@ -74,6 +83,7 @@ const capabilitySchema = z
   })
   .strict();
 const specialOperations = [
+  nativeSvgSchema,
   nativeGraphicSchema,
   motionEditSchema,
   captionsSchema,

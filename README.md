@@ -293,6 +293,10 @@ The App Router serves the editor at `/en/applications/editor/:projectId` and the
 See [architecture](docs/architecture.md), [extension guide](docs/extending.md),
 [edge cases](docs/edge-cases.md), and [provenance](docs/provenance.md).
 
+The [editable vector and Three.js plan](docs/vector-and-three-layers-2026-11-06.md)
+records the locally tested 2D/3D implementation and unpublished candidate setup;
+package release/adoption is still pending.
+
 ## Milestone launch checks
 
 The [harness readiness plan](docs/harness-readiness-plan.md) defines the ordered

@@ -1,3 +1,10 @@
+import { importSvgGraphic } from "@dojo-video-engine/interchange/svg";
+import {
+  parseThreeScene,
+  threeSceneSchema,
+  THREE_EXTENSION,
+} from "@dojo-video-engine/three/schema";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod/v3";
 import {
   compileNativeAgentResult,
@@ -33,6 +40,117 @@ export function createVideoTools(
 ): AgentTool[] {
   const document = parseVideoProjectDocument(request.document);
   return [
+    {
+      name: "inspect_graphics_schema",
+      effect: "read",
+      description:
+        "Read the installed editable 3D scene schema. Parameters are data, never executable JavaScript. Use stable object/material IDs for original compositions and corrections.",
+      parameters: object({}),
+      execute: async () =>
+        observed({
+          three: zodToJsonSchema(threeSceneSchema, { $refStrategy: "none" }),
+          extension: THREE_EXTENSION,
+        }),
+    },
+    {
+      name: "prepare_svg_graphic",
+      effect: "read",
+      description:
+        "Parse bounded SVG into editable native groups/paths. Returns a command and part IDs; does not apply edits. Unsupported SVG fails explicitly.",
+      parameters: object(
+        {
+          itemId: { type: "string" },
+          trackId: { type: "string" },
+          name: { type: "string" },
+          svg: { type: "string", maxLength: 128000 },
+          from: { type: "integer", minimum: 0 },
+          duration: { type: "integer", minimum: 1 },
+        },
+        ["itemId", "trackId", "name", "svg", "from", "duration"],
+      ),
+      execute: async (args) => {
+        const input = z
+          .object({
+            itemId: z.string(),
+            trackId: z.string(),
+            name: z.string(),
+            svg: z.string().max(128000),
+            from: z.number().int().nonnegative(),
+            duration: z.number().int().positive(),
+          })
+          .strict()
+          .parse(args);
+        const result = importSvgGraphic(input.svg, {
+          id: input.itemId,
+          from: input.from,
+          duration: input.duration,
+        });
+        return observed({
+          command: {
+            type: "insertGraphic",
+            itemId: input.itemId,
+            trackId: input.trackId,
+            name: input.name,
+            node: result.node,
+          },
+          ids: result.ids,
+          next: "Include the command in propose_edit; use these stable part IDs for animation or corrections.",
+        });
+      },
+    },
+    {
+      name: "prepare_three_scene",
+      effect: "read",
+      description:
+        "Validate an original editable 3D scene and prepare its timeline item. Read inspect_graphics_schema first. Returns a command, never applies edits.",
+      parameters: object(
+        {
+          itemId: { type: "string" },
+          trackId: { type: "string" },
+          name: { type: "string" },
+          from: { type: "integer", minimum: 0 },
+          duration: { type: "integer", minimum: 1 },
+          params: {
+            type: "object",
+            description:
+              "Installed 3D scene schema from inspect_graphics_schema.",
+          },
+        },
+        ["itemId", "trackId", "name", "from", "duration", "params"],
+      ),
+      execute: async (args) => {
+        const input = z
+          .object({
+            itemId: z.string(),
+            trackId: z.string(),
+            name: z.string(),
+            from: z.number().int().nonnegative(),
+            duration: z.number().int().positive(),
+            params: z.unknown(),
+          })
+          .strict()
+          .parse(args);
+        return observed({
+          command: {
+            type: "insertGraphic",
+            itemId: input.itemId,
+            trackId: input.trackId,
+            name: input.name,
+            node: {
+              type: "extension",
+              from: input.from,
+              duration: input.duration,
+              style: { position: "absolute", inset: 0 },
+              extension: {
+                ...THREE_EXTENSION,
+                params: parseThreeScene(input.params),
+              },
+            },
+          },
+          next: "Include this command in propose_edit.",
+        });
+      },
+    },
     {
       name: "prepare_text_overlay",
       effect: "read",

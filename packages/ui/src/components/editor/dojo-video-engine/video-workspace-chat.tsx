@@ -1,5 +1,6 @@
 "use client";
 import "./editor-authoring.css";
+import { startEditorPolling } from "./editor-polling";
 import { type ReactNode, Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Loader2, Send, Sparkles, X } from "lucide-react";
 import { VideoWorkspaceController, videoProjectRequest, type VideoProjectSnapshot } from "@/lib/video-project/client-controller";
@@ -17,7 +18,7 @@ const definitiveStatuses = new Set([400, 401, 402, 403, 404, 409, 413, 422]);
 function definitiveRejection(cause: unknown) { return !!cause && typeof cause === "object" && ("code" in cause && cause.code === "NATIVE_RUNTIME_UNAVAILABLE" || "status" in cause && definitiveStatuses.has(Number(cause.status))); }
 function messageFor(cause: unknown, fallback: string) {
   const code = cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
-  return code === "NATIVE_REVIEW_STALE" ? "This comparison changed. Refresh it before applying." : code === "VISUAL_CONTEXT_STALE" ? "The preview frame changed. Revise the request with a new frame." : cause instanceof Error ? cause.message : fallback;
+  return code === "NATIVE_REVIEW_STALE" ? "The project is changing. Finish your current edit, then retry the saved result." : code === "VISUAL_CONTEXT_STALE" ? "The preview frame changed. Revise the request with a new frame." : cause instanceof Error ? cause.message : fallback;
 }
 const button = "rounded border border-[var(--editor-border)] px-3 py-2 text-xs text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40";
 const initialScope: EditorAuthoringScopeChoice = { kind: "automatic", fromSeconds: "0", toSeconds: "5" };
@@ -37,16 +38,16 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
   const [actionNotice, setActionNotice] = useState<string | null>(null), [answers, setAnswers] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null), composerRef = useRef<HTMLTextAreaElement>(null), followMessages = useRef(true), composing = useRef(false);
   const shortcutHintId = useId(), generation = useRef(0), liveController = useRef(controller); liveController.current = controller;
-  const inFlight = useRef(new Set<string>()), attemptedDirect = useRef(new Set<string>());
+  const inFlight = useRef(new Set<string>()), attemptedApply = useRef(new Set<string>());
   const sendAttempt = useRef<{ instruction: string; body: unknown } | null>(null), applyAttempts = useRef(new Map<string, unknown>());
   const recoveryAttempts = useRef(new Map<string, unknown>()), undoAttempts = useRef(new Map<string, unknown>());
   const answerAttempts = useRef(new Map<string, { choice: string; body: unknown }>());
-  const reviewSequence = useRef(0);
+  const reviewSequence = useRef(0), attemptedUploads = useRef(new Set<string>());
   const endpoint = "/api/projects/" + encodeURIComponent(controller.projectId) + "/agent-runs";
   const current = (epoch: number) => generation.current === epoch && liveController.current === controller;
   useEffect(() => {
     generation.current++; setData({ runs: [], messages: [] }); setInstruction(""); setReferenceId(null); setComparison(null); setReviewingId(null); setError(null); setBusy(null); setScopeChoice(initialScope); setActionNotice(null); setAnswers({});
-    inFlight.current.clear(); attemptedDirect.current.clear(); applyAttempts.current.clear(); recoveryAttempts.current.clear(); undoAttempts.current.clear(); answerAttempts.current.clear(); sendAttempt.current = null;
+    inFlight.current.clear(); attemptedApply.current.clear(); attemptedUploads.current.clear(); applyAttempts.current.clear(); recoveryAttempts.current.clear(); undoAttempts.current.clear(); answerAttempts.current.clear(); sendAttempt.current = null;
     return () => { generation.current++; reviewSequence.current++; };
   }, [controller]);
   const refresh = useCallback(async () => {
@@ -54,7 +55,8 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     try { const next = await videoProjectRequest<AgentState>(endpoint); if (generation.current === epoch && liveController.current === controller) setData(next); }
     catch (cause) { if (generation.current === epoch && liveController.current === controller) throw cause; }
   }, [controller, endpoint]);
-  useEffect(() => { let active = true; const poll = () => { if (active) void refresh().catch(cause => { if (active) setError(cause.message); }); }; poll(); const timer = setInterval(poll, 2500); return () => { active = false; clearInterval(timer); }; }, [refresh]);
+  const hasActiveRun = data.runs.some(run => ["queued", "running", "needs_evidence"].includes(run.status) || run.phase === "cancellation_pending");
+  useEffect(() => startEditorPolling(refresh, hasActiveRun ? 2500 : 30_000, cause => setError(messageFor(cause, "Could not refresh edit status."))), [refresh, hasActiveRun]);
   useEffect(() => { if (!hidden && followMessages.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [data, hidden, busy, comparison]);
   useEffect(() => { if (hidden) { reviewSequence.current++; setComparison(null); setReviewingId(null); } }, [hidden]);
   useEffect(() => {
@@ -84,30 +86,44 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     const epoch = generation.current; inFlight.current.add(run.id); setBusy(run.id); setError(null);
     let interruptedByDraft = false;
     try {
-      const snapshot = await controller.prepareAgentContext(); if (!current(epoch)) return;
-      if (!applyAttempts.current.has(run.id)) {
-        const prepared = reviewed ?? await videoProjectRequest<NativeAgentComparison>(endpoint + "/" + encodeURIComponent(run.id) + "/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ baseRevision: snapshot.revision, baseHash: snapshot.documentHash }) });
-        if (!current(epoch)) return;
-        const latest = controller.getState();
-        if (latest.interactionDrafts || latest.pending.length || latest.snapshot?.documentHash !== snapshot.documentHash) { interruptedByDraft = true; return; }
-        if (prepared.run.id !== run.id || prepared.applied || editorComparisonIsStale(prepared.review.basis, snapshot, 0, 0)) throw Object.assign(new Error("This comparison changed. Refresh it before applying."), { status: 409 });
-        applyAttempts.current.set(run.id, { operationId: crypto.randomUUID(), baseRevision: snapshot.revision, baseHash: snapshot.documentHash, reviewBasis: prepared.review.basis });
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const snapshot = await controller.prepareAgentContext(); if (!current(epoch)) return;
+          if (!applyAttempts.current.has(run.id)) {
+            const prepared = reviewed ?? await videoProjectRequest<NativeAgentComparison>(endpoint + "/" + encodeURIComponent(run.id) + "/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ baseRevision: snapshot.revision, baseHash: snapshot.documentHash }) });
+            if (!current(epoch)) return;
+            const latest = controller.getState();
+            if (latest.interactionDrafts || latest.pending.length || latest.snapshot?.documentHash !== snapshot.documentHash) { interruptedByDraft = true; return; }
+            if (prepared.run.id !== run.id) throw new Error("The saved edit could not be matched to this request.");
+            if (prepared.applied) { await controller.refresh(); await refresh(); return; }
+            if (editorComparisonIsStale(prepared.review.basis, snapshot, 0, 0)) throw Object.assign(new Error("The project is changing. Finish your current edit, then retry the saved result."), { status: 409, code: "NATIVE_REVIEW_STALE" });
+            applyAttempts.current.set(run.id, { operationId: crypto.randomUUID(), baseRevision: snapshot.revision, baseHash: snapshot.documentHash, reviewBasis: prepared.review.basis });
+          }
+          const result = await videoProjectRequest<VideoProjectSnapshot | { snapshot: VideoProjectSnapshot }>(endpoint + "/" + encodeURIComponent(run.id) + "/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(applyAttempts.current.get(run.id)) });
+          if (!current(epoch)) return;
+          applyAttempts.current.delete(run.id); controller.acceptSnapshot("snapshot" in result ? result.snapshot : result);
+          await controller.refresh(); await refresh(); if (current(epoch)) setComparison(null);
+          return;
+        } catch (cause) {
+          const code = cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
+          if (reviewed || attempt > 0 || code !== "NATIVE_REVIEW_STALE") throw cause;
+          // A rejected basis has made no document change. Refresh and reuse the same saved result.
+          applyAttempts.current.delete(run.id);
+          await controller.refresh();
+          if (!current(epoch)) return;
+        }
       }
-      const result = await videoProjectRequest<VideoProjectSnapshot | { snapshot: VideoProjectSnapshot }>(endpoint + "/" + encodeURIComponent(run.id) + "/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(applyAttempts.current.get(run.id)) });
-      if (!current(epoch)) return;
-      applyAttempts.current.delete(run.id); controller.acceptSnapshot("snapshot" in result ? result.snapshot : result);
-      await controller.refresh(); await refresh(); if (current(epoch)) setComparison(null);
     } catch (cause) {
       if (!current(epoch)) return;
       if (definitiveRejection(cause)) { applyAttempts.current.delete(run.id); await controller.refresh().catch(() => {}); }
       if (current(epoch)) setError(messageFor(cause, "The proposal could not be applied.")); await refresh().catch(() => {});
-    } finally { if (current(epoch)) { if (interruptedByDraft) attemptedDirect.current.delete(run.id); setBusy(null); inFlight.current.delete(run.id); } }
+    } finally { if (current(epoch)) { if (interruptedByDraft) attemptedApply.current.delete(run.id); setBusy(null); inFlight.current.delete(run.id); } }
   }, [controller, endpoint, refresh]);
   useEffect(() => {
-    if (workspace.interactionDrafts || workspace.pending.length || workspace.status !== "saved" || busy || comparison || reviewingId) return;
-    const run = data.runs.find(candidate => candidate.status === "ready" && candidate.proposal?.impact === "direct");
-    if (run && !attemptedDirect.current.has(run.id)) { attemptedDirect.current.add(run.id); void applyRun(run); }
-  }, [workspace.interactionDrafts, workspace.pending.length, workspace.status, data.runs, busy, comparison, reviewingId, applyRun]);
+    if (workspace.interactionDrafts || workspace.pending.length || workspace.status !== "saved" || busy || inFlight.current.size || reviewingId) return;
+    const run = data.runs.slice().reverse().find(candidate => ["ready", "awaiting_review"].includes(candidate.status) && candidate.proposal && !attemptedApply.current.has(candidate.id));
+    if (run) { attemptedApply.current.add(run.id); void applyRun(run); }
+  }, [workspace.interactionDrafts, workspace.pending.length, workspace.status, data.runs, busy, reviewingId, applyRun]);
 
   async function openReview(run: WorkspaceAgentRun) {
     const epoch = generation.current, sequence = ++reviewSequence.current;
@@ -135,7 +151,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       if (!current(epoch)) return;
       if (sendAttempt.current && sendAttempt.current.instruction !== text) throw new Error("Retry the previous request before starting a different one; its submission is still uncertain.");
       sendAttempt.current ??= { instruction: text, body: { operationId: crypto.randomUUID(), instruction: text, baseRevision: snapshot.revision, baseHash: snapshot.documentHash,
-        scope: scoped.scope, ...(referenceId ? { referenceRunId: referenceId } : {}), visualConsent: includeFrame,
+        scope: scoped.scope, ...(referenceId ? { referenceRunId: referenceId } : {}), visualConsent: includeFrame, cloudConsent: true,
         context: { ...(visualWitness ? { visualWitness } : {}), selectedItemIds: state.selectedItemIds, selectedNodeId: state.selectedNodeId ?? undefined, playheadFrame: state.playheadFrame } } };
       await videoProjectRequest(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sendAttempt.current.body) });
       if (!current(epoch)) return;
@@ -237,9 +253,17 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     finally { if (current(epoch)) setBusy(null); }
   }
 
+  const pendingUploadRun = data.runs.find(run => run.status === "needs_evidence" && run.cloudConsent && run.prerequisites?.status === "consent_required" && !attemptedUploads.current.has(run.id));
+  useEffect(() => {
+    if (!pendingUploadRun || busy || inFlight.current.size || workspace.interactionDrafts) return;
+    attemptedUploads.current.add(pendingUploadRun.id);
+    void resume(pendingUploadRun, true);
+    // Persisted send consent authorizes only the sources required by this run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingUploadRun?.id, busy, workspace.interactionDrafts]);
   const pendingEvidenceRun = data.runs.find(run => run.status === "needs_evidence" && run.prerequisites?.status === "running");
   useEffect(() => {
-    if (!pendingEvidenceRun || busy || workspace.interactionDrafts) return;
+    if (!pendingEvidenceRun || busy || inFlight.current.size || workspace.interactionDrafts) return;
     const timer = setTimeout(() => void resume(pendingEvidenceRun), 3000); return () => clearTimeout(timer);
     // Readiness checks retain their server operation identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,18 +284,18 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       <p>{run.clarification?.question ?? run.proposal?.summary ?? run.instruction}</p>
       {run.scope && <span className="editor-agent-scope-label">{t(run.scope.kind === "selection" ? "Selected items" : run.scope.kind === "range" ? "Time range" : "Whole project")}{names ? " · " + names : ""}</span>}
       {!!run.proposal?.propagatedItemIds?.length && <span className="editor-agent-scope-label">{t("Linked changes")}: {run.proposal.propagatedItemIds.length}</span>}
-      {run.error && <p className="text-amber-700 dark:text-amber-300">{t(run.error.message)}</p>}
+      {run.error && <><p className="text-amber-700 dark:text-amber-300">{t(run.error.message)}</p><details className="text-xs break-all"><summary>{t("Error details")}</summary><p>{t("Error code")} · {run.error.code}</p><p>{t("Run ID")} · {run.id}</p></details></>}
       {run.clarificationParentRunId && <span className="editor-agent-scope-label">{t("Included reply")}</span>}
       {run.clarification && !answered && run.status === "needs_input" && <EditorClarification run={run} value={answers[run.id] ?? ""} disabled={disabled}
         stale={workspace.snapshot?.documentHash !== run.baseHash} retryPending={answerAttempts.current.has(run.id)}
         onChange={value => setAnswers(values => ({ ...values, [run.id]: value }))} onAnswer={optionId => void answer(run, optionId)} onRetry={() => void answer(run, undefined, true)} />}
       {(run.phase === "cancellation_pending" || run.status === "running" && Date.now() - Date.parse(run.updatedAt) > 60_000) && <button className={button} disabled={!!busy} onClick={() => void resume(run)}>{t("Check progress")}</button>}
       {["submit_uncertain", "preparation_retry"].includes(run.phase) && <button className={button} disabled={!!busy} onClick={() => void resume(run)}>{t("Retry same request")}</button>}
-      {run.prerequisites?.status === "consent_required" && <><p className="editor-authoring-notice">{t("This request needs cloud transcription. Selected local media will be uploaded to storage and the speech provider. Standard transcription credits apply.")}</p><button className={button} disabled={!!busy} onClick={() => void resume(run, true)}>{t("Upload and continue")}</button></>}
+      {run.prerequisites?.status === "consent_required" && (!run.cloudConsent || attemptedUploads.current.has(run.id) && !busy) && <><p className="editor-authoring-notice">{t("This request needs cloud transcription. Selected local media will be uploaded to storage and the speech provider. Standard transcription credits apply.")}</p><button className={button} disabled={!!busy} onClick={() => void resume(run, true)}>{t(run.cloudConsent ? "Retry same request" : "Upload and continue")}</button></>}
       {run.recoverableOutput && run.proposal?.commands.some(command => command.type === "addItem" && !workspace.document?.items.some(item => item.id === command.item.id)) && <button className={button} disabled={disabled} onClick={() => void recoverGraphic(run)}>{t("Recover saved graphic")}</button>}
       {run.proposal && ["ready", "awaiting_review", "stale", "applied"].includes(run.status) && <div className="editor-agent-card-actions">
-        <button className={button} disabled={disabled || reviewingId === run.id} onClick={() => void openReview(run)}>{t(reviewingId === run.id ? "Preparing comparison…" : applied ? "Compare" : "Review changes")}</button>
-        {!applied && <button className={button} disabled={disabled || run.status === "stale"} onClick={() => void applyRun(run)}>{t("Apply")}</button>}
+        {applied && <button className={button} disabled={disabled || reviewingId === run.id} onClick={() => void openReview(run)}>{t(reviewingId === run.id ? "Preparing comparison…" : "Compare")}</button>}
+        {!applied && attemptedApply.current.has(run.id) && !busy && <button className={button} disabled={disabled || run.status === "stale"} onClick={() => void applyRun(run)}>{t("Retry same request")}</button>}
         {applied && !run.undoOfRunId && !undone && <button className={button} disabled={disabled} onClick={() => void undo(run)}>{t("Undo this edit")}</button>}
         {applied && <button className={button} disabled={!!busy} onClick={() => reference(run)}>{t("Revise this edit")}</button>}
         {["ready", "awaiting_review"].includes(run.status) && <button className={button} disabled={disabled} onClick={() => void cancel(run, true)}>{t("Cancel and revise")}</button>}
@@ -291,7 +315,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       {!data.messages.length && <div className="editor-chat-welcome"><Sparkles size={29} strokeWidth={1.5} /><h3>{t("What would you like to create?")}</h3><p>{t("Describe an edit, ask about the selected clip, or create a motion graphic. Chat and manual controls share one history.")}</p></div>}
       {data.messages.map(message => {
         const run = message.runId ? runById.get(message.runId) : undefined, card = run && lastMessage.get(run.id) === message.id;
-        return <Fragment key={message.id}>{(message.role === "user" || !run?.proposal && !run?.clarification) && <div className={"break-words whitespace-pre-wrap rounded-lg p-3 text-xs leading-5 " + (message.role === "user" ? "ml-5 bg-[var(--editor-accent-soft)] text-[var(--editor-accent-text)]" : "mr-2 bg-[var(--editor-surface)] text-[var(--editor-text)]")}>{message.text}</div>}{card && renderRun(run)}</Fragment>;
+        return <Fragment key={message.id}>{(message.role === "user" || !run?.proposal && !run?.clarification && !run?.error) && <div className={"break-words whitespace-pre-wrap rounded-lg p-3 text-xs leading-5 " + (message.role === "user" ? "ml-5 bg-[var(--editor-accent-soft)] text-[var(--editor-accent-text)]" : "mr-2 bg-[var(--editor-surface)] text-[var(--editor-text)]")}>{message.text}</div>}{card && renderRun(run)}</Fragment>;
       })}
       {visibleRuns.filter(run => !lastMessage.has(run.id)).slice().reverse().map(renderRun)}
       {error && <p role="alert" className="text-xs leading-5 text-[var(--editor-danger-text)]">{t(error)}</p>}
@@ -309,6 +333,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       <textarea ref={composerRef} aria-label="Message video agent" value={instruction} onChange={event => setInstruction(event.target.value)} placeholder={t("Describe your edit…")} rows={3} className="w-full resize-y rounded-lg border border-[var(--editor-border)] bg-[var(--editor-surface)] p-3 text-xs outline-none focus:border-violet-500" aria-describedby={shortcutHintId} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }} onKeyDown={handleComposerKeyDown} />
       <p id={shortcutHintId} className="text-[10px] leading-4 text-[var(--editor-muted)]">{t("Enter to send · ⌘/Ctrl+Enter for a new line")}</p>
       <label className="flex items-start gap-2 text-[10px] leading-4 text-[var(--editor-muted)]"><input type="checkbox" checked={includeFrame} disabled={!!sendAttempt.current} onChange={event => setIncludeFrame(event.target.checked)} className="mt-0.5 accent-violet-500" />{t("Include current preview frame · sends this image to the model")}</label>
+      <p className="text-[10px] leading-4 text-[var(--editor-muted)]">{t("Send applies edits automatically. Required media is uploaded for cloud transcription. Standard edit and transcription credits apply.")}</p>
       <div className="flex items-center justify-end"><button className={button} type="submit" disabled={!instruction.trim() || busy === "send" || !!workspace.interactionDrafts || !resolvedScope.scope}><Send size={13} className="mr-2 inline" />{t("Send")}</button></div>
     </form>
     {!hidden && comparison && <EditorAgentReview mainPreviewPlaying={mainPreviewPlaying} comparison={comparison} sources={sources} stale={staleComparison} applying={busy === comparison.run.id} onPausePreview={onPausePreview} onSeekFrame={onSeekFrame}

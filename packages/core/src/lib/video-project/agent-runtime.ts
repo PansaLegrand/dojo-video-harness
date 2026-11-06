@@ -1,3 +1,4 @@
+import { importSvgGraphic } from "@dojo-video-engine/interchange/svg";
 import { z } from "zod/v3";
 import {
   evaluateScene,
@@ -412,17 +413,29 @@ export async function compileNativeAgentResult(
           "Speech timing edits must identify source word IDs through cutSpeech or anchorSpeech, not model-authored timestamps.",
         );
       const next =
-        candidate.type === "insertGraphic"
-          ? graphicCommands(document, candidate)
-          : candidate.type === "captionSource"
-            ? captionSourceCommands(document, candidate)
-            : candidate.type === "cutSpeech"
-              ? speechCutCommands(document, candidate)
-              : candidate.type === "anchorSpeech"
-                ? [speechBindingCommand(document, candidate)]
-                : candidate.type === "applyCapability"
-                  ? buildEditorCapabilityCommands(document, candidate.action)
-                  : [candidate as VideoProjectCommand];
+        candidate.type === "insertSvg"
+          ? graphicCommands(document, {
+              type: "insertGraphic",
+              itemId: candidate.itemId,
+              trackId: candidate.trackId,
+              name: candidate.name,
+              node: importSvgGraphic(candidate.svg, {
+                id: candidate.itemId,
+                from: candidate.from,
+                duration: candidate.duration,
+              }).node,
+            })
+          : candidate.type === "insertGraphic"
+            ? graphicCommands(document, candidate)
+            : candidate.type === "captionSource"
+              ? captionSourceCommands(document, candidate)
+              : candidate.type === "cutSpeech"
+                ? speechCutCommands(document, candidate)
+                : candidate.type === "anchorSpeech"
+                  ? [speechBindingCommand(document, candidate)]
+                  : candidate.type === "applyCapability"
+                    ? buildEditorCapabilityCommands(document, candidate.action)
+                    : [candidate as VideoProjectCommand];
       const execution = executeVideoProjectCommands(document, next);
       scope.check(candidate, document, execution);
       document = execution.document;

@@ -324,6 +324,7 @@ export class NativeAgentScopeSession {
         }
         case "addTrack":
           break; // finish() verifies it belongs to scoped content.
+        case "insertSvg":
         case "insertGraphic":
         case "addItem": {
           const id = command.itemId ?? command.item.id;
