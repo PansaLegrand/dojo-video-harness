@@ -329,6 +329,7 @@ export function publicRun({
 }: StoredRun) {
   return {
     ...run,
+    manualReviewRequired: run.proposal?.impact === "review",
     ...(run.replyState
       ? {
           clarificationReply: {

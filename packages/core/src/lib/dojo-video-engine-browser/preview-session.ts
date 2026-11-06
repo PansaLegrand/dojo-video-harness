@@ -1,3 +1,4 @@
+import { graphicsRuntimeOptions } from "./graphics-runtime";
 import {
   createPlayer as createStandalonePlayer,
   createPlayerFromRuntime,
@@ -204,7 +205,11 @@ export class DojoVideoEnginePreviewSession {
       this.runtime = await this.dependencies.createRuntime({
         scene,
         signal,
-        resolve: { preferProxy: true, videoProxyAudio: "original" },
+        resolve: {
+          ...graphicsRuntimeOptions(),
+          preferProxy: true,
+          videoProxyAudio: "original",
+        },
         // This session borrows media and paints directly into its host context;
         // it never uses the runtime's separate full-scene render surface.
         createRenderCanvas: () => {

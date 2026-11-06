@@ -7,6 +7,10 @@ import {
   type EditorFormat,
 } from "./document";
 import type { SceneNodeInput } from "@dojo-video-engine/schema";
+import {
+  THREE_EXTENSION,
+  parseThreeScene,
+} from "@dojo-video-engine/three/schema";
 import { evaluateKeyframes } from "@dojo-video-engine/core";
 import { assertEditorCanvasDimensions } from "./canvas-format";
 
@@ -149,6 +153,16 @@ function offsetItem(item: EditorItem, frames: number, fps: number): EditorItem {
             endMs: w.endMs - offset,
           })),
       }));
+  }
+  if (frames && node.extension?.name === THREE_EXTENSION.name) {
+    const params = parseThreeScene(node.extension.params);
+    node.extension = {
+      ...node.extension,
+      params: {
+        ...params,
+        timeOffset: params.timeOffset + (frames / fps) * params.rate,
+      },
+    };
   }
   // Child clocks remain rooted in the original group when a parent is cut.
   // Negative child starts preserve nested video, Lottie and animation samples.

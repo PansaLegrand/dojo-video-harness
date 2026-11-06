@@ -79,8 +79,10 @@ try {
     pkg.dependencies[item.name] = "file:" + file;
     report.packages.push({ name: item.name, sha256: item.sha256 });
   }
-  if (names.size !== 16)
-    throw new Error("Expected the complete 16-package engine release.");
+  if (names.size !== 17 || !names.has("@dojo-video-engine/three"))
+    throw new Error(
+      "Expected the complete 17-package engine release, including Three.js.",
+    );
   await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   const tsPath = path.join(checkout, "tsconfig.json"),
     ts = JSON.parse(await readFile(tsPath, "utf8"));

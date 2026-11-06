@@ -1,5 +1,6 @@
 import type { VideoProjectDocument } from "@/lib/video-project/document";
 import type { NativeAgentScope, NativeReviewBasis } from "@/lib/video-project/agent-authoring";
+import type { VideoProjectAgentRun } from "@/lib/video-project/agent-types";
 import { editorCapabilityAvailability, type EditorCapabilityInput } from "@/lib/video-project/capabilities";
 
 export function editorQuickActions(document: VideoProjectDocument | null, itemId: string | null, nodeId: string | null, scope: NativeAgentScope | null): Array<{ label: string; action: EditorCapabilityInput }> {
@@ -24,4 +25,8 @@ export function editorQuickActions(document: VideoProjectDocument | null, itemId
 
 export function editorComparisonIsStale(basis: NativeReviewBasis, current: { revision: number; documentHash: string } | null, pending: number, drafts: number): boolean {
   return !current || pending > 0 || drafts > 0 || current.revision !== basis.baseRevision || current.documentHash !== basis.baseHash;
+}
+
+export function editorAgentCanAutoApply(run: Pick<VideoProjectAgentRun, "status" | "proposal" | "manualReviewRequired">): boolean {
+  return !run.manualReviewRequired && !!run.proposal && ["ready", "awaiting_review"].includes(run.status);
 }

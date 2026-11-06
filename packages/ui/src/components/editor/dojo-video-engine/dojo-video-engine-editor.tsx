@@ -95,6 +95,7 @@ import { useEditorPreviewDraft } from "./editor-preview-draft";
 import { useCompiledEditorPreview } from "./editor-preview-compiler";
 import { EditorTimeline } from "./editor-timeline";
 import { editorShortcut } from "./editor-keyboard";
+import { startEditorPolling } from "./editor-polling";
 import { EditorPlayheadProvider, EditorPlayheadTime } from "./editor-playhead";
 import { EditorInspector } from "./editor-inspector";
 import {
@@ -272,12 +273,12 @@ export default function DojoVideoEngineEditor({
     lifetimeRef.current = lifetime;
     void selectProject(projectId);
     void controller.open().catch(cause => { const message = cause instanceof Error ? cause.message : "Project could not be loaded."; controller.setError(message); setError(message); });
-    const timer = setInterval(() => void controller.refresh().catch(() => {}), 2500);
+    const stopPolling = startEditorPolling(() => controller.refresh(), 30_000);
     const reconnect = () => void controller.retryAfterReconnect().catch(() => {});
     window.addEventListener("online", reconnect);
     return () => {
       window.removeEventListener("online", reconnect);
-      clearInterval(timer); lifetime.abort(); controller.close(); exportTaskRef.current?.cancel();
+      stopPolling(); lifetime.abort(); controller.close(); exportTaskRef.current?.cancel();
       if (localMediaRef.current?.lifetime === lifetime) {
         localMediaRef.current.cancel(); localMediaRef.current.dispose(); localMediaRef.current = null; setLocalImport(null);
       }

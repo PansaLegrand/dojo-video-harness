@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorThreeControls } from "./editor-three-controls";
+import { THREE_EXTENSION } from "@dojo-video-engine/three/schema";
 import type { EditorPropertyPreview } from "./editor-property-preview";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type {
@@ -416,6 +418,12 @@ export function EditorInspector({
               />
             </fieldset>
           </Section>
+          {node?.type === "shape" && <Section title="Style"><fieldset disabled={locked} className="grid grid-cols-2 gap-2">
+            <EditorField label="Color" type="color" value={inputColor(style.fill ?? "#000000")} {...liveStyle((value, update) => update({ fill: value }))} />
+            <EditorField label="Stroke color" type="color" value={inputColor(style.stroke ?? "#000000")} {...liveStyle((value, update) => update({ stroke: value }))} />
+            <EditorField label="Stroke width" type="number" value={style.strokeWidth ?? 0} min={0} max={100} {...liveStyle((value, update) => update({ strokeWidth: Number(value) }))} />
+          </fieldset></Section>}
+          {node?.extension?.name === THREE_EXTENSION.name && <Section title="3D"><EditorThreeControls key={node.id} extension={node.extension} disabled={locked} onChange={extension => updateNode({ extension })} /></Section>}
           {node?.type !== "audio" && (
             <Section title="Size & appearance">
               <p className="text-[11px] text-[var(--editor-muted)]">{t("Drag on the preview to reposition this item.")}</p>

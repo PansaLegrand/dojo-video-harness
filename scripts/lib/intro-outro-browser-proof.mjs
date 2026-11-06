@@ -188,6 +188,13 @@ export async function verifyIntroOutro({
     results = [];
   for (const test of cases) {
     const { id } = await api("/api/projects", { name: test.id });
+    // Preserve the real server write, but delay its acknowledgement so the next
+    // interaction must wait for the editor's rendered Undo state, not just GET.
+    await page.route(`**/api/projects/${id}/undo`, async (route) => {
+      const response = await route.fetch();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await route.fulfill({ response });
+    });
     await page.goto(`${base}/en/applications/editor/${id}?chat=1`);
     await page.getByTestId("dojo-video-engine-editor").waitFor();
     await page.getByLabel("Import media files").setInputFiles(source);
@@ -255,6 +262,14 @@ export async function verifyIntroOutro({
       true,
     );
     const clip = page.locator('[data-timeline-item="segment"]');
+    const restoredTimingLabel = `${graphic.name}, ${(graphic.node.from / applied.document.format.fps).toFixed(2)} seconds, ${(graphic.node.duration / applied.document.format.fps).toFixed(2)} seconds long`;
+    const waitForRestoredGraphic = () =>
+      until(
+        async () =>
+          (await api(`/api/projects/${id}/document`)).documentHash ===
+            applied.documentHash &&
+          (await clip.getAttribute("aria-label")) === restoredTimingLabel,
+      );
     // Exercise actual timeline controls, not a direct test-only command call.
     const bounds = await clip.boundingBox();
     assert(bounds);
@@ -283,11 +298,7 @@ export async function verifyIntroOutro({
       graphic.node.children,
     );
     await page.getByRole("button", { name: "Undo", exact: true }).click();
-    await until(
-      async () =>
-        (await api(`/api/projects/${id}/document`)).documentHash ===
-        applied.documentHash,
-    );
+    await waitForRestoredGraphic();
     for (const edge of ["end", "start"]) {
       await clip.locator(`[data-trim-handle="${edge}"]`).focus();
       await clip
@@ -321,11 +332,7 @@ export async function verifyIntroOutro({
         JSON.stringify(edited.document, null, 2),
       );
       await page.getByRole("button", { name: "Undo", exact: true }).click();
-      await until(
-        async () =>
-          (await api(`/api/projects/${id}/document`)).documentHash ===
-          applied.documentHash,
-      );
+      await waitForRestoredGraphic();
     }
     check(
       `${test.id}: normal timeline move, head/tail trim and Undo preserve original footage and group identity`,

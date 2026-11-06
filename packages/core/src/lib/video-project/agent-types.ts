@@ -76,6 +76,10 @@ export type VideoProjectAgentProposal = {
   propagatedItemIds?: string[];
 };
 export type VideoProjectAgentRun = {
+  /** Explicit host policy for integrations that require a human review. */
+  manualReviewRequired?: boolean;
+  /** Optional host disclosure; absence never grants upload consent. */
+  cloudConsent?: boolean;
   id: string;
   operationId: string;
   status: VideoProjectAgentStatus;
@@ -93,7 +97,19 @@ export type VideoProjectAgentRun = {
   undoOfRunId?: string;
   clarificationParentRunId?: string;
   /** Product UI view of local continuation availability; not a billing allowance. */
-  clarificationReply?: {remaining:0|1;continuationRunId?:string;options:Record<string,{scope:NativeAgentScope;itemCount:number;itemNames:string[];fps:number}>};
+  clarificationReply?: {
+    remaining: 0 | 1;
+    continuationRunId?: string;
+    options: Record<
+      string,
+      {
+        scope: NativeAgentScope;
+        itemCount: number;
+        itemNames: string[];
+        fps: number;
+      }
+    >;
+  };
   replyState?: {
     available: boolean;
     continuationRunId?: string;

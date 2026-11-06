@@ -208,7 +208,8 @@
       "allTools": "All tools",
       "videoToGif": "Video to GIF",
       "musicVisualizer": "Music Visualizer",
-      "videoWatermark": "Video Watermark"
+      "videoWatermark": "Video Watermark",
+      "codeToVideo": "Code-to-video examples"
     },
     "reset": "Reset"
   },

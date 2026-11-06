@@ -1,3 +1,4 @@
+import { graphicsRuntimeOptions } from "./graphics-runtime";
 import {
   detectExportCapability,
   exportVideo,
@@ -114,7 +115,11 @@ export function planDojoVideoEngineExport(
   runtime: Partial<typeof globalThis> = globalThis,
   options: Partial<DojoVideoEngineExportOptions> = {},
 ): DojoVideoEngineExportPlan {
-  const preflight = preflightExport(scene, runtime, encodingOptions(options));
+  const preflight = preflightExport(
+    scene,
+    runtime,
+    encodingOptions({ ...options, scene }),
+  );
   const fallbackReasons: string[] = [];
   if (!preflight.ok) {
     return {
@@ -224,7 +229,9 @@ function startRenderedSceneExport(
   let plan = initialPlan;
   if (plan.strategy === "worker") {
     try {
-      const worker = (options.createWorker ?? createDojoVideoEngineExportWorker)();
+      const worker = (
+        options.createWorker ?? createDojoVideoEngineExportWorker
+      )();
       if (inspectScene(options.scene).capabilities.hasFonts) {
         return startFontPreparedWorker(
           options,
@@ -378,7 +385,9 @@ function startWorkerExportWithRecovery(params: {
   const resetWatchdog = () => {
     if (watchdog) clearTimeout(watchdog);
     watchdog = setTimeout(() => {
-      settleFailure(new Error("DojoVideoEngine export worker stopped responding."));
+      settleFailure(
+        new Error("DojoVideoEngine export worker stopped responding."),
+      );
     }, watchdogMs);
   };
   const workerError = (event: Event) => {
@@ -399,7 +408,9 @@ function startWorkerExportWithRecovery(params: {
   };
   const workerMessageError = () =>
     settleFailure(
-      new Error("DojoVideoEngine export worker returned an unreadable message."),
+      new Error(
+        "DojoVideoEngine export worker returned an unreadable message.",
+      ),
     );
 
   const result = new Promise<ExportVideoResult>((resolve, reject) => {
@@ -697,6 +708,7 @@ function startRenderedStreamExport(
 
 function encodingOptions(options: Partial<DojoVideoEngineExportOptions>) {
   return {
+    ...(options.scene ? graphicsRuntimeOptions(options.scene) : {}),
     startFrame: options.startFrame,
     endFrame: options.endFrame,
     bitrate: options.bitrate,

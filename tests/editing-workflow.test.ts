@@ -216,6 +216,7 @@ it("one instruction selects the actual workflow tool and keeps every project edi
   expect(staged.document).toEqual(f.before.document);
   expect(staged.runs[0].status).toBe("awaiting_review");
   const reviewed = await f.agent.review(f.projectId, f.runId);
+  expect(reviewed.run.manualReviewRequired).toBe(true);
   const applied = await f.agent.apply(f.projectId, f.runId, {
     operationId: randomUUID(),
     baseRevision: staged.revision,
