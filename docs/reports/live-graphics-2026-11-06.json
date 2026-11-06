@@ -1,0 +1,88 @@
+{
+  "commit": "ff08674689145c7d05151b6caed3764de4a743d7",
+  "model": "openai/gpt-6-sol",
+  "providerOrigin": "https://ai-gateway.vercel.sh",
+  "budget": {
+    "maxRequests": 24,
+    "maxRequestsPerTurn": 6,
+    "maxInputBytes": 3000000,
+    "maxOutputTokens": 65536,
+    "currencyCeiling": null
+  },
+  "usage": {
+    "requests": 8,
+    "inputBytes": 542215,
+    "inputTokens": 108680,
+    "outputTokens": 11183
+  },
+  "checks": [
+    "svg: model created one editable graphic without replacing footage",
+    "svg: expected editable representation",
+    "svg: correction retains the graphic and part IDs",
+    "svg: requested color is visible in rendered pixels",
+    "svg: trim, Undo and reload preserve the generated result",
+    "svg: exported 150 real frames with original audio",
+    "three: model created one editable graphic without replacing footage",
+    "three: expected editable representation",
+    "three: correction retains the graphic and part IDs",
+    "three: requested color is visible in rendered pixels",
+    "three: camera correction preserves geometry/materials",
+    "three: trim, Undo and reload preserve the generated result",
+    "three: exported 150 real frames with original audio",
+    "no browser exceptions"
+  ],
+  "turns": [
+    {
+      "label": "svg-created",
+      "instruction": "Create an original editable 2D SVG of a white pelican riding a bicycle with a blue frame and orange beak, over my footage for all five seconds. Use meaningful names for the bird, beak, bicycle frame and wheels. Make one graphic item, keep the footage and its audio unchanged, and use the SVG preparation tool.",
+      "calls": 2,
+      "revision": 3,
+      "documentHash": "sha256:2f3158e731ef0d4f6c281b599844c0f27a96b3d6f7c7baf722afac4e8f08403c"
+    },
+    {
+      "label": "svg-recolored",
+      "instruction": "Make only the bicycle frame red. Keep the pelican, wheels, placement, duration and other content unchanged.",
+      "calls": 1,
+      "revision": 4,
+      "documentHash": "sha256:17f4c35196d67a960553cb0bd3de5106a1ead422f4a2f5eaa9e08319e822efa7"
+    },
+    {
+      "label": "three-created",
+      "instruction": "Create an original editable 3D scene of a white pelican riding a bicycle with an orange frame and dark wheels, over my footage for all five seconds. Give it a slowly orbiting camera. Use meaningful object/material names. Make one transparent 3D item and keep the footage and audio unchanged.",
+      "calls": 3,
+      "revision": 3,
+      "documentHash": "sha256:92449281422db816ecb736e487fcaadbab30081e575e276689b8ac745047fe1b"
+    },
+    {
+      "label": "three-recolored",
+      "instruction": "Make only the bicycle frame blue. Keep the pelican, wheels, placement, duration and other content unchanged.",
+      "calls": 1,
+      "revision": 4,
+      "documentHash": "sha256:7803f34b53e85f8416e04279264e2c8f30405ace29ac151e0d2d170318dafbed"
+    },
+    {
+      "label": "three-camera",
+      "instruction": "Move the camera slightly higher. Preserve every object, material, animation and clip duration.",
+      "calls": 1,
+      "revision": 5,
+      "documentHash": "sha256:ea7530beaae3eec71cc3a6234dc3f88d29b05f5c0d91e36050653b327aa56fb9"
+    }
+  ],
+  "passed": true,
+  "artifacts": {
+    "svg.mp4": "2dd15ce638275a3f7207a81f6d948a162900219cf5c00d5d9afacafb5f37adbd",
+    "three.mp4": "0b4cc4157a639741da3eb4c62eef0496dc7d501d852822ab1456f6b1d9fd224c",
+    "svg-decoded.png": "14fe7474e144e8f08cd251c7c6c9193f98198e8c4a0457ee319046d9a248d993",
+    "three-decoded.png": "614cc60145992c46f4a67ad7fd15d0ae9eba93047fb16205a6697ba9d4e9a715"
+  },
+  "additionalDecodedMotionCheck": {
+    "sampleFrames": [0, 120],
+    "threePixelsChangingByMoreThan20": 5869
+  },
+  "limits": [
+    "one SVG and one Three.js conversation",
+    "synthetic footage",
+    "local filesystem host, not deployed commercial web",
+    "no broad reliability or user creative acceptance claim"
+  ]
+}
