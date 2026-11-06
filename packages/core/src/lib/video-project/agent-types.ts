@@ -76,6 +76,8 @@ export type VideoProjectAgentProposal = {
   propagatedItemIds?: string[];
 };
 export type VideoProjectAgentRun = {
+  /** Explicit host policy for integrations that require a human review. */
+  manualReviewRequired?: boolean;
   /** Optional host disclosure; absence never grants upload consent. */
   cloudConsent?: boolean;
   id: string;

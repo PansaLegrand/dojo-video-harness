@@ -484,6 +484,7 @@ it("direct editing survives restart and applies once through the guarded path wi
   await reopened.init();
   const host = new AgentService(reopened, model, [], undefined, "direct");
   const comparison = await host.review(p.id, started.run.id);
+  expect(comparison.run.manualReviewRequired).toBe(false);
   const apply = {
     operationId: "direct-apply",
     baseRevision: ready.revision,

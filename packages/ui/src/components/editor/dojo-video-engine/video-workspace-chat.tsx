@@ -11,7 +11,7 @@ import { useNativeEditorText } from "./native-editor-copy";
 import { EditorAuthoringScope, resolveEditorAuthoringScope, type EditorAuthoringScopeChoice } from "./editor-authoring-scope";
 import { EditorClarification } from "./editor-clarification";
 import { EditorAgentReview, type NativeAgentComparison } from "./editor-agent-review";
-import { editorQuickActions, editorComparisonIsStale } from "./editor-agent-actions";
+import { editorQuickActions, editorComparisonIsStale, editorAgentCanAutoApply } from "./editor-agent-actions";
 
 type AgentState = { runs: WorkspaceAgentRun[]; messages: VideoProjectAgentMessage[] };
 const definitiveStatuses = new Set([400, 401, 402, 403, 404, 409, 413, 422]);
@@ -82,6 +82,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     ? ["Add captions to this clip", "Find a phrase in this clip"] : selected?.node.type === "text" ? ["Make this shorter", "Try a different style"] : ["Create an opening title", "Create a motion graphic"];
 
   const applyRun = useCallback(async (run: WorkspaceAgentRun, reviewed?: NativeAgentComparison) => {
+    if (run.manualReviewRequired && !reviewed) return;
     if (inFlight.current.has(run.id) || controller.getState().interactionDrafts) return;
     const epoch = generation.current; inFlight.current.add(run.id); setBusy(run.id); setError(null);
     let interruptedByDraft = false;
@@ -121,7 +122,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
   }, [controller, endpoint, refresh]);
   useEffect(() => {
     if (workspace.interactionDrafts || workspace.pending.length || workspace.status !== "saved" || busy || inFlight.current.size || reviewingId) return;
-    const run = data.runs.slice().reverse().find(candidate => ["ready", "awaiting_review"].includes(candidate.status) && candidate.proposal && !attemptedApply.current.has(candidate.id));
+    const run = data.runs.slice().reverse().find(candidate => editorAgentCanAutoApply(candidate) && !attemptedApply.current.has(candidate.id));
     if (run) { attemptedApply.current.add(run.id); void applyRun(run); }
   }, [workspace.interactionDrafts, workspace.pending.length, workspace.status, data.runs, busy, reviewingId, applyRun]);
 
@@ -295,7 +296,8 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       {run.recoverableOutput && run.proposal?.commands.some(command => command.type === "addItem" && !workspace.document?.items.some(item => item.id === command.item.id)) && <button className={button} disabled={disabled} onClick={() => void recoverGraphic(run)}>{t("Recover saved graphic")}</button>}
       {run.proposal && ["ready", "awaiting_review", "stale", "applied"].includes(run.status) && <div className="editor-agent-card-actions">
         {applied && <button className={button} disabled={disabled || reviewingId === run.id} onClick={() => void openReview(run)}>{t(reviewingId === run.id ? "Preparing comparison…" : "Compare")}</button>}
-        {!applied && attemptedApply.current.has(run.id) && !busy && <button className={button} disabled={disabled || run.status === "stale"} onClick={() => void applyRun(run)}>{t("Retry same request")}</button>}
+        {!applied && run.manualReviewRequired && ["ready", "awaiting_review"].includes(run.status) && <button className={button} disabled={disabled || reviewingId === run.id} onClick={() => void openReview(run)}>{t(reviewingId === run.id ? "Preparing comparison…" : "Review changes")}</button>}
+        {!applied && !run.manualReviewRequired && attemptedApply.current.has(run.id) && !busy && <button className={button} disabled={disabled || run.status === "stale"} onClick={() => void applyRun(run)}>{t("Retry same request")}</button>}
         {applied && !run.undoOfRunId && !undone && <button className={button} disabled={disabled} onClick={() => void undo(run)}>{t("Undo this edit")}</button>}
         {applied && <button className={button} disabled={!!busy} onClick={() => reference(run)}>{t("Revise this edit")}</button>}
         {["ready", "awaiting_review"].includes(run.status) && <button className={button} disabled={disabled} onClick={() => void cancel(run, true)}>{t("Cancel and revise")}</button>}
