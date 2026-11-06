@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceRepository": "dojo-video-web",
-  "sourceCommit": "6c6ac6e22d9946810af87d72357174fdd88703a0",
+  "sourceCommit": "c85491cd1e15ee8b681b393594bcca0d9aa1d904",
   "transforms": [
     "engine namespace/path rename",
     "local user import boundary",
@@ -468,8 +468,8 @@
     {
       "source": "lib/i18n/locales/en.json",
       "target": "packages/core/src/lib/i18n/locales/en.json",
-      "sourceHash": "407ded5b2e95b66d3eff60d69aae7b3a6109d579c0004c8143f1f39b33b023d6",
-      "outputHash": "3cfde8c2263867fc98f38f95e1c82c44f44118456327c60829b468dca45d34be"
+      "sourceHash": "742d171cc31b13fc94edf2d0e50bd4dfa190a454a4d528b6fe74f5deed7ca0d3",
+      "outputHash": "947e93b10def11a94baf21486f2ba05a62d802fa4e76fc3321289a624d47ef86"
     },
     {
       "source": "tailwind.config.js",
