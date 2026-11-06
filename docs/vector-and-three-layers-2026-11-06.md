@@ -1,12 +1,12 @@
 # Editable vector and Three.js layers in the harness
 
-Date: 2026-11-06. Status: implemented locally with unpublished engine candidates;
-normal package adoption and release remain pending.
+Date: 2026-11-06. Updated: 2026-11-07. Status: implemented and adopted from
+published engine 1.2.1; see [registry qualification](engine-1.2.1-2026-11-07.md).
 
 ## Local implementation and evidence
 
-Engine full release tests and clean-package verification passed. Normal consumer
-pins remain unchanged pending an authorized immutable engine release.
+Engine full release tests, registry integrity/provenance checks and clean-package
+verification passed. Consumer dependencies and lockfile pin published 1.2.1.
 
 Implemented schema discovery, SVG and Three.js preparation tools, `insertSvg`
 replay, per-edit 3D validation, source-phase preservation for trim/split, matching
@@ -20,13 +20,10 @@ Undo, reload, narrow layout and decoded MP4 with original audio. Run
 `GRAPHICS_ONLY=1 node scripts/browser-smoke.mjs` after building. Model replies
 are scripted; this is not live-model creative acceptance.
 
-Install the exact packed candidate with
-`node scripts/graphics-candidate.mjs --consumer ../dojo-video-harness` from the
-engine checkout. The helper records hashes and backups without source aliases
-or changing published-release pins. `npm ci` restores the released baseline.
-Do not push the consumer source as an installable release until a new engine
-minor release is published and both consumers' manifests/locks/provenance are
-updated. See the engine's `docs/graphics-milestone-2026-11-06.md` for details.
+Earlier qualification used the engine's packed-candidate helper. Normal `npm ci`
+now installs the published 1.2.1 dependencies. Future candidate testing remains
+isolated through `npm run test:engine-packages -- --pack-dir <verified-bundle>`;
+it does not require a renderer source alias.
 
 ## Outcome and ownership
 
@@ -34,11 +31,11 @@ Users can create an original 2D illustration or 3D animation, then revise its
 parts on the same timeline as footage. Support both SVG-derived vectors and
 Three.js. Shared rendering belongs to engine
 [RFC 0014](https://github.com/PansaLegrand/dojo-video-engine/blob/main/docs/rfcs/0014-vector-and-three-layers.md).
-The documents are authored together; that remote link becomes available after push.
 
-The harness consumes engine 1.1.5. `insertGraphic` already creates grouped editable
-timeline items. The engine has native vector paths and versioned extensions;
-these do not establish general SVG import, Three.js or reliable model drawing.
+The harness consumes engine 1.2.1. `insertGraphic` and `insertSvg` create grouped
+editable timeline items, and the optional Three.js package validates supported
+3D scenes. This does not establish general SVG/JavaScript execution or reliable
+model drawing across arbitrary prompts.
 
 | Owner                                  | Work                                                                  |
 | -------------------------------------- | --------------------------------------------------------------------- |
@@ -63,9 +60,9 @@ these do not establish general SVG import, Three.js or reliable model drawing.
 5. Sync product-owned layer/part inspector controls through the UI manifest.
    Keep local filesystem persistence and BYOK setup in harness adapters.
 
-`prepare_vector_graphic` and `prepare_three_scene` are possible tool names, not
-registered APIs. Provide actual schemas/manifests and limits to the model. Do not
-claim to have visually checked a scene without rendered evidence.
+The registered tools are `prepare_svg_graphic` and `prepare_three_scene`.
+They provide actual schemas/manifests and limits to the model. Do not claim to
+have visually checked a scene without rendered evidence.
 
 ## Editing contract
 
