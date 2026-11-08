@@ -45,7 +45,8 @@ import {
   NATIVE_AGENT_CONTEXT_MAX_CHARS,
   planNativeAgentContext,
 } from "./agent-context";
-import { buildNativeAgentSystemPrompt } from "./agent-prompt";
+import { buildNativeAgentSystemPrompt, nativeCaptionSourceContext } from "./agent-prompt";
+import { assertNativeTextLineLimits } from "./agent-text-layout";
 import {
   NATIVE_AGENT_HOST_ONLY_OPERATIONS,
   nativeAgentModelResultSchema,
@@ -454,6 +455,7 @@ export async function compileNativeAgentResult(
   const execution = executeVideoProjectCommands(base, normalizedCommands);
   if ((await hashVideoProjectDocument(execution.document)) === request.baseHash)
     throw new Error("The proposed commands did not change the project.");
+  assertNativeTextLineLimits(base, execution.document);
   const { scene: proposalScene } = compileVideoProjectDocument(
     execution.document,
     Object.fromEntries(
@@ -604,9 +606,10 @@ export function buildNativeAgentPrompts(input: {
         document: planningDocument,
       }
     : input;
+  const captionSources = nativeCaptionSourceContext({ ...planningInput, context: { ...planningInput.context, selectedItemIds: scopedSources ?? planningInput.context.selectedItemIds } });
   const { document: promptDocument, ...contextPlan } = planNativeAgentContext(
     planningInput,
-    { maxChars: availableChars },
+    { maxChars: availableChars - JSON.stringify(captionSources).length },
   );
   contextPlan.omitted.evidence +=
     Object.keys(input.document.evidence).length -
@@ -619,7 +622,7 @@ export function buildNativeAgentPrompts(input: {
   const userPrompt = JSON.stringify({
     ...envelope,
     document: promptDocument,
-    contextPlan,
+    contextPlan: { ...contextPlan, captionSources },
     omittedItemCount: contextPlan.omitted.items,
   });
   if (userPrompt.length > 240_000)
