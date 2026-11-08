@@ -1,3 +1,4 @@
+import { runToolLoop } from "../../agent-loop/src/index";
 import {
   buildNativeAgentPrompts,
   compileNativeAgentResult,
@@ -47,12 +48,6 @@ export async function runAgent(input: {
     ...createVideoTools(request, skills),
     ...(input.extraTools ?? []),
   ];
-  const registry = new Map(tools.map((tool) => [tool.name, tool]));
-  if (registry.size !== tools.length)
-    throw new Error("Tool names must be unique.");
-  const specs = tools.map(
-    ({ execute: _execute, effect: _effect, ...spec }) => spec,
-  );
   const messages: ChatMessage[] = [
     { role: "system", content: system },
     {
@@ -68,104 +63,36 @@ export async function runAgent(input: {
         : prompts.userPrompt,
     },
   ];
-  let sequence = 0,
-    toolCalls = 0,
-    observationBytes = 0;
-  const ids = new Set<string>();
-  const emit = async (
-    type: AgentEvent["type"],
-    name?: string,
-    summary?: string,
-  ) => {
-    signal.throwIfAborted();
-    await input.onEvent?.({
-      sequence: sequence++,
-      type,
-      ...(name ? { name } : {}),
-      ...(summary ? { summary } : {}),
-    });
-  };
-  for (let step = 0; step < (input.maxSteps ?? 8); step++) {
-    signal.throwIfAborted();
-    await emit("model.started");
-    const response = await model.complete(messages, specs, signal);
-    signal.throwIfAborted();
-    messages.push({
-      role: "assistant",
-      content: response.text || null,
-      providerOutput: response.providerOutput,
-      ...(response.calls.length
-        ? {
-            tool_calls: response.calls.map((call) => ({
-              id: call.id,
-              type: "function" as const,
-              function: { name: call.name, arguments: call.arguments },
-            })),
-          }
-        : {}),
-    });
-    if (!response.calls.length) {
-      if (!response.text.trim())
-        throw new Error("The model returned no answer or tool calls.");
-      await emit("answer.ready", undefined, response.text.slice(0, 500));
-      return compileNativeAgentResult(request, {
+  let sequence = 0;
+  const completed = await runToolLoop({
+    model,
+    messages,
+    tools,
+    signal,
+    maxSteps: input.maxSteps,
+    maxToolCalls: input.maxToolCalls,
+    answer: (text) =>
+      compileNativeAgentResult(request, {
         outcome: "answer",
-        summary: response.text.slice(0, 4000),
+        summary: text.slice(0, 4000),
         commands: [],
-      });
-    }
-    for (const call of response.calls) {
-      signal.throwIfAborted();
-      if (++toolCalls > (input.maxToolCalls ?? 24))
-        throw new Error("Tool-call budget reached. Narrow the request.");
-      if (ids.has(call.id))
-        throw new Error("The model reused a tool-call identity.");
-      ids.add(call.id);
-      await emit("tool.started", call.name);
-      let observation: unknown;
-      let terminal: NativeAgentResult | undefined;
-      try {
-        const tool = registry.get(call.name);
-        if (!tool)
-          throw new Error("Unknown tool. Choose from the advertised registry.");
-        const outcome = await tool.execute(JSON.parse(call.arguments), signal);
-        signal.throwIfAborted();
-        if (outcome.kind === "terminal") terminal = outcome.result;
-        else {
-          observation = outcome.value;
-          if (JSON.stringify(observation).length > 120_000)
-            throw new Error(
-              "Result exceeds context budget. Inspect fewer items.",
-            );
-        }
-      } catch (cause) {
-        signal.throwIfAborted();
-        observation = {
-          error: cause instanceof Error ? cause.message : "Tool failed",
-          hint: "Correct the input or ask a focused question.",
-        };
-      }
-      // Host persistence failures must stop the run, not become prompts for another paid call.
-      if (terminal) {
-        await emit("tool.completed", call.name, "Validated");
-        await emit(
-          terminal.outcome === "proposal"
-            ? "proposal.ready"
-            : terminal.outcome === "needs_input"
-              ? "question.asked"
-              : "answer.ready",
-          undefined,
-          terminal.summary,
-        );
-        return terminal;
-      }
-      const content = JSON.stringify(observation);
-      observationBytes += content.length;
-      if (observationBytes > 240_000)
-        throw new Error("Observation budget reached. Narrow the request.");
-      messages.push({ role: "tool", tool_call_id: call.id, content });
-      await emit("tool.completed", call.name);
-    }
-  }
-  throw new Error("Model-step budget reached. Narrow the request.");
+      }),
+    onEvent: async (event) => {
+      sequence = event.sequence + 1;
+      await input.onEvent?.(event);
+    },
+  });
+  signal.throwIfAborted();
+  const result = completed.result;
+  await input.onEvent?.({
+    sequence,
+    type:
+      result.outcome === "proposal"
+        ? "proposal.ready"
+        : result.outcome === "needs_input"
+          ? "question.asked"
+          : "answer.ready",
+    summary: result.summary,
+  });
+  return result;
 }
