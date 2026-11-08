@@ -57,11 +57,15 @@ function nodes(
   const oldChildren = current.children ?? [],
     newChildren = previous.children ?? [];
   for (const child of oldChildren)
-    if (!newChildren.some((node) => node.id === child.id))
+    if (
+      !newChildren.some(
+        (node) => node.id === child.id && node.type === child.type,
+      )
+    )
       commands.push({ type: "removeNode", itemId, nodeId: child.id });
   for (const [index, child] of newChildren.entries()) {
     const old = oldChildren.find((node) => node.id === child.id);
-    if (old) nodes(itemId, old, child, commands);
+    if (old?.type === child.type) nodes(itemId, old, child, commands);
     else
       commands.push({
         type: "addNode",
@@ -147,6 +151,49 @@ export function buildVideoProjectRevertCommands(
   const previous = parseVideoProjectDocument(beforeInput),
     current = parseVideoProjectDocument(afterInput);
   const commands: VideoProjectCommand[] = [];
+  // Node types are immutable properties. Restore retyped roots with existing
+  // remove/add commands, including dependents that removal would cascade to.
+  const replacements = new Set(
+    current.items
+      .filter((item) => {
+        const old = previous.items.find(
+          (candidate) => candidate.id === item.id,
+        );
+        return (
+          old &&
+          (old.node.type !== item.node.type || old.node.id !== item.node.id)
+        );
+      })
+      .map((item) => item.id),
+  );
+  const dependentIds = (id: string) =>
+    current.items
+      .filter(
+        (item) =>
+          item.caption?.sourceItemId === id ||
+          item.visualizerSourceItemId === id ||
+          Object.values(current.bindings).some(
+            (binding) =>
+              binding.sourceItemId === id && binding.itemId === item.id,
+          ),
+      )
+      .map((item) => item.id);
+  const queue = [...replacements];
+  for (let index = 0; index < queue.length; index++) {
+    for (const id of dependentIds(queue[index]!))
+      if (!replacements.has(id)) {
+        replacements.add(id);
+        queue.push(id);
+      }
+  }
+  const replacedTransition = (
+    transition: NonNullable<VideoProjectDocument["transitions"]>[string],
+  ) =>
+    replacements.has(transition.fromItemId) ||
+    replacements.has(transition.toItemId);
+  const replacedGroup = (
+    group: NonNullable<VideoProjectDocument["linkedGroups"]>[string],
+  ) => group.itemIds.some((id) => replacements.has(id));
   // Temporarily release only locks changed by this operation; pre-existing locks
   // remain enforced by execution and by the caller's rebase check.
   for (const track of current.tracks)
@@ -166,10 +213,16 @@ export function buildVideoProjectRevertCommands(
   // Remove changed composition links before restoring endpoint/member geometry;
   // recreate their exact optional records only after all original IDs are back.
   for (const transition of Object.values(current.transitions ?? {}))
-    if (!equal(previous.transitions?.[transition.id], transition))
+    if (
+      replacedTransition(transition) ||
+      !equal(previous.transitions?.[transition.id], transition)
+    )
       commands.push({ type: "removeTransition", id: transition.id });
   for (const group of Object.values(current.linkedGroups ?? {}))
-    if (!equal(previous.linkedGroups?.[group.id], group))
+    if (
+      replacedGroup(group) ||
+      !equal(previous.linkedGroups?.[group.id], group)
+    )
       commands.push({ type: "removeLinkedGroup", id: group.id });
   // Release affected anchors inside this atomic inverse before restoring their
   // authored geometry; restoring the source/binding later reprojects it once.
@@ -182,6 +235,8 @@ export function buildVideoProjectRevertCommands(
       oldItem = previous.items.find((item) => item.id === binding.itemId);
     if (
       !old ||
+      replacements.has(binding.sourceItemId) ||
+      replacements.has(binding.itemId) ||
       !equal(old, binding) ||
       currentItem?.node.from !== oldItem?.node.from ||
       currentItem?.node.duration !== oldItem?.node.duration
@@ -190,8 +245,20 @@ export function buildVideoProjectRevertCommands(
       releasedBindings.add(binding.id);
     }
   }
+  const removedReplacements = new Set<string>();
+  const removeReplacement = (id: string) => {
+    if (removedReplacements.has(id)) return;
+    removedReplacements.add(id);
+    dependentIds(id)
+      .filter((child) => replacements.has(child))
+      .forEach(removeReplacement);
+    commands.push({ type: "removeItem", id });
+  };
+  replacements.forEach(removeReplacement);
   const missing = previous.items.filter(
-    (item) => !current.items.some((value) => value.id === item.id),
+    (item) =>
+      replacements.has(item.id) ||
+      !current.items.some((value) => value.id === item.id),
   );
   for (const item of missing.sort(
     (a, b) =>
@@ -205,7 +272,7 @@ export function buildVideoProjectRevertCommands(
       Number(["video", "audio"].includes(a.node.type)),
   )) {
     const item = current.items.find((value) => value.id === old.id);
-    if (item) itemChanges(item, old, commands);
+    if (item && !replacements.has(item.id)) itemChanges(item, old, commands);
   }
   for (const binding of Object.values(previous.bindings))
     if (
@@ -215,7 +282,11 @@ export function buildVideoProjectRevertCommands(
       commands.push({ type: "bindSource", binding });
   const removed = new Set(
     current.items
-      .filter((item) => !previous.items.some((old) => old.id === item.id))
+      .filter(
+        (item) =>
+          !replacements.has(item.id) &&
+          !previous.items.some((old) => old.id === item.id),
+      )
       .map((item) => item.id),
   );
   // Remove sources last: their reducer also removes linked captions/visualizers.
@@ -267,6 +338,7 @@ export function buildVideoProjectRevertCommands(
       });
   }
   if (
+    replacements.size ||
     !equal(
       current.items.map((item) => item.id),
       previous.items.map((item) => item.id),
@@ -324,10 +396,13 @@ export function buildVideoProjectRevertCommands(
       commands,
     );
   for (const group of Object.values(previous.linkedGroups ?? {}))
-    if (!equal(current.linkedGroups?.[group.id], group))
+    if (replacedGroup(group) || !equal(current.linkedGroups?.[group.id], group))
       commands.push({ type: "setLinkedGroup", group });
   for (const transition of Object.values(previous.transitions ?? {}))
-    if (!equal(current.transitions?.[transition.id], transition))
+    if (
+      replacedTransition(transition) ||
+      !equal(current.transitions?.[transition.id], transition)
+    )
       commands.push({ type: "setTransition", transition });
   if (!equal(current.creativeContext, previous.creativeContext))
     commands.push({
