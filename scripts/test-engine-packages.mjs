@@ -41,12 +41,22 @@ const report = {
   packages: [],
   checkout: args.includes("--keep") ? checkout : undefined,
 };
-async function run(command, params) {
+const browserOutput = path.resolve(
+  process.env.BROWSER_TEST_OUTPUT_DIR ??
+    path.join(
+      root,
+      "test-results/engine-packages",
+      `${report.engineCommit}-${report.harnessCommit}`,
+      "browser",
+    ),
+);
+report.browserArtifacts = path.relative(root, browserOutput);
+async function run(command, params, environment = {}) {
   await new Promise((resolve, reject) => {
     const child = spawn(command, params, {
       cwd: checkout,
       stdio: "inherit",
-      env: { ...process.env, HARNESS_NO_OPEN: "1" },
+      env: { ...process.env, HARNESS_NO_OPEN: "1", ...environment },
     });
     child.once("error", reject);
     child.once("exit", (code) =>
@@ -98,7 +108,21 @@ try {
   await run(install.command, install.args);
   const check = npmInvocation(["run", "check"]);
   await run(check.command, check.args);
-  await run(process.execPath, ["scripts/browser-smoke.mjs"]);
+  await run(process.execPath, ["scripts/browser-smoke.mjs"], {
+    BROWSER_TEST_OUTPUT_DIR: browserOutput,
+  });
+  const browserReport = JSON.parse(
+    await readFile(path.join(browserOutput, "report.json"), "utf8"),
+  );
+  if (
+    browserReport.passed !== true ||
+    !Array.isArray(browserReport.checks) ||
+    !browserReport.checks.length
+  )
+    throw new Error(
+      "The complete browser acceptance report is missing or failed.",
+    );
+  report.browserChecks = browserReport.checks.length;
   report.passed = true;
 } catch (error) {
   report.error = error.message;
