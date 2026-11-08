@@ -41,6 +41,13 @@ import {
 } from "./store";
 import type { AgentTool } from "../../../packages/agent/src/tools";
 import type { NativeAgentRequest } from "../../../packages/core/src/lib/video-project/agent-runtime";
+import {
+  prepareAgentSpeech,
+  assertAgentSpeechEvidence,
+  type AgentSpeechPort,
+} from "./agent-speech";
+import { parseVideoProjectDocument } from "../../../packages/core/src/lib/video-project/document";
+import { nativeChangedItemIds } from "../../../packages/core/src/lib/video-project/agent-review";
 export class AgentService {
   private active = new Map<string, AbortController>();
   constructor(
@@ -53,6 +60,7 @@ export class AgentService {
       request: NativeAgentRequest,
     ) => AgentTool[],
     private applicationMode: "review" | "direct" = "review",
+    private speech?: AgentSpeechPort,
   ) {}
   async start(projectId: string, raw: unknown) {
     const input = agentRunInputSchema.parse(raw),
@@ -86,6 +94,7 @@ export class AgentService {
         status: "queued",
         phase: "created",
         instruction: input.instruction,
+        cloudConsent: input.cloudConsent,
         baseRevision: p.revision,
         baseHash: p.documentHash,
         context: input.context,
@@ -136,6 +145,7 @@ export class AgentService {
     return { run: publicRun(run) };
   }
   private launch(projectId: string, id: string) {
+    if (this.active.has(id)) return;
     const controller = new AbortController();
     this.active.set(id, controller);
     const timer = setTimeout(
@@ -171,19 +181,26 @@ export class AgentService {
     signal: AbortSignal,
     model: LanguageModel,
   ) {
+    const request = this.speech
+      ? await prepareAgentSpeech(this.store, projectId, id, this.speech, signal)
+      : (await this.store.read(projectId)).runs.find((r) => r.id === id)!
+          .request;
+    if (!request) return;
+    signal.throwIfAborted();
     const run = await this.store.transaction(projectId, (p) => {
       const run = runOf(p, id);
       if (run.status === "cancelled") throw new Error("Cancelled");
       run.status = "running";
       run.phase = "thinking";
+      if (run.speechContinuation) run.speechContinuation.modelStarted = true;
       return run;
     });
     const project = await this.store.read(projectId);
     const result = await runAgent({
-      request: run.request,
+      request,
       model,
       skills: this.skills,
-      extraTools: this.extraTools?.(projectId, id, run.request),
+      extraTools: this.extraTools?.(projectId, id, request),
       signal,
       messages: project.messages.slice(-12),
       onEvent: (event) =>
@@ -196,7 +213,7 @@ export class AgentService {
         }),
     });
     signal.throwIfAborted();
-    await this.store.transaction(projectId, (p) => {
+    await this.store.transaction(projectId, async (p) => {
       const r = runOf(p, id);
       if (r.status !== "running") return;
       // The editor applies direct runs once local drafts are saved, using the same
@@ -204,6 +221,24 @@ export class AgentService {
       r.proposal = result.proposal
         ? { ...result.proposal, impact: this.applicationMode }
         : null;
+      if (r.proposal && r.speechContinuation?.evidenceCommands?.length) {
+        const base = parseVideoProjectDocument(r.request.document);
+        const commands = [
+          ...r.speechContinuation.evidenceCommands,
+          ...r.proposal.commands,
+        ];
+        const composed = executeVideoProjectCommands(base, commands);
+        r.proposal = {
+          ...r.proposal,
+          commands,
+          previewHash: await hashVideoProjectDocument(composed.document),
+          changedItemIds: nativeChangedItemIds(
+            base,
+            composed.document,
+            composed.changedItemIds,
+          ),
+        };
+      }
       r.clarification = result.clarification;
       r.status =
         result.outcome === "proposal"
@@ -252,6 +287,40 @@ export class AgentService {
       message(p, id, "assistant", result.summary);
     });
   }
+  async resume(projectId: string, id: string, raw: unknown) {
+    const input = z
+      .object({
+        operationId: z.string().min(1).max(191),
+        baseRevision: z.number().int().nonnegative(),
+        baseHash: z.string(),
+        cloudConsent: z.boolean().optional(),
+      })
+      .strict()
+      .parse(raw);
+    const run = await this.store.transaction(projectId, (p) => {
+      const r = runOf(p, id);
+      if (r.status !== "needs_evidence") return r;
+      if (
+        p.revision !== input.baseRevision ||
+        p.documentHash !== input.baseHash
+      )
+        throw new HttpError("Refresh the project before continuing.", 409);
+      if (p.documentHash !== r.baseHash || p.revision !== r.baseRevision) {
+        r.status = "stale";
+        r.phase = "stale";
+        r.error = {
+          code: "PROJECT_CHANGED",
+          message: "The project changed. Start a new request.",
+        };
+        r.updatedAt = new Date().toISOString();
+        return r;
+      }
+      if (input.cloudConsent) r.cloudConsent = true;
+      return r;
+    });
+    if (run.status === "needs_evidence") this.launch(projectId, id);
+    return { run: publicRun(run) };
+  }
   async cancel(projectId: string, id: string) {
     await this.store.transaction(projectId, (p) => {
       const r = runOf(p, id);
@@ -268,6 +337,8 @@ export class AgentService {
     const p = await this.store.read(projectId),
       r = runOf(p, id);
     if (!r.proposal) throw new HttpError("No proposal to review.");
+    if (this.speech && r.status !== "applied")
+      await assertAgentSpeechEvidence(p, r, this.speech);
     if (
       r.status !== "applied" &&
       r.context.visualWitness &&
@@ -298,6 +369,7 @@ export class AgentService {
         baseHash: r.baseHash,
         proposal: r.proposal,
         current,
+        organizeTracks: !r.undoOfRunId,
       })),
       applied: r.status === "applied",
       run: publicRun(r),
@@ -324,6 +396,7 @@ export class AgentService {
         )
       )
         throw new HttpError("This proposal is no longer actionable.", 409);
+      if (this.speech) await assertAgentSpeechEvidence(p, r, this.speech);
       if (
         p.revision !== input.baseRevision ||
         p.documentHash !== input.baseHash
@@ -351,6 +424,7 @@ export class AgentService {
         baseHash: r.baseHash,
         proposal: r.proposal,
         current: snapshot(p),
+        organizeTracks: !r.undoOfRunId,
       });
       assertNativeReviewBasis(comparison.review.basis, input.reviewBasis);
       r.appliedBefore = p.document;
@@ -421,6 +495,8 @@ export class AgentService {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+      if (child.speechContinuation)
+        child.speechContinuation.modelStarted = false;
       child.request.authoring = nativeAuthoringSchema.parse({
         ...parent.request.authoring,
         scope,

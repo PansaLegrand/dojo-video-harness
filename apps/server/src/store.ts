@@ -35,6 +35,7 @@ import type { AgentEvent } from "../../../packages/agent/src/types";
 import type { EditingWorkflow } from "./editing-workflow";
 import type { MusicJob } from "./music-service";
 import type { ExportReceipt } from "./exports";
+import type { AgentSpeechContinuation } from "./agent-speech";
 
 export class HttpError extends Error {
   constructor(
@@ -62,6 +63,7 @@ export type StoredRun = VideoProjectAgentRun & {
   appliedBefore?: VideoProjectDocument;
   appliedAfter?: VideoProjectDocument;
   answers?: Record<string, { hash: string; childId: string }>;
+  speechContinuation?: AgentSpeechContinuation;
 };
 export type Project = {
   id: string;
@@ -259,6 +261,15 @@ export class ProjectStore {
       await this.transaction(id, (p) => {
         for (const run of p.runs)
           if (["queued", "running"].includes(run.status)) {
+            if (
+              run.speechContinuation &&
+              !run.speechContinuation.modelStarted
+            ) {
+              run.status = "needs_evidence";
+              run.phase = "waiting_for_transcript";
+              run.updatedAt = new Date().toISOString();
+              continue;
+            }
             run.status = "failed";
             run.phase = "interrupted";
             run.error = {
@@ -325,6 +336,7 @@ export function publicRun({
   appliedBefore: _before,
   appliedAfter: _after,
   answers: _answers,
+  speechContinuation: _speech,
   ...run
 }: StoredRun) {
   return {
