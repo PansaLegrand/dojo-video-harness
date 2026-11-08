@@ -1,6 +1,6 @@
 # Editor agent ownership and extensions
 
-The shared model/tool loop is `packages/agent-loop`. Portable editor definitions
+The shared model/tool loop is `packages/agent-loop` **0.1.1**. Portable editor definitions
 are `packages/agent-kit`: tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
@@ -23,6 +23,31 @@ Native prompt builders have an explicit `responseMode` instead of text replaceme
 Ordinary local editing still applies through the guarded host path with Compare
 and Undo available. Paid/cloud job approvals and review-mode integrations keep
 separate host policies.
+
+The local checkpoint adapter is `apps/server/src/agent-loop-checkpoint.ts`.
+ProjectStore atomically persists private checkpoint records with a revision CAS;
+the loop has no filesystem or database dependency. `AgentService.recover()` is
+an explicit startup operation after host task receipts are loaded.
+
+| Persisted boundary                                         | Local restart policy                                                                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Returned model response / completed tool observation       | Continue its remaining tools or next authorized model turn using the saved counters and call IDs |
+| Completed terminal result                                  | Stage the saved proposal/question/answer without another model call or document commit           |
+| In-flight pure read/preparation/compile tool               | Replay only the host's explicit safe whitelist, with the original call identity                  |
+| In-flight model or host plan/external tool                 | Fail closed for manual reconciliation; no automatic paid retry                                   |
+| Changed request, sources, provider or tool/skill inventory | Reject before further model/tool execution                                                       |
+| Cancelled run / old run without a checkpoint               | Preserve cancellation / legacy interruption behavior                                             |
+
+Completed ASR receipts are reused and rechecked; checkpoint recovery cannot start
+replacement transcription. A clarification child inherits its owned speech
+receipts but starts a new model checkpoint and budget. Missing provider usage
+reserves the remaining output budget, so it cannot authorize another model turn.
+
+Only older project-inventory and skill-read groups are eligible for deterministic
+context pruning. Original instructions, source words, prepared commands, host
+plans and errors remain protected. Pruning does not generate an LLM summary.
+This remains a bounded model/tool loop with host-owned commits and job lifecycles,
+not an arbitrary DAG scheduler or a new image/video-provider integration.
 
 The commercial host uses the same factory with its own kernel ports and a pinned
 capability profile. It keeps Prisma, credits,

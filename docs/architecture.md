@@ -36,9 +36,31 @@ Different projects remain independent. Do not run two hosts against the same dat
 The host retains 50 undo states and 100 revision bases. Older bases fail closed;
 operation receipts are retained for replay. Model calls do not hold a project lock.
 
-Runs persist requests, scope, proposals, questions, and compact tool events.
-Restarted in-flight work becomes interrupted; it is never automatically resubmitted.
-Saved proposals and questions remain actionable when their basis is still current.
+Runs persist requests, scope, proposals, questions, tool events and private loop
+checkpoints. `agent-loop` 0.1.1 stores a returned model response, the next tool
+cursor, call identities and cumulative model/tool/token counters. The local
+`agent-loop-checkpoint.ts` adapter saves these through ProjectStore's atomic
+transactions with a revision compare-and-swap. It binds the original request,
+source identities, frozen conversation, tool/skill inventory and non-secret
+provider endpoint/model identity. Checkpoint conversations and provider output
+are not included in public run responses.
+
+Startup explicitly calls `AgentService.recover()` after providers, ASR receipts
+and host services are initialized. A saved model response, tool observation or
+terminal result can continue without repeating completed work. An uncertain
+pure read/preparation tool can replay only when the host explicitly marks it
+safe, retaining its original call ID and budget. In-flight model calls and
+unmarked external tools remain failed for manual reconciliation; a checkpoint
+cannot authorize a replacement paid ASR submission. Old runs without checkpoints
+retain their interrupted behavior. Saved proposals/questions and the guarded
+Compare/Apply/Undo path remain independent of loop recovery.
+
+Context pruning is deterministic: complete older `inspect_project` and
+`read_skill` groups can be removed within a fixed character budget. Original
+instructions, transcript/source evidence, prepared commands, external-plan
+observations and errors remain protected. If protected context cannot fit, the
+loop stops before another model call. No LLM-generated summary or arbitrary
+workflow DAG is introduced.
 
 Imported media starts in IndexedDB. Registration sends metadata only. An explicit
 ASR action copies verified bytes to `.data/media`, then invokes the selected provider.
