@@ -23,7 +23,8 @@ the document retains rendering order.
 
 Guarded agent review arranges new/retyped items into typed lanes. Sequential items
 reuse compatible lanes; simultaneous layers and different translated languages
-separate. Historical Undo comparisons retain their acknowledged arrangement.
+separate. Source-continuous splits retain their existing lane, including older
+mixed tracks. Historical Undo comparisons retain their acknowledged arrangement.
 Retyped root/nested nodes are restored through remove/add primitives, retaining
 source-linked captions, bindings, composition records and item order.
 
@@ -35,16 +36,30 @@ Ordinary chat can now resolve missing speech evidence after explicit source/prov
 consent and resume the complete original instruction. The explicit join/logo/
 caption workflow is still available, but is not the only route to ASR preparation.
 Verified source words support dependent caption, translation and graphic steps.
+Explicit supplied-text captions remain ordinary text edits and do not trigger ASR.
 
 ## Evidence and limits
 
-Focused behavior tests cover track presentation, lane placement, deterministic
-review/replay, Undo, and original-file recovery. A production Next build and the
-60-check real-browser suite passed on the pre-release engine dependency, including
-MP4/audio decode, local music jobs, captions, SVG/Three.js and intro/outro editing.
-Those browser providers were synthetic HTTP fixtures, not live provider quality
-evidence. Final checks against the next published engine package and the latest
-speech-continuation changes remain a separate release gate.
+The final clean-checkout qualification at `deebd71` verified all 17 published
+engine **1.2.2** tarball hashes, installed them in an isolated path containing
+spaces, and passed **427 tests**, the production Next build and **66 browser
+checks**. The browser checks include MP4/audio decode, local music jobs,
+original-file recovery, captions, SVG/Three.js, intro/outro editing, and the full
+speech-prerequisite → bilingual styles → source-number highlights → editable
+ending → Compare/Undo path. These providers were synthetic local HTTP fixtures.
+
+The gate retains its browser report, screenshots and media outside the temporary
+checkout under `test-results/engine-packages/`; its report binds engine and harness
+commits. Earlier failed qualification reports are retained separately. Regression
+cases cover source-continuous split placement, root/nested type reversal and
+supplied-text captions without ASR.
+
+A separate commercial-kernel qualification used Kie.ai directly with GPT/Claude
+fallback and **19 of 24** authorized requests across phases. The final accepted
+scenario used four GPT requests and passed independent bilingual-style, two
+source-anchor and readable-outro checks. ASR evidence was synthetic; this is
+bounded commercial-host model evidence, not a live-ASR or local-harness provider
+qualification. Earlier failed and rejected candidates remain retained.
 
 The runtime is a useful extension base: typed tools, bounded execution, source
 evidence, guarded commits, durable provider receipts and restart/cancel behavior.
