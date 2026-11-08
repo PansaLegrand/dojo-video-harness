@@ -105,7 +105,7 @@ node scripts/verify-product-ui.mjs --source ../dojo-video-web
 
 That comparison uses an isolated Vite reference fixture only for testing the product
 source; Vite is not the application host. Both sides use the same local project,
-English dictionary and BYOK usage-copy adapters. It covers desktop light/dark and narrow
+English dictionary, BYOK usage-copy adapters and local extension panels. It covers desktop light/dark and narrow
 English layouts. This optional diagnostic helps spot accidental layout drift;
 pixel-for-pixel product parity is not a release requirement. Provider/billing text and local navigation are intentional host
 policy differences, not forks of product UI components.

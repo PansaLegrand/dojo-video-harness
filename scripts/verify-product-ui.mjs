@@ -141,7 +141,7 @@ try {
   );
   await fs.writeFile(
     path.join(temp, "main.tsx"),
-    `import React from 'react';import {createRoot} from 'react-dom/client';import Editor from '${source}/components/editor/motionforge/motionforge-editor.tsx';import {ProjectProvider} from '${root}/packages/ui/src/contexts/ProjectContext.tsx';import {TranslationProvider} from '${root}/packages/core/src/lib/i18n/index.tsx';import en from '${source}/lib/i18n/locales/en.json';import '${source}/app/globals.css';const locale='en';createRoot(document.getElementById('root')).render(<TranslationProvider locale={locale} dictionary={en}><ProjectProvider><Editor projectId='${id}' chatInitiallyOpen/></ProjectProvider></TranslationProvider>);`,
+    `import React from 'react';import {createRoot} from 'react-dom/client';import Editor from '${source}/components/editor/motionforge/motionforge-editor.tsx';import {MusicJobsPanel} from '${root}/packages/ui/src/host/music-jobs-panel.tsx';import {EditingWorkflowPanel} from '${root}/packages/ui/src/host/editing-workflow-panel.tsx';import {ProjectProvider} from '${root}/packages/ui/src/contexts/ProjectContext.tsx';import {TranslationProvider} from '${root}/packages/core/src/lib/i18n/index.tsx';import en from '${source}/lib/i18n/locales/en.json';import '${source}/app/globals.css';const locale='en';createRoot(document.getElementById('root')).render(<TranslationProvider locale={locale} dictionary={en}><ProjectProvider><Editor projectId='${id}' chatInitiallyOpen renderAgentExtensions={context=><><EditingWorkflowPanel {...context}/><MusicJobsPanel projectId={context.projectId} controller={context.controller}/></>}/></ProjectProvider></TranslationProvider>);`,
   );
   const paths = JSON.parse(
     await fs.readFile(path.join(source, "tsconfig.json"), "utf8"),
@@ -203,8 +203,11 @@ try {
     },
   );
   alias.push(
-    { find: "zod/v3", replacement: require.resolve("zod/v3") },
-    { find: "zod", replacement: require.resolve("zod/v3") },
+    {
+      find: "zod/v3",
+      replacement: fileURLToPath(import.meta.resolve("zod/v3")),
+    },
+    { find: "zod", replacement: fileURLToPath(import.meta.resolve("zod/v3")) },
   );
   alias.sort((a, b) => b.find.length - a.find.length);
   const tailwind = require("tailwindcss"),
@@ -294,7 +297,10 @@ try {
     lastPages = pages;
     for (const [index, page] of pages.entries()) {
       page.on("pageerror", (error) =>
-        console.log(index ? "PRODUCT ERROR" : "HARNESS ERROR", error.stack),
+        console.log(
+          index ? "PRODUCT ERROR" : "HARNESS ERROR",
+          error.stack || error.message || String(error),
+        ),
       );
       page.on("console", (message) => {
         if (message.type() === "error")
@@ -449,7 +455,7 @@ try {
       {
         checks,
         reference:
-          "Current DojoClip components with identical local project/i18n/usage-copy adapters",
+          "Current DojoClip components with identical local project/i18n/usage-copy adapters and extension panels",
         host: "Production Next.js application",
       },
       null,
