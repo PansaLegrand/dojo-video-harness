@@ -1,3 +1,4 @@
+import { editorTimelineTracks } from "@/lib/editor/timeline-tracks";
 import type { VideoProjectDocument } from "./document";
 import type { VideoProjectCommand } from "./commands";
 
@@ -170,10 +171,11 @@ export function buildSelectionCommands(
       -Math.min(...ids.map((id) => byId.get(id)!.node.from ?? 0)),
       options.from! - (anchor.node.from ?? 0),
     );
-    const originalTrack = document.tracks.findIndex(
+    const tracks = editorTimelineTracks(document.tracks);
+    const originalTrack = tracks.findIndex(
       (track) => track.id === anchor.trackId,
     );
-    const targetTrack = document.tracks.findIndex(
+    const targetTrack = tracks.findIndex(
       (track) => track.id === (options.trackId ?? anchor.trackId),
     );
     if (targetTrack < 0) throw new Error(selectionMessages.target);
@@ -182,15 +184,11 @@ export function buildSelectionCommands(
       return { commands: [], selectedIds: ids, primaryId: anchor.id };
     const commands: VideoProjectCommand[] = ids.map((id) => {
       const item = byId.get(id)!;
-      const sourceIndex = document.tracks.findIndex(
+      const sourceIndex = tracks.findIndex(
         (track) => track.id === item.trackId,
       );
-      const target = document.tracks[sourceIndex + trackDelta];
-      if (
-        !target ||
-        target.locked ||
-        target.kind !== document.tracks[sourceIndex]!.kind
-      )
+      const target = tracks[sourceIndex + trackDelta];
+      if (!target || target.locked || target.kind !== tracks[sourceIndex]!.kind)
         throw new Error(selectionMessages.target);
       return {
         type: "moveItem",
