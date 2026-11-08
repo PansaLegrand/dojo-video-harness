@@ -5,6 +5,11 @@ See [the agent system map](agent-system.md). Shared built-in definitions live in
 registers external services. The kit returns the active capability inventory and
 filters named skills by their required executors.
 
+Develop portable renderer/runtime behavior in the open-source engine/harness,
+then adopt it through the commercial host's adapters. Shared editor UI follows
+the DojoClip web reference through the managed sync tool. Host-specific credentials,
+billing, persistence and external-job execution stay at their owning boundaries.
+
 ## A read-only tool
 
 Implement `AgentTool` from `packages/agent/src/tools.ts` and pass it through
@@ -62,6 +67,12 @@ Normalize provider output into actual words with source start/end timestamps.
 Reject absent or malformed word timing; do not manufacture it from segments.
 Keep receipts bound to source hash, language, provider, and model. Display captions
 may subsequently change without changing the receipt or its evidence.
+
+Ordinary speech-dependent chat already has a prerequisite lifecycle in
+`apps/server/src/agent-speech.ts`; new speech tools should reuse its frozen source,
+consent, receipt verification and continuation boundaries. The full instruction
+resumes after evidence preparation, so dependent editing steps should consume
+that evidence rather than start a second unrelated captions workflow.
 
 ## Future image-to-video integration
 

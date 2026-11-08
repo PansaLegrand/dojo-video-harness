@@ -10,6 +10,12 @@ Chat ─ agent loop ─ validated edit ─ guarded apply ──┘              
 The project document is the sole editing authority. Dojo Video Engine Scene is a
 compiled rendering view, not another independently writable project.
 
+The web application owns the shared UI reference. Engine rendering and the
+harness's portable agent loop/tool definitions are upstream foundations for both
+the local editor and commercial adapters. Host persistence, accounts, credits,
+provider credentials and external-job policy remain separate. Synchronization is
+explicit and tested; the repositories do not share one interchangeable server.
+
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
 transports. The current agent transport supports GPT models through the Responses
@@ -39,6 +45,14 @@ ASR action copies verified bytes to `.data/media`, then invokes the selected pro
 ASR receipts persist independently from edits. Undo changes a document; it does not
 remove the source receipt or repeat an external operation.
 
+`agent-speech.ts` supplies the ordinary chat prerequisite path: detect absent
+source-bound speech evidence, persist a consent request, freeze source identity
+and provider task IDs, then resume the full original instruction with verified
+evidence. It does not replace the request with a captions-only task. The receipt
+is checked again before review/apply; cancellation and interrupted execution do
+not silently launch replacement provider work. The explicit join/logo workflow
+remains a separate host service.
+
 The Next.js launcher binds to 127.0.0.1. Middleware and the API adapter check Host and Origin and reject cross-site
 requests, and requires JSON for mutation routes. It is a single-user local server,
 not an authenticated internet deployment. Provider defaults come from environment variables. In-app settings are stored in
@@ -65,3 +79,10 @@ review-mode runs and separate paid/cloud workflows keep their original semantics
 Standalone `AgentService` defaults to review mode for integrations and evaluation
 hosts that explicitly control application. An API-only client must perform the
 same guarded review/apply calls; `ready` alone does not mean a saved edit.
+
+New or retyped agent items receive typed timeline lanes inside the guarded review
+commands. Sequential items can reuse a lane; overlapping items and different
+translation languages use separate lanes. Document tracks retain paint order,
+while timeline presentation reverses visual rows above audio. Selection and group
+moves use that same presentation order. Undo comparisons disable lane organization
+so the acknowledged original arrangement is restored rather than reorganized.
