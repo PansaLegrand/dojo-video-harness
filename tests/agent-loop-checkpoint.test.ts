@@ -367,9 +367,16 @@ it("replays an explicitly pure in-flight tool with the original call identity an
 it("keeps uncertain model and external tool outcomes failed until manual reconciliation", async () => {
   for (const kind of ["model", "tool"] as const) {
     const f = await seed();
-    const execute = vi.fn(async () => {
-      throw new Error("Submission outcome unknown");
-    });
+    const execute = vi.fn<AgentTool["execute"]>(
+      async (_args, _signal, context) => {
+        expect(context).toMatchObject({
+          callId: "external",
+          runId: f.runId,
+          replay: false,
+        });
+        throw new Error("Submission outcome unknown");
+      },
+    );
     const external: AgentTool = {
       name: "prepare_external_plan",
       description: "A durable host action",

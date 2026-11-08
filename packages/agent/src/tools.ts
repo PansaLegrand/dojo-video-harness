@@ -20,10 +20,12 @@ import { searchNativeTranscript } from "../../core/src/lib/video-project/agent-t
 import { nativeClarificationSchema } from "../../core/src/lib/video-project/agent-authoring";
 import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
 import { prepareReadableOverlay } from "../../core/src/lib/video-project/readable-overlay";
-export type AgentTool = KitTool<NativeAgentResult> & {
-  replaySafe?: boolean;
-  compactionSafe?: boolean;
-};
+import type { LoopTool } from "../../agent-loop/src/index";
+export type AgentTool = Omit<KitTool<NativeAgentResult>, "execute"> &
+  Pick<
+    LoopTool<NativeAgentResult>,
+    "execute" | "replaySafe" | "compactionSafe"
+  >;
 export const replaySafeNativeToolNames = [
   "inspect_project",
   "read_skill",
