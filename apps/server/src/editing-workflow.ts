@@ -1,3 +1,4 @@
+import { toolMetadata } from "../../../packages/agent-kit/src/index";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod/v3";
 import { ProjectStore, HttpError, message, runOf, type Project } from "./store";
@@ -665,10 +666,7 @@ export class EditingWorkflowService {
   }
   tool(projectId: string, runId: string): AgentTool {
     return {
-      name: "prepare_editing_workflow",
-      effect: "ask",
-      description:
-        "Prepare ONE reviewed multi-step workflow for joining existing video clips, overlaying an imported logo, generating source-bound captions, translating them, then exporting. This only creates a plan. The user explicitly approves provider/media access, then compares/applies the resulting proposal before export. Use exact existing clip/image asset IDs; never claim jobs or exports are already done.",
+      ...toolMetadata("prepare_editing_workflow"),
       parameters: {
         type: "object",
         properties: {

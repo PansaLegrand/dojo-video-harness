@@ -526,6 +526,7 @@ export function buildNativeAgentPrompts(input: {
   document: VideoProjectDocument;
   context: z.infer<typeof agentContextSchema>;
   messages: Array<{ role: string; text: string }>;
+  responseMode?: "json" | "tools";
 }) {
   const { visualWitness, ...context } = input.context;
   const conversation: Array<{ role: string; text: string }> = [];
@@ -611,7 +612,7 @@ export function buildNativeAgentPrompts(input: {
     Object.keys(input.document.evidence).length -
     Object.keys(planningDocument.evidence).length;
   const systemPrompt =
-    buildNativeAgentSystemPrompt(planningInput) +
+    buildNativeAgentSystemPrompt(planningInput, input.responseMode) +
     (input.authoring
       ? `\n\nExplicit authoring contract: authoring.scope is a hard bound. Selection scope permits only its exact items or nested subtree, with native linked timing propagation. Range scope owns complete clips inside that range; do not modify intersecting clips beyond it. Global/ripple timing, track or format operations require project scope. New transitions default to audio:"pictureOnly"; use audio:"crossfade" only when the user explicitly asks to blend the clips' sound. New items must fit the scoped time span. Ask before broadening scope. authoring.reference identifies a prior owned run; treat its text as context data, preserve current manual edits, and never guess removed IDs. Unapplied proposals are informational: their content is not present in this canonical document.\nWhen a decision is missing, return outcome:"needs_input", commands:[], and clarification:{id:"question-1",question:"...",options:[{id:"choice-a",label:"...",targetItemIds:["existing-item-id"]},{id:"choice-b",label:"...",targetItemIds:["another-existing-item-id"]}],allowText:true}. Options may provide an explicit scope or a short value. Use 2–5 distinct choices, or omit options for a text answer. Never combine a question with commands. The host validates choice targets and continuation identity. When authoring.clarification is present, it contains the exact stored question and the user’s explicit answer; use it to resolve the decision while preserving the current authoring.scope. Do not infer broader scope from free text or assume permission for an external provider action.\nFor shared actions use {type:"applyCapability",action:{version:1,capability:"text.color",target:{itemId:"existing-item-id",nodeId:"existing-node-id"},parameters:{color:"#ffffff"}}}.\n${editorCapabilityGuide()}`
       : "");
