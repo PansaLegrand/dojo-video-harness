@@ -762,3 +762,24 @@ it("binds provider endpoint/model identity without credentials or mutable config
   config.model = "gpt-mutated";
   expect(model.identity).toBe(original);
 });
+
+it("persists a model-factory configuration failure without stranding or restarting the run", async () => {
+  const f = await seed();
+  await f.store.transaction(f.projectId, (p) => {
+    p.runs = [];
+  });
+  const factory = vi.fn(() => {
+    throw new Error("Invalid provider configuration");
+  });
+  const host = new AgentService(f.store, factory, []);
+  const started = await host.start(f.projectId, f.input);
+  await expect
+    .poll(async () => (await f.store.read(f.projectId)).runs[0]!.status)
+    .toBe("failed");
+  expect((await f.store.read(f.projectId)).runs[0]!.error?.message).toBe(
+    "Invalid provider configuration",
+  );
+  expect((await host.start(f.projectId, f.input)).run.id).toBe(started.run.id);
+  await host.recover();
+  expect(factory).toHaveBeenCalledTimes(1);
+});

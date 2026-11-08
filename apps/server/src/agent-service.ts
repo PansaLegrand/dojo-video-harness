@@ -173,8 +173,11 @@ export class AgentService {
       () => controller.abort(new Error("Agent deadline reached.")),
       180_000,
     );
-    const model = typeof this.model === "function" ? this.model() : this.model;
-    void this.execute(projectId, id, controller.signal, model)
+    void (async () => {
+      const model =
+        typeof this.model === "function" ? this.model() : this.model;
+      await this.execute(projectId, id, controller.signal, model);
+    })()
       .catch(async (cause) => {
         await this.store
           .transaction(projectId, (p) => {
