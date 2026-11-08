@@ -489,7 +489,7 @@ export async function compileNativeAgentResult(
         (box.width <= 0 || box.height <= 0)
       )
         throw new Error(
-          "Graphic text has no usable layout area. Use prepare_text_overlay for an ordinary title or lower-third, or give its text and container explicit usable bounds.",
+          `Graphic text node "${box.node.id}" in item "${item.id}" has no usable layout area. Use prepare_text_overlay for an ordinary title or lower-third, or give its text and container explicit usable bounds.`,
         );
       box.children.forEach((child) => inspect(child, visible));
     };
