@@ -6,6 +6,8 @@ const localCopy: Record<string, string> = {
     "This question has been answered. Start a new edit to continue.",
   "Uses standard edit credits when you send.":
     "Uses your configured LLM when you send.",
+  "Send applies edits automatically. Required media is uploaded for cloud transcription. Standard edit and transcription credits apply.":
+    "Send applies edits automatically. Required media is sent to your configured speech provider. Your providers’ usage charges apply.",
   "Included reply": "Follow-up reply",
   "Retry included reply": "Retry the same reply",
   "Upload this media for cloud transcription":
