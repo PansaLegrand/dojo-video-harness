@@ -59,20 +59,35 @@ export async function verifyMediaRecovery({
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Toggle chat", exact: true }).click();
+  await page.getByRole("button", { name: "Hide library", exact: true }).click();
   await missing
     .getByRole("button", { name: "Choose original file", exact: true })
     .scrollIntoViewIfNeeded();
   check(
     "missing-media recovery fits the narrow editor",
-    await page.evaluate(
+    (await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
-    ),
+    )) &&
+      (await missing
+        .getByRole("button", { name: "Choose original file", exact: true })
+        .evaluate((button) => {
+          const box = button.getBoundingClientRect();
+          return button.contains(
+            document.elementFromPoint(
+              box.x + box.width / 2,
+              box.y + box.height / 2,
+            ),
+          );
+        })),
   );
   await page.screenshot({
     path: path.join(output, "missing-media-narrow.png"),
     fullPage: true,
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page
+    .getByRole("button", { name: "Show media library", exact: true })
+    .click();
   await page.getByRole("button", { name: "Toggle chat", exact: true }).click();
 
   const wrong = path.join(tmp, "different-speech.wav");
