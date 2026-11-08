@@ -105,6 +105,62 @@ it("rejects replaced identity, collateral edits, changed wording, and no-op corr
   expect(() => gradeCorrection(created, created, 1, target)).toThrow();
 });
 
+it("admits only a target-owned title lane while rejecting unrelated lane changes", async () => {
+  const before = correctionFixture(true);
+  const result = await compileNativeAgentResult(
+    {
+      contract: "video-project-commands",
+      version: 1,
+      baseRevision: 0,
+      baseHash: await hashVideoProjectDocument(before),
+      document: before,
+      context: { selectedItemIds: [], playheadFrame: 0 },
+    },
+    { summary: "Add Hello", commands: referenceCorrection(before, 0) },
+  );
+  const created = executeVideoProjectCommands(
+    before,
+    result.proposal!.commands,
+  ).document;
+  const target = gradeCorrection(before, created, 0);
+  const arranged = executeVideoProjectCommands(created, [
+    {
+      type: "addTrack",
+      track: {
+        id: "title-lane",
+        name: "Text 2",
+        kind: "visual",
+        muted: false,
+        hidden: false,
+        locked: false,
+      },
+    },
+    { type: "moveItem", id: target.itemId, from: 0, trackId: "title-lane" },
+  ]).document;
+  expect(() => gradeCorrection(before, arranged, 0)).not.toThrow();
+  for (const mutate of [
+    (document: typeof arranged) => {
+      document.tracks[0]!.name = "Renamed existing lane";
+    },
+    (document: typeof arranged) => {
+      document.items.find((item) => item.id === target.itemId)!.trackId =
+        "visual";
+    },
+    (document: typeof arranged) => {
+      document.items.find((item) => item.id === "existing-label")!.trackId =
+        "title-lane";
+    },
+    (document: typeof arranged) => {
+      document.tracks.find((track) => track.id === "title-lane")!.kind =
+        "audio";
+    },
+  ]) {
+    const invalid = structuredClone(arranged);
+    mutate(invalid);
+    expect(() => gradeCorrection(before, invalid, 0)).toThrow();
+  }
+});
+
 import { gradeCorrectionPixels } from "../evals/agent/correction-pixels";
 it("pixel oracle rejects a font-size-only change that shrink-to-fit renders at the old size", () => {
   const frames = [
