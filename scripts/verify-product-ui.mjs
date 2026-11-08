@@ -162,6 +162,10 @@ try {
       find: "@/lib/use-sign-in-gate",
       replacement: path.join(root, "packages/core/src/lib/use-sign-in-gate.ts"),
     },
+    {
+      find: "@/host/editor-copy",
+      replacement: path.join(root, "packages/ui/src/host/editor-copy.ts"),
+    },
     { find: "next/link", replacement: path.join(temp, "link.tsx") },
     { find: "next/navigation", replacement: path.join(temp, "navigation.ts") },
     ...[
