@@ -115,6 +115,7 @@ export class GptResponsesModel implements LanguageModel {
     messages: ChatMessage[],
     tools: ToolSpec[],
     signal: AbortSignal,
+    limits?: { maxOutputTokens: number },
   ) {
     signal.throwIfAborted();
     if (!isGptModelId(this.config.model))
@@ -140,7 +141,7 @@ export class GptResponsesModel implements LanguageModel {
           ...(tools.length
             ? { tool_choice: "auto", parallel_tool_calls: false }
             : {}),
-          max_output_tokens: 8192,
+          max_output_tokens: Math.min(8192, limits?.maxOutputTokens ?? 8192),
           stream: false,
           store: false,
           include: ["reasoning.encrypted_content"],
