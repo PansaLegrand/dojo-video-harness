@@ -80,6 +80,66 @@ const three = (): EditorItem => ({
 });
 
 describe("generated timeline track placement", () => {
+  it("keeps sequential split footage on its existing mixed lane while separating a new overlay", () => {
+    const base = createVideoProjectDocument();
+    base.assets.video = {
+      id: "video",
+      type: "video",
+      name: "Video",
+      source: "local",
+    };
+    base.items.push(
+      {
+        ...text("clip"),
+        node: {
+          id: "clip",
+          type: "video",
+          assetId: "video",
+          from: 0,
+          duration: 180,
+          playbackRate: 2,
+        },
+      },
+      text("existing"),
+    );
+    const split = executeVideoProjectCommands(base, [
+      { type: "splitItem", id: "clip", frame: 60, newId: "middle" },
+      { type: "splitItem", id: "middle", frame: 120, newId: "tail" },
+    ]).document;
+    expect(generatedTrackCommands(base, split)).toEqual([]);
+    const discontinuous = structuredClone(split);
+    discontinuous.items.find(
+      (item) => item.id === "tail",
+    )!.node.videoStartTime! += 0.1;
+    expect(
+      generatedTrackCommands(base, discontinuous).some(
+        (command) =>
+          command.type === "set" &&
+          command.target.kind === "item" &&
+          command.target.itemId === "tail" &&
+          command.path[0] === "trackId",
+      ),
+    ).toBe(true);
+    const proposed = executeVideoProjectCommands(split, [
+      { type: "addItem", item: text("overlay") },
+    ]).document;
+    const arranged = executeVideoProjectCommands(
+      proposed,
+      generatedTrackCommands(base, proposed),
+    ).document;
+    expect(
+      arranged.items
+        .filter((item) => item.node.type === "video")
+        .map((item) => item.trackId),
+    ).toEqual(["visual", "visual", "visual"]);
+    expect(
+      arranged.items.find((item) => item.id === "overlay")?.trackId,
+    ).not.toBe("visual");
+    expect(arranged.items.find((item) => item.id === "existing")).toEqual(
+      split.items.find((item) => item.id === "existing"),
+    );
+  });
+
   it("replays an Undo comparison without reorganizing the original track arrangement", async () => {
     const original = createVideoProjectDocument();
     original.items.push(text("title"));

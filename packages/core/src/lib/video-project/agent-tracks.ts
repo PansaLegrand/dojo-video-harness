@@ -19,9 +19,61 @@ export function generatedTrackCommands(
   after: VideoProjectDocument,
 ): VideoProjectCommand[] {
   const oldItems = new Map(before.items.map((item) => [item.id, item]));
+  // Splits retain their original lane even when an older project used a mixed
+  // visual track. Exact timeline/source coverage distinguishes them from layers.
+  const splitIds = new Set<string>();
+  for (const source of before.items) {
+    if (!["video", "audio"].includes(source.node.type)) continue;
+    const head = after.items.find((item) => item.id === source.id);
+    if (!head || head.node.duration! >= source.node.duration!) continue;
+    const from = source.node.from ?? 0,
+      end = from + source.node.duration!;
+    const rate = source.node.playbackRate ?? 1;
+    const sourceStart =
+      source.node.type === "audio"
+        ? (source.node.audioStartTime ?? 0)
+        : (source.node.videoStartTime ?? 0);
+    const pieces = after.items
+      .filter(
+        (item) =>
+          (item.id === source.id || !oldItems.has(item.id)) &&
+          item.trackId === source.trackId &&
+          item.node.type === source.node.type &&
+          item.node.assetId === source.node.assetId &&
+          (item.node.from ?? 0) >= from &&
+          (item.node.from ?? 0) + item.node.duration! <= end,
+      )
+      .sort((a, b) => (a.node.from ?? 0) - (b.node.from ?? 0));
+    let cursor = from;
+    const contiguous =
+      pieces.length > 1 &&
+      pieces.some((item) => item.id === source.id) &&
+      pieces.every((item) => {
+        const at = item.node.from ?? 0;
+        const start =
+          item.node.type === "audio"
+            ? (item.node.audioStartTime ?? 0)
+            : (item.node.videoStartTime ?? 0);
+        const matches =
+          at === cursor &&
+          (item.node.playbackRate ?? 1) === rate &&
+          Math.abs(
+            start - sourceStart - ((at - from) * rate) / before.format.fps,
+          ) < 1e-7;
+        cursor += item.node.duration!;
+        return matches;
+      });
+    if (before.format.fps === after.format.fps && contiguous && cursor === end)
+      pieces
+        .filter((item) => !oldItems.has(item.id))
+        .forEach((item) => splitIds.add(item.id));
+  }
   const added = after.items.filter((item) => {
     const previous = oldItems.get(item.id);
-    return !previous || editorItemKind(previous) !== editorItemKind(item);
+    return (
+      !splitIds.has(item.id) &&
+      (!previous || editorItemKind(previous) !== editorItemKind(item))
+    );
   });
   if (!added.length) return [];
   const addedIds = new Set(added.map((item) => item.id));
