@@ -280,9 +280,10 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     const status = applied ? "Applied" : run.status === "ready" || run.status === "awaiting_review" ? "Changes ready" : run.status === "needs_input" ? "Reply to this question"
       : run.status === "stale" ? "Needs revision" : run.status === "failed" ? "Needs attention" : run.status === "cancelled" ? "Cancelled" : run.status === "needs_evidence" ? "Speech context needed" : run.status === "running" ? "Working on your edit…" : "Preparing your request…";
     const names = run.proposal?.changedItemIds.map(id => workspace.document?.items.find(item => item.id === id)?.name).filter(Boolean).slice(0, 3).join(", ");
+    const response = run.clarification?.question ?? run.proposal?.summary;
     return <article key={run.id} className="editor-agent-change" data-run-id={run.id} data-run-status={run.status}>
       <small>{["queued", "running"].includes(run.status) && <Loader2 size={12} className="animate-spin" />}{t(answered ? "Question answered" : status)}</small>
-      <p>{run.clarification?.question ?? run.proposal?.summary ?? run.instruction}</p>
+      {response && <p>{response}</p>}
       {run.scope && <span className="editor-agent-scope-label">{t(run.scope.kind === "selection" ? "Selected items" : run.scope.kind === "range" ? "Time range" : "Whole project")}{names ? " · " + names : ""}</span>}
       {!!run.proposal?.propagatedItemIds?.length && <span className="editor-agent-scope-label">{t("Linked changes")}: {run.proposal.propagatedItemIds.length}</span>}
       {run.error && <><p className="text-amber-700 dark:text-amber-300">{t(run.error.message)}</p><details className="text-xs break-all"><summary>{t("Error details")}</summary><p>{t("Error code")} · {run.error.code}</p><p>{t("Run ID")} · {run.id}</p></details></>}

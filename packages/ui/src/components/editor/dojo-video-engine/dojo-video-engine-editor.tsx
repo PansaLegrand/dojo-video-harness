@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorMissingMedia } from "./editor-missing-media";
+
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useSignInGate } from "@/lib/use-sign-in-gate";
@@ -293,7 +295,7 @@ export default function DojoVideoEngineEditor({
     if (workspace.error && workspace.error !== workspace.saveFailure?.message) setError(workspace.error);
   }, [workspace.error, workspace.saveFailure]);
 
-  useLocalSourceRestore(projectId, workspace.document?.assets, workspace.snapshot?.sources, sources, setSources, objectUrlsRef);
+  const restoringSources = useLocalSourceRestore(projectId, workspace.document?.assets, workspace.snapshot?.sources, sources, setSources, objectUrlsRef);
 
   const apply = useCallback((commands: EditorCommand | EditorCommand[]) => {
     controller.dispatchEditor(commands);
@@ -1211,6 +1213,13 @@ export default function DojoVideoEngineEditor({
                   onPreviewError={setPreviewError}
                 />
               </div>
+            ) : compiled.missingAssetIds?.length && restoringSources ? (
+              <div role="status" className="p-5 text-center text-sm text-[var(--editor-muted)]">{t("Preparing preview…")}</div>
+            ) : compiled.missingAssetIds?.length ? (
+              <EditorMissingMedia assetIds={compiled.missingAssetIds} assets={document.assets}
+                disabled={disabled || !!upload || !!localImport}
+                onRelink={asset => { relinkAssetRef.current = asset; relinkInputRef.current?.click(); }}
+                onRetry={() => { void controller.refresh().catch(cause => setError(cause instanceof Error ? cause.message : "Project could not be loaded.")); }} />
             ) : (
               <div className="max-w-md p-5 text-center text-sm text-amber-700 dark:text-amber-300">
                 {compiled.error}

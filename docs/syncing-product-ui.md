@@ -10,7 +10,7 @@ Keep useful shared components intact so updates remain straightforward.
 The sync manifest manages the editor, timeline, inspector, media panels, preview,
 chat, clarification and review cards, motion graphics controls, project home/cards,
 the English dictionary, shared global CSS, Tailwind theme, and editor page.
-It currently manages 75 files. It records both source hashes and generated target hashes.
+It currently manages 81 files. It records both source hashes and generated target hashes.
 
 Allowed transformations are explicit and mechanical:
 

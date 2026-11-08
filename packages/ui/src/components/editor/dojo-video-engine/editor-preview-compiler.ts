@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useRef } from "react";
 import { sceneNodeSchema, type Scene, type SceneNodeInput } from "@dojo-video-engine/schema";
-import type { EditorItem } from "@/lib/editor/document";
+import { MissingEditorAssetsError, type EditorItem } from "@/lib/editor/document";
 import { canonicalSerialize, normalizeVideoProjectJson, type VideoProjectDocument } from "@/lib/video-project/document";
 import { compileVideoProjectDocument } from "@/lib/video-project/compilation";
 import { previewEditorStyle, type EditorStylePreview } from "./editor-style-preview";
@@ -13,7 +13,11 @@ export type EditorPreviewChange =
   | { kind: "style"; value: EditorStylePreview }
   | { kind: "content"; value: EditorContentPreview }
   | { kind: "property"; value: EditorPropertyPreview };
-export type CompiledEditorPreview = { scene: Scene | null; error: string | null };
+export type CompiledEditorPreview = { scene: Scene | null; error: string | null; missingAssetIds?: string[] };
+function previewFailure(cause: unknown): CompiledEditorPreview {
+  return { scene: null, error: cause instanceof Error ? cause.message : "Preview could not be prepared.",
+    ...(cause instanceof MissingEditorAssetsError ? { missingAssetIds: cause.assetIds } : {}) };
+}
 const EMPTY: CompiledEditorPreview = { scene: null, error: null };
 const LOCAL_PAINT = new Set(["color", "backgroundColor", "opacity", "filter", "textShadow", "textStroke", "textBackgroundColor"]);
 
@@ -73,7 +77,7 @@ export class EditorPreviewCompiler {
     if (!change || !this.base.scene) { this.last = this.base; return this.base; }
     let key: string;
     try { key = previewChangeKey(change); }
-    catch (cause) { return { scene: null, error: cause instanceof Error ? cause.message : "Preview could not be prepared." }; }
+    catch (cause) { return previewFailure(cause); }
     if (this.draft?.document === document && this.draft.base === this.base.scene && this.draft.key === key) { this.counts.cacheHits++; this.last = this.draft.result; return this.draft.result; }
     let result: CompiledEditorPreview;
     try {
@@ -88,7 +92,7 @@ export class EditorPreviewCompiler {
         result = preview === document ? this.base : this.fullCompile(preview, sources);
       }
     } catch (cause) {
-      result = { scene: null, error: cause instanceof Error ? cause.message : "Preview could not be prepared." };
+      result = previewFailure(cause);
     }
     this.draft = { document, base: this.base.scene, key, result };
     this.last = result;
@@ -143,7 +147,7 @@ export class EditorPreviewCompiler {
       });
       if (result.scene) visit(result.scene.nodes, []);
     } catch (cause) {
-      this.base = { scene: null, error: cause instanceof Error ? cause.message : "Preview could not be prepared." };
+      this.base = previewFailure(cause);
       this.baseSignature = null; this.draft = null;
     }
   }
