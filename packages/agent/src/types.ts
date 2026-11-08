@@ -16,4 +16,6 @@ export type AgentEvent = {
     | "answer.ready";
   name?: string;
   summary?: string;
+  callId?: string;
+  replay?: boolean;
 };

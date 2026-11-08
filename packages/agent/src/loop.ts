@@ -1,5 +1,10 @@
 import { composeToolAgentPrompt } from "../../agent-kit/src/index";
-import { runToolLoop } from "../../agent-loop/src/index";
+import {
+  runToolLoop,
+  parseLoopCheckpoint,
+  type LoopCheckpointPort,
+  type LoopCompactionOptions,
+} from "../../agent-loop/src/index";
 import {
   buildNativeAgentPrompts,
   compileNativeAgentResult,
@@ -10,6 +15,11 @@ import { parseVideoProjectDocument } from "../../core/src/lib/video-project/docu
 import { type Skill } from "./skills";
 import { createVideoToolset, type AgentTool } from "./tools";
 import type { LanguageModel, ChatMessage, AgentEvent } from "./types";
+
+export type AgentCheckpointContext = {
+  inventory: ReturnType<typeof createVideoToolset>["inventory"];
+  skills: Skill[];
+};
 
 /** Model -> function call -> validated tool -> observation -> repeat.
  * Persistence, user decisions, and final commits belong to the host. */
@@ -22,6 +32,13 @@ export async function runAgent(input: {
   messages?: Array<{ role: string; text: string }>;
   maxSteps?: number;
   maxToolCalls?: number;
+  maxOutputTokens?: number;
+  checkpoint?:
+    | LoopCheckpointPort
+    | ((
+        context: AgentCheckpointContext,
+      ) => LoopCheckpointPort | Promise<LoopCheckpointPort>);
+  compaction?: LoopCompactionOptions;
   extraTools?: AgentTool[];
 }): Promise<NativeAgentResult> {
   const { request, model, skills, signal } = input;
@@ -62,6 +79,25 @@ export async function runAgent(input: {
     },
   ];
   let sequence = 0;
+  const port =
+    typeof input.checkpoint === "function"
+      ? await input.checkpoint({
+          inventory: toolset.inventory,
+          skills: toolset.skills,
+        })
+      : input.checkpoint;
+  const checkpoint: LoopCheckpointPort | undefined = port && {
+    ...port,
+    load: async () => {
+      const saved = await port.load();
+      if (saved !== null) sequence = parseLoopCheckpoint(saved).sequence;
+      return saved;
+    },
+    save: async (next, expectedRevision) => {
+      await port.save(next, expectedRevision);
+      sequence = next.sequence;
+    },
+  };
   const completed = await runToolLoop({
     model,
     messages,
@@ -69,6 +105,12 @@ export async function runAgent(input: {
     signal,
     maxSteps: input.maxSteps,
     maxToolCalls: input.maxToolCalls,
+    maxOutputTokens: input.maxOutputTokens,
+    checkpoint,
+    compaction:
+      input.compaction ??
+      (checkpoint ? { maxCharacters: 320000, keepRecentGroups: 2 } : undefined),
+    answerReplaySafe: true,
     answer: (text) =>
       compileNativeAgentResult(request, {
         outcome: "answer",
@@ -76,7 +118,7 @@ export async function runAgent(input: {
         commands: [],
       }),
     onEvent: async (event) => {
-      sequence = event.sequence + 1;
+      sequence = Math.max(sequence, event.sequence + 1);
       await input.onEvent?.(event);
     },
   });
