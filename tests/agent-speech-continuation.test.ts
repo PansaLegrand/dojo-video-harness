@@ -612,3 +612,119 @@ it("rejects source-revision or unrelated asset metadata changes disguised as upl
     expect(f.model.complete).not.toHaveBeenCalled();
   }
 });
+
+it.each([
+  "Add a readable title, lower-third and supplied-text caption with default geometry.",
+  'Add a readable title, lower-third and supplied-text caption reading "A speaker gives a speech" with default geometry.',
+])("creates supplied-text overlays without ASR: %s", async (supplied) => {
+  const f = await fixture();
+  await f.store.transaction(f.p.id, async (p) => {
+    p.sources = [];
+    await commitDocument(
+      p,
+      createVideoProjectDocument({
+        width: 640,
+        height: 360,
+        fps: 30,
+        durationInFrames: 180,
+      }),
+    );
+  });
+  const p = await f.store.read(f.p.id);
+  let step = 0;
+  f.model.complete.mockImplementation(async (messages) => {
+    const user = JSON.parse(
+      String(messages.find((message) => message.role === "user")!.content),
+    );
+    expect(user.instruction).toBe(supplied);
+    if (++step === 1)
+      return {
+        text: "",
+        calls: ["title", "lowerThird", "caption"].map((kind, index) => ({
+          id: `prepare-${kind}`,
+          name: "prepare_text_overlay",
+          arguments: JSON.stringify({
+            kind,
+            itemId: `supplied-${kind}`,
+            trackId: "visual",
+            text: "Supplied display words",
+            from: index * 60,
+            duration: 60,
+          }),
+        })),
+      };
+    const commands = messages
+      .filter((message) => message.role === "tool")
+      .map((message) => JSON.parse(String(message.content)).command);
+    expect(commands).toHaveLength(3);
+    return {
+      text: "",
+      calls: [
+        {
+          id: "supplied-edit",
+          name: "propose_edit",
+          arguments: JSON.stringify({
+            outcome: "proposal",
+            summary: "Add supplied display text",
+            commands,
+          }),
+        },
+      ],
+    };
+  });
+  await f.agent.start(p.id, {
+    ...f.input,
+    instruction: supplied,
+    context: { selectedItemIds: [], playheadFrame: 0 },
+    baseHash: p.documentHash,
+    baseRevision: p.revision,
+  });
+  const run = await waitFor(f, "awaiting_review");
+  expect(f.model.complete).toHaveBeenCalledTimes(2);
+  expect(f.port.start).not.toHaveBeenCalled();
+  expect(run.prerequisites).toBeNull();
+  expect(run.proposal!.changedItemIds).toEqual(
+    expect.arrayContaining([
+      "supplied-title",
+      "supplied-lowerThird",
+      "supplied-caption",
+    ]),
+  );
+  expect((await f.store.read(p.id)).documentHash).toBe(p.documentHash);
+});
+
+it("still requires source selection for genuine speech on an empty canvas", async () => {
+  const f = await fixture();
+  await f.store.transaction(f.p.id, async (p) => {
+    p.sources = [];
+    await commitDocument(p, createVideoProjectDocument());
+  });
+  const p = await f.store.read(f.p.id);
+  await f.agent.start(p.id, {
+    ...f.input,
+    instruction: "Transcribe the speaker and add English subtitles.",
+    context: { selectedItemIds: [], playheadFrame: 0 },
+    baseHash: p.documentHash,
+    baseRevision: p.revision,
+    cloudConsent: true,
+  });
+  expect(await waitFor(f, "failed")).toMatchObject({
+    error: { message: "Select source video or audio for this speech edit." },
+  });
+  expect(f.port.start).not.toHaveBeenCalled();
+  expect(f.model.complete).not.toHaveBeenCalled();
+});
+
+it("keeps consent and receipt prerequisites for mixed supplied-text and genuine speech requests", async () => {
+  const f = await fixture();
+  await f.agent.start(f.p.id, {
+    ...f.input,
+    instruction:
+      "Add a supplied-text caption, then transcribe the speaker into English subtitles.",
+  });
+  expect(await waitFor(f, "needs_evidence")).toMatchObject({
+    prerequisites: { status: "consent_required", assetIds: ["speech"] },
+  });
+  expect(f.port.start).not.toHaveBeenCalled();
+  expect(f.model.complete).not.toHaveBeenCalled();
+});

@@ -52,6 +52,26 @@ export type AgentSpeechPort = {
   defer?(request: NativeAgentRequest): boolean;
 };
 
+/** Supplied display copy is not a request to recognize words from media. Keep
+ * mixed requests on preflight when they also explicitly ask for source speech. */
+function usesSuppliedCaptionText(instruction: string) {
+  const intent = instruction.replace(
+    /"[^"]*"|“[^”]*”|「[^」]*」|『[^』]*』/gu,
+    " ",
+  );
+  const suppliedCaption =
+    /\b(?:supplied|provided)[-\s]+text\s+(?:captions?|subtitles?)\b|\b(?:captions?|subtitles?)\s+(?:using|with|from)\s+(?:the\s+)?(?:supplied|provided)\s+text\b/iu;
+  const sourceSpeech =
+    /\b(?:asr|transcri\w*|spoken|speech|speakers?|says?|said|speaks?|utterances?)\b|转录|轉錄|口播|说到|说出|说的|台词|台詞|口癖/iu;
+  const fromSource =
+    /\b(?:captions?|subtitles?)\s+from\s+(?:(?:the|my|this|selected|source|uploaded)\s+)?(?:video|audio|recording)\b/iu;
+  return (
+    suppliedCaption.test(instruction) &&
+    !sourceSpeech.test(intent) &&
+    !fromSource.test(intent)
+  );
+}
+
 /** Conservative local dispatch: only these fully represented English clauses
  * defer to the existing paid workflow approval card. Unrecognized constraints
  * (including styles, bilingual pairs, highlights and endings) keep the general
@@ -217,6 +237,7 @@ export async function prepareAgentSpeech(
     if (!(await agentSpeechBasisMatches(p, r)))
       throw new HttpError("The project changed. Start a new request.", 409);
     const document = parseVideoProjectDocument(r.request.document);
+    if (usesSuppliedCaptionText(r.instruction)) return r;
     if (
       !needsSourceTranscript(document, r.instruction, r.context.selectedItemIds)
     )
