@@ -8,6 +8,7 @@ import {
 } from "./lib/intro-outro-browser-proof.mjs";
 import { setupMusicProof } from "./lib/music-browser-proof.mjs";
 import { verifyMediaRecovery } from "./lib/media-recovery-browser-proof.mjs";
+import { setupDependentSpeechProof } from "./lib/dependent-speech-browser-proof.mjs";
 import {
   realMediaReply,
   verifyRealMedia,
@@ -44,10 +45,12 @@ let modelCalls = 0,
   asrCalls = 0,
   followupReceivedContext = false;
 const musicProof = await setupMusicProof(tmp);
+const dependentSpeechProof = setupDependentSpeechProof();
 const provider = createServer(async (req, res) => {
   const chunks = [];
   for await (const c of req) chunks.push(c);
   const bytes = Buffer.concat(chunks);
+  if (await dependentSpeechProof.providerHandler(req, res, bytes)) return;
   if (
     musicProof.providerHandler(
       req,
@@ -82,6 +85,7 @@ const provider = createServer(async (req, res) => {
   let name = "propose_edit",
     args;
   const musicReply =
+    dependentSpeechProof.modelReply(context, body) ??
     graphicsReply(context) ??
     introOutroReply(context) ??
     realMediaReply(context, body) ??
@@ -318,6 +322,11 @@ checksBlock: try {
   );
   if (process.env.GRAPHICS_ONLY === "1") {
     await verifyGraphics({ page, api, base, tmp, output, check });
+    check("no browser exceptions", errors.length === 0);
+    break checksBlock;
+  }
+  if (process.env.DEPENDENT_SPEECH_ONLY === "1") {
+    await dependentSpeechProof.verify({ page, api, base, tmp, output, check });
     check("no browser exceptions", errors.length === 0);
     break checksBlock;
   }
@@ -757,6 +766,7 @@ checksBlock: try {
   await verifyGraphics({ page, api, base, tmp, output, check });
   await verifyIntroOutro({ page, api, base, tmp, output, check });
   await verifyRealMedia({ page, api, base, output, check });
+  await dependentSpeechProof.verify({ page, api, base, tmp, output, check });
   check("no browser exceptions", errors.length === 0);
   await writeFile(
     path.join(output, "report.json"),
@@ -766,6 +776,7 @@ checksBlock: try {
         checks,
         modelCalls,
         asrCalls,
+        dependentSpeech: dependentSpeechProof.counts(),
         actual: [
           "React editor",
           "filesystem persistence",
