@@ -108,6 +108,8 @@ try {
   await run(install.command, install.args);
   const check = npmInvocation(["run", "check"]);
   await run(check.command, check.args);
+  // A focused browser mode or failed rerun cannot reuse an older success report.
+  await rm(path.join(browserOutput, "report.json"), { force: true });
   await run(process.execPath, ["scripts/browser-smoke.mjs"], {
     BROWSER_TEST_OUTPUT_DIR: browserOutput,
   });
