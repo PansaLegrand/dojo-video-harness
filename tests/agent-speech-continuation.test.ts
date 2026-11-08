@@ -456,7 +456,7 @@ it("reuses the same ASR receipt across a clarification child while preserving th
   expect((await f.store.read(f.p.id)).documentHash).toBe(promoted.documentHash);
 });
 
-it("stops a waiting request after canonical manual edits instead of polling stale work forever", async () => {
+it("stops a waiting request after canonical manual edits even if its revision number is restored", async () => {
   const f = await fixture(true);
   await f.agent.start(f.p.id, { ...f.input, cloudConsent: true });
   await readyTask(f);
@@ -472,6 +472,11 @@ it("stops a waiting request after canonical manual edits instead of polling stal
         value: "Manually renamed",
       },
     ],
+  });
+  // Revision equality cannot hide a changed authored document from the
+  // bounded upload-promotion guard.
+  await f.store.transaction(f.p.id, (p) => {
+    p.revision = f.p.revision;
   });
   await resume(f);
   expect((await f.store.read(f.p.id)).runs[0]).toMatchObject({
