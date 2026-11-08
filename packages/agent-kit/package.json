@@ -1,0 +1,33 @@
+{
+  "name": "@dojo-video/agent-kit",
+  "version": "0.1.0",
+  "description": "Portable editor tool catalog, trusted skills and prompt composition for Dojo agent hosts.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "build": "node scripts/generate-skills.mjs && tsc -p tsconfig.json",
+    "check:skills": "node scripts/generate-skills.mjs --check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PansaLegrand/dojo-video-harness.git",
+    "directory": "packages/agent-kit"
+  }
+}

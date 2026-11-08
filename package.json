@@ -16,7 +16,7 @@
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run check:ui-sync && npm run typecheck && npm test && npm run build",
+    "check": "npm run check:agent-kit && npm run check:ui-sync && npm run typecheck && npm test && npm run build",
     "test:browser": "npm run build && node scripts/browser-smoke.mjs",
     "format": "prettier --write packages/agent packages/adapters packages/ui/src/host apps/server tests scripts config/aliases.ts README.md docs/*.md",
     "check:ui-sync": "node scripts/sync-product-ui.mjs --verify",
@@ -34,7 +34,8 @@
     "test:engine-packages": "node scripts/test-engine-packages.mjs",
     "test:live:music": "tsx scripts/test-live-music.ts",
     "eval:basic:planner": "tsx scripts/evaluate-basic-workflow-planner.ts",
-    "eval:speech:semantics": "tsx scripts/evaluate-speech-semantics.ts"
+    "eval:speech:semantics": "tsx scripts/evaluate-speech-semantics.ts",
+    "check:agent-kit": "npm run check:skills --workspace @dojo-video/agent-kit && npm run build --workspace @dojo-video/agent-kit"
   },
   "dependencies": {
     "@dojo-video-engine/agent-tools": "1.2.1",
