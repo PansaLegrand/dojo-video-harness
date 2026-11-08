@@ -8,9 +8,9 @@ There are no engine, database, provider SDK or credit dependencies in either kit
 The local adapter `packages/agent/src/tools.ts` supplies the existing ProjectDocument
 kernel, source-bound transcript search, SVG/Three.js preparation and readable text
 layout. `apps/server/src/music-tools.ts` and `editing-workflow.ts` register their
-existing durable planning services. The full local host has eleven tools and five
-named skills. A host without those two services has nine tools and does not
-advertise their music/workflow skills.
+existing durable planning services. A host without those services does not
+advertise their music/workflow tools or skills. Use the active inventory rather
+than a copied tool count when diagnosing availability.
 
 `createVideoToolset(...).inventory` describes the same registered executors and
 eligible skills given to the loop. Skills cannot register tools or grant spending.
@@ -25,11 +25,23 @@ and Undo available. Paid/cloud job approvals and review-mode integrations keep
 separate host policies.
 
 The commercial host uses the same factory with its own kernel ports and a pinned
-profile that preserves eight tools and two named skills. It keeps Prisma, credits,
+capability profile. It keeps Prisma, credits,
 authentication, worker jobs and canonical storage. Its versioned native bundle
 contains the immutable shared kit snapshot; existing paid profiles retain their
 old session factories. Shared command/document semantics still require deliberate
 ports between the separately maintained editing kernels.
+
+DojoClip's web UI is the gold reference for managed UI synchronization. The
+open-source engine and harness are upstream for new renderer/runtime behavior;
+the commercial host consumes reviewed releases and ports without bringing its
+database, billing or worker infrastructure into this local application. See the
+[current synchronization/readiness note](synchronization-readiness-2026-11-08.md).
+
+Missing speech evidence is a host prerequisite, not a skill granting upload
+permission. `agent-speech.ts` persists consent and source-bound ASR task receipts,
+then continues the original instruction. Genuine transcript words can support
+later captions, translation and speech-linked graphics; editable caption text
+never replaces source evidence. Skills explain how to use these capabilities.
 
 To extend the editor, add shared metadata/schema and a native preparation/read
 port or explicit host service. Add canonical skill guidance with required tools,

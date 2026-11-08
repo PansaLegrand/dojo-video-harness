@@ -33,6 +33,10 @@ import {
 import { MusicService } from "./music-service";
 import { musicTools } from "./music-tools";
 import { AgentService } from "./agent-service";
+import {
+  isBasicEditingWorkflowRequest,
+  type AgentSpeechSource,
+} from "./agent-speech";
 import { ProviderSettings } from "./provider-settings";
 import { prepareExport, claimExport, finishExport } from "./exports";
 import {
@@ -80,6 +84,20 @@ export async function createLocalApi() {
       workflows.tool(projectId, runId),
     ],
     "direct",
+    {
+      defer: isBasicEditingWorkflowRequest,
+      get: (id) => tasks.get(id),
+      start: (projectId, source) =>
+        startAsrTask(
+          {
+            project_id: projectId,
+            asset_id: source.assetId,
+            request_id: source.requestId,
+            language: "auto",
+          },
+          source,
+        ),
+    },
   );
   type Task = {
     id: string;
@@ -124,6 +142,91 @@ export async function createLocalApi() {
     } finally {
       taskLocks.delete(key);
     }
+  }
+  async function startAsrTask(
+    v: {
+      project_id: string;
+      asset_id: string;
+      request_id: string;
+      language: string;
+    },
+    frozen?: AgentSpeechSource,
+  ) {
+    await workflows.authorizeProviderRequest(v.project_id, v.request_id);
+    const p = await store.read(v.project_id),
+      source = p.sources.find(
+        (s) => s.assetId === v.asset_id || s.sourceId === v.asset_id,
+      );
+    if (!source || source.status !== "available")
+      throw new HttpError(
+        "Send the selected source to the local server before transcribing.",
+      );
+    if (
+      frozen &&
+      (source.sourceId !== frozen.sourceId ||
+        source.fingerprint !== frozen.fingerprint ||
+        source.byteLength !== frozen.byteLength)
+    )
+      throw new HttpError(
+        "The frozen speech source changed before submission.",
+        409,
+      );
+    if (source.byteLength > 25 * 1024 * 1024)
+      throw new HttpError(
+        "This transcription adapter accepts up to 25 MiB. Import a smaller audio copy.",
+      );
+    const asr = providers.get("asr");
+    const requestHash = canonicalSerialize({
+      project: p.id,
+      source: source.fingerprint,
+      language: v.language,
+      provider: asr.baseUrl,
+      model: asr.model,
+    });
+    const operationId = `asr:${p.id}:${v.request_id}`;
+    const task = await taskOnce(operationId, async () => {
+      const prior = [...tasks.values()].find(
+        (t) => t.operationId === operationId,
+      );
+      if (prior) {
+        if (prior.requestHash !== requestHash)
+          throw new HttpError("Request ID belongs to different inputs.", 409);
+        return prior;
+      }
+      const task: Task = {
+        id: randomUUID(),
+        project_id: p.id,
+        asset_id: source.sourceId,
+        sourceHash: source.fingerprint,
+        operationId,
+        status: "running",
+        requestHash,
+      };
+      await saveTask(task);
+      void (async () => {
+        try {
+          const bytes = await readFile(mediaFile(p.id, source.sourceId));
+          const result = await transcribe(
+            asr,
+            new Blob([bytes], { type: source.mimeType }),
+            source.fileName,
+            v.language,
+            AbortSignal.timeout(180_000),
+          );
+          task.raw_asr_result = result;
+          task.status = "completed";
+        } catch (cause) {
+          task.status = "failed";
+          task.error_message =
+            cause instanceof Error ? cause.message : "Transcription failed";
+        }
+        await saveTask(task);
+      })();
+      return task;
+    });
+    if (task.requestHash !== requestHash)
+      throw new HttpError("Request ID belongs to different inputs.", 409);
+    return task;
   }
   function json(res: ServerResponse, value: unknown, status = 200) {
     res.writeHead(status, {
@@ -297,73 +400,7 @@ export async function createLocalApi() {
           })
           .passthrough()
           .parse(await input(req));
-        await workflows.authorizeProviderRequest(v.project_id, v.request_id);
-        const p = await store.read(v.project_id),
-          source = p.sources.find(
-            (s) => s.assetId === v.asset_id || s.sourceId === v.asset_id,
-          );
-        if (!source || source.status !== "available")
-          throw new HttpError(
-            "Send the selected source to the local server before transcribing.",
-          );
-        if (source.byteLength > 25 * 1024 * 1024)
-          throw new HttpError(
-            "This transcription adapter accepts up to 25 MiB. Import a smaller audio copy.",
-          );
-        const asr = providers.get("asr");
-        const requestHash = canonicalSerialize({
-          project: p.id,
-          source: source.fingerprint,
-          language: v.language,
-          provider: asr.baseUrl,
-          model: asr.model,
-        });
-        const operationId = `asr:${p.id}:${v.request_id}`;
-        const task = await taskOnce(operationId, async () => {
-          const prior = [...tasks.values()].find(
-            (t) => t.operationId === operationId,
-          );
-          if (prior) {
-            if (prior.requestHash !== requestHash)
-              throw new HttpError(
-                "Request ID belongs to different inputs.",
-                409,
-              );
-            return prior;
-          }
-          const task: Task = {
-            id: randomUUID(),
-            project_id: p.id,
-            asset_id: source.sourceId,
-            sourceHash: source.fingerprint,
-            operationId,
-            status: "running",
-            requestHash,
-          };
-          await saveTask(task);
-          void (async () => {
-            try {
-              const bytes = await readFile(mediaFile(p.id, source.sourceId));
-              const result = await transcribe(
-                asr,
-                new Blob([bytes], { type: source.mimeType }),
-                source.fileName,
-                v.language,
-                AbortSignal.timeout(180_000),
-              );
-              task.raw_asr_result = result;
-              task.status = "completed";
-            } catch (cause) {
-              task.status = "failed";
-              task.error_message =
-                cause instanceof Error ? cause.message : "Transcription failed";
-            }
-            await saveTask(task);
-          })();
-          return task;
-        });
-        if (task.requestHash !== requestHash)
-          throw new HttpError("Request ID belongs to different inputs.", 409);
+        const task = await startAsrTask(v);
         return json(res, { task_id: task.id });
       }
     }
@@ -736,12 +773,8 @@ export async function createLocalApi() {
         if (action === "cancel")
           return json(res, await agent.cancel(id, runId));
         if (action === "undo") return json(res, await agent.undo(id, runId, v));
-        if (action === "resume") {
-          const p = await store.read(id);
-          return json(res, {
-            run: publicRun(p.runs.find((r) => r.id === runId)!),
-          });
-        }
+        if (action === "resume")
+          return json(res, await agent.resume(id, runId, v));
       }
       if (parts[3] === "exports") {
         if (parts.length === 4) {

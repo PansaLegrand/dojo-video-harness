@@ -10,7 +10,7 @@ Keep useful shared components intact so updates remain straightforward.
 The sync manifest manages the editor, timeline, inspector, media panels, preview,
 chat, clarification and review cards, motion graphics controls, project home/cards,
 the English dictionary, shared global CSS, Tailwind theme, and editor page.
-It currently manages 75 files. It records both source hashes and generated target hashes.
+It currently manages 81 files. It records both source hashes and generated target hashes.
 
 Allowed transformations are explicit and mechanical:
 
@@ -104,7 +104,8 @@ node scripts/verify-product-ui.mjs --source ../dojo-video-web
 ```
 
 That comparison uses an isolated Vite reference fixture only for testing the product
-source; Vite is not the application host. It covers desktop light/dark and narrow
+source; Vite is not the application host. Both sides use the same local project,
+English dictionary, BYOK usage-copy adapters and local extension panels. It covers desktop light/dark and narrow
 English layouts. This optional diagnostic helps spot accidental layout drift;
 pixel-for-pixel product parity is not a release requirement. Provider/billing text and local navigation are intentional host
 policy differences, not forks of product UI components.

@@ -58,6 +58,107 @@ const color: VideoProjectCommand = {
   value: "red",
 };
 describe("targeted edit reversal", () => {
+  it("restores a retyped root and its unchanged linked group in the original item order", () => {
+    const before = executeVideoProjectCommands(fixture(), [
+      {
+        type: "setLinkedGroup",
+        group: { id: "group", itemIds: ["clip", "title"] },
+      },
+    ]).document;
+    const after = executeVideoProjectCommands(before, [
+      { type: "removeItem", id: "title" },
+      {
+        type: "addItem",
+        item: {
+          ...before.items[1]!,
+          node: {
+            id: "title",
+            type: "shape",
+            from: 0,
+            duration: 300,
+            shape: { kind: "rect" },
+            style: { width: 100, height: 100, fill: "red" },
+          },
+        },
+      },
+      { type: "setLinkedGroup", group: before.linkedGroups!.group! },
+    ]).document;
+    const restored = executeVideoProjectCommands(
+      after,
+      buildVideoProjectRevertCommands(before, after),
+    ).document;
+    expect(restored).toEqual(before);
+  });
+
+  it("restores a nested node whose ID was retained while its type changed", () => {
+    const before = fixture();
+    const after = executeVideoProjectCommands(before, [
+      { type: "removeNode", itemId: "title", nodeId: "a" },
+      {
+        type: "addNode",
+        itemId: "title",
+        parentNodeId: "title",
+        node: {
+          id: "a",
+          type: "shape",
+          shape: { kind: "rect" },
+          style: { width: 100, height: 100, fill: "red" },
+        },
+        index: 1,
+      },
+    ]).document;
+    const restored = executeVideoProjectCommands(
+      after,
+      buildVideoProjectRevertCommands(before, after),
+    ).document;
+    expect(restored).toEqual(before);
+  });
+
+  it("restores captions that root replacement would otherwise cascade away", () => {
+    const before = fixture();
+    before.assets.audio = {
+      id: "audio",
+      name: "Audio",
+      type: "audio",
+      source: "local",
+    };
+    before.items.push({
+      id: "caption",
+      name: "Caption",
+      trackId: "visual",
+      node: { id: "caption", type: "div", from: 30, duration: 300 },
+      caption: {
+        sourceItemId: "clip",
+        mode: "sentence",
+        direction: "ltr",
+        highlightColor: "yellow",
+        cues: [{ id: "cue", text: "Hello", startMs: 0, endMs: 1000 }],
+      },
+    });
+    const after = parseVideoProjectDocument({
+      ...before,
+      items: before.items.map((item) =>
+        item.id !== "clip"
+          ? item
+          : {
+              ...item,
+              trackId: "audio",
+              node: {
+                id: "clip",
+                type: "audio",
+                assetId: "audio",
+                from: 30,
+                duration: 300,
+              },
+            },
+      ),
+    });
+    const restored = executeVideoProjectCommands(
+      after,
+      buildVideoProjectRevertCommands(before, after),
+    ).document;
+    expect(restored).toEqual(parseVideoProjectDocument(before));
+  });
   it("undoes the agent color edit while preserving intervening manual typing", () => {
     const before = fixture(),
       after = executeVideoProjectCommands(before, [color]).document;
@@ -245,6 +346,32 @@ describe("speech and translated-caption edit reversal", () => {
       },
     ]).document;
   }
+  it("restores an unchanged source binding when its graphic root is retyped", () => {
+    const before = linked();
+    const after = executeVideoProjectCommands(before, [
+      { type: "removeItem", id: "title" },
+      {
+        type: "addItem",
+        item: {
+          ...before.items.find((item) => item.id === "title")!,
+          node: {
+            id: "title",
+            type: "shape",
+            from: 0,
+            duration: 300,
+            shape: { kind: "rect" },
+            style: { width: 100, height: 100, fill: "red" },
+          },
+        },
+      },
+      { type: "bindSource", binding: before.bindings.anchor! },
+    ]).document;
+    const restored = executeVideoProjectCommands(
+      after,
+      buildVideoProjectRevertCommands(before, after),
+    ).document;
+    expect(restored).toEqual(before);
+  });
   it.each<VideoProjectCommand[]>([
     [{ type: "splitItem", id: "clip", frame: 105, newId: "tail" }],
     [{ type: "trimItem", id: "clip", from: 90, duration: 120 }],

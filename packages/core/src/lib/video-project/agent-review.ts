@@ -4,7 +4,11 @@ import {
   parseVideoProjectDocument,
   type VideoProjectDocument,
 } from "./document";
-import { rebaseVideoProjectCommands } from "./commands";
+import {
+  executeVideoProjectCommands,
+  rebaseVideoProjectCommands,
+} from "./commands";
+import { generatedTrackCommands } from "./agent-tracks";
 import type { VideoProjectAgentProposal } from "./agent-types";
 import type { VideoProjectSnapshot } from "./types";
 import type {
@@ -141,6 +145,7 @@ export async function prepareNativeAgentReview(input: {
   baseHash: string;
   proposal: VideoProjectAgentProposal;
   current: VideoProjectSnapshot;
+  organizeTracks?: boolean;
 }): Promise<{
   review: NativeReviewDetails;
   beforeDocument: VideoProjectDocument;
@@ -161,6 +166,14 @@ export async function prepareNativeAgentReview(input: {
     input.proposal.commands,
   );
   if (!rebased.ok) throw new NativeReviewConflict(rebased.reason);
+  const placement =
+    input.organizeTracks === false
+      ? []
+      : generatedTrackCommands(current, rebased.document);
+  const commands = [...rebased.commands, ...placement];
+  const result = placement.length
+    ? executeVideoProjectCommands(current, commands)
+    : rebased;
   const propagatedItemIds = input.proposal.propagatedItemIds ?? [];
   const basis: NativeReviewBasis = {
     baseRevision: input.current.revision,
@@ -170,25 +183,25 @@ export async function prepareNativeAgentReview(input: {
       input.baseHash,
       input.proposal,
     ),
-    afterHash: await hashVideoProjectDocument(rebased.document),
+    afterHash: await hashVideoProjectDocument(result.document),
   };
   return {
     beforeDocument: current,
-    afterDocument: rebased.document,
+    afterDocument: result.document,
     review: {
       basis,
-      commands: rebased.commands,
-      impact: propagatedItemIds.length ? "review" : rebased.impact,
+      commands,
+      impact: propagatedItemIds.length ? "review" : result.impact,
       ...describeNativeAffectedRanges(
         current,
-        rebased.document,
-        rebased.changedItemIds,
+        result.document,
+        result.changedItemIds,
         propagatedItemIds,
       ),
       changedItemIds: nativeChangedItemIds(
         current,
-        rebased.document,
-        rebased.changedItemIds,
+        result.document,
+        result.changedItemIds,
       ),
       propagatedItemIds,
       before: {
@@ -196,8 +209,8 @@ export async function prepareNativeAgentReview(input: {
         durationInFrames: current.format.durationInFrames,
       },
       after: {
-        fps: rebased.document.format.fps,
-        durationInFrames: rebased.document.format.durationInFrames,
+        fps: result.document.format.fps,
+        durationInFrames: result.document.format.durationInFrames,
       },
     },
   };

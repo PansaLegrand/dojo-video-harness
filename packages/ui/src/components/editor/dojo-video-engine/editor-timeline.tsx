@@ -1,12 +1,13 @@
 "use client";
 
 import { type CSSProperties, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Eye, EyeOff, Lock, Unlock, Volume2, VolumeX, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Lock, Unlock, Volume2, VolumeX, Trash2, Code2, Box, Type, Subtitles, Languages, Film, Image as ImageIcon, Music, Shapes, Activity } from "lucide-react";
 import type {
   EditorDocument,
   EditorItem,
   EditorTrack,
 } from "@/lib/editor/document";
+import { editorItemKind, editorItemKinds, editorTimelineTracks, editorTimelineTrackName, type EditorItemKind } from "@/lib/editor/timeline-tracks";
 import { useEditorInteraction } from "./editor-interaction";
 import { useNativeEditorText } from "./native-editor-copy";
 import { TIMELINE_SELECTION_HELP, type TimelineSelectionGesture } from "@/lib/video-project/selection";
@@ -32,6 +33,13 @@ type Drag = {
   ids: readonly string[];
   minFrom: number;
 };
+const itemColors: Record<EditorItemKind, string> = {
+  video: "bg-blue-800", image: "bg-sky-800", audio: "bg-emerald-800", text: "bg-indigo-800",
+  subtitles: "bg-amber-800", translation: "bg-orange-800", svg: "bg-teal-800", three: "bg-fuchsia-800",
+  graphics: "bg-violet-800", visualizer: "bg-pink-800",
+};
+const itemIcons = { video: Film, image: ImageIcon, audio: Music, text: Type, subtitles: Subtitles,
+  translation: Languages, svg: Code2, three: Box, graphics: Shapes, visualizer: Activity };
 const ROW_HEIGHT = 58;
 const TRACK_LABEL_WIDTH = 144;
 
@@ -75,6 +83,7 @@ export function EditorTimeline({
   onDeleteTrack: (id: string) => void;
 }) {
   const t = useNativeEditorText();
+  const tracks = useMemo(() => editorTimelineTracks(document.tracks), [document.tracks]);
   const interaction = useEditorInteraction();
   const readPlayhead = useEditorPlayheadReader(frame);
   const keyboardHelpId = useId();
@@ -110,12 +119,12 @@ export function EditorTimeline({
   const dragRef = useRef<Drag | null>(null);
   const { fps, durationInFrames } = document.format;
   const index = useMemo(() => createTimelineIndex(document.items), [document.items]);
-  const trackIndices = useMemo(() => new Map(document.tracks.map((track, index) => [track.id, index])), [document.tracks]);
+  const trackIndices = useMemo(() => new Map(tracks.map((track, index) => [track.id, index])), [tracks]);
   const orderedIds = useMemo(() => {
-    const groups = new Map(document.tracks.map(track => [track.id, [] as string[]]));
+    const groups = new Map(tracks.map(track => [track.id, [] as string[]]));
     document.items.forEach(item => groups.get(item.trackId)?.push(item.id));
-    return document.tracks.flatMap(track => groups.get(track.id)!);
-  }, [document.items, document.tracks]);
+    return tracks.flatMap(track => groups.get(track.id)!);
+  }, [document.items, tracks]);
   const itemOrder = useMemo(() => new Map(orderedIds.map((id, index) => [id, index])), [orderedIds]);
   const selectedTrackId = drag?.nextTrackId ?? index.byId.get(selectedId ?? "")?.item.trackId;
   const pxPerFrame = zoom / fps;
@@ -130,10 +139,10 @@ export function EditorTimeline({
   const movingIds = useMemo(() => new Set(drag?.mode === "move" ? drag.ids : []), [drag?.mode, drag?.ids]);
   const moveDelta = drag?.mode === "move" ? drag.nextFrom - drag.from : 0;
   const trackDelta = drag?.mode === "move" ? (trackIndices.get(drag.nextTrackId) ?? 0) - (trackIndices.get(drag.trackId) ?? 0) : 0;
-  const windowRows = visibleTimelineTracks(document.tracks.length, viewport.top, viewport.height - 28, ROW_HEIGHT);
+  const windowRows = visibleTimelineTracks(tracks.length, viewport.top, viewport.height - 28, ROW_HEIGHT);
   const originRows = drag?.mode === "move" ? windowRows.map(row => row - trackDelta) : [];
-  const renderedTrackIndices = visibleTimelineTracks(document.tracks.length, viewport.top, viewport.height - 28, ROW_HEIGHT, [...pinnedTracks, ...originRows]);
-  const renderedTracks = renderedTrackIndices.map(index => document.tracks[index]!);
+  const renderedTrackIndices = visibleTimelineTracks(tracks.length, viewport.top, viewport.height - 28, ROW_HEIGHT, [...pinnedTracks, ...originRows]);
+  const renderedTracks = renderedTrackIndices.map(index => tracks[index]!);
   const visibleFrom = Math.max(0, (viewport.left - 240) / pxPerFrame);
   const visibleEnd = (viewport.left + visibleWidth + 240) / pxPerFrame;
 
@@ -195,7 +204,7 @@ export function EditorTimeline({
       const controls = label.querySelectorAll<HTMLElement>("button:not(:disabled)");
       if (target !== controls.item(event.shiftKey ? 0 : controls.length - 1)) return;
       const row = trackIndices.get(trackId)! + (event.shiftKey ? -1 : 1);
-      const nextTrack = document.tracks[row];
+      const nextTrack = tracks[row];
       if (nextTrack) { event.preventDefault(); requestTrackFocus(nextTrack.id, event.shiftKey); }
       else if (!event.shiftKey && orderedIds[0]) { event.preventDefault(); requestItemFocus(orderedIds[0]); }
       return;
@@ -207,7 +216,7 @@ export function EditorTimeline({
     if (ordinal === undefined) return;
     const next = orderedIds[ordinal + (event.shiftKey ? -1 : 1)];
     if (!next) {
-      const lastTrack = document.tracks.at(-1);
+      const lastTrack = tracks.at(-1);
       if (event.shiftKey && lastTrack) { event.preventDefault(); requestTrackFocus(lastTrack.id, true); }
       return;
     }
@@ -220,7 +229,7 @@ export function EditorTimeline({
     item: EditorItem,
     mode: Drag["mode"],
   ) {
-    const track = document.tracks.find(
+    const track = tracks.find(
       (candidate) => candidate.id === item.trackId,
     );
     if (event.button !== 0) return;
@@ -268,15 +277,15 @@ export function EditorTimeline({
     const next = { ...current };
     if (current.mode === "move") {
       next.nextFrom = current.timeLocked ? current.from : current.from + Math.max(-current.minFrom, delta);
-      const trackIndex = document.tracks.findIndex(
+      const trackIndex = tracks.findIndex(
         (track) => track.id === current.trackId,
       );
       const target =
-        document.tracks[
+        tracks[
           Math.max(
             0,
             Math.min(
-              document.tracks.length - 1,
+              tracks.length - 1,
               trackIndex + Math.round((clientY - current.y + scrollTop - current.scrollTop) / ROW_HEIGHT),
             ),
           )
@@ -284,11 +293,11 @@ export function EditorTimeline({
       if (
         target &&
         !target.locked &&
-        target.kind === document.tracks[trackIndex]?.kind &&
+        target.kind === tracks[trackIndex]?.kind &&
         current.ids.every(id => {
           const original = trackIndices.get(index.byId.get(id)!.item.trackId)!;
-          const destination = document.tracks[original + document.tracks.indexOf(target) - trackIndex];
-          return destination && !destination.locked && destination.kind === document.tracks[original]!.kind;
+          const destination = tracks[original + tracks.indexOf(target) - trackIndex];
+          return destination && !destination.locked && destination.kind === tracks[original]!.kind;
         })
       )
         next.nextTrackId = target.id;
@@ -330,7 +339,7 @@ export function EditorTimeline({
     return () => cancelAnimationFrame(animation);
     // During a drag the source item stays in its original row to retain capture.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drag?.id, document.items, document.tracks, pxPerFrame]);
+  }, [drag?.id, document.items, tracks, pxPerFrame]);
 
   function finish(event: React.PointerEvent) {
     const before = dragRef.current;
@@ -361,7 +370,7 @@ export function EditorTimeline({
 
   function keyboardTrim(event: React.KeyboardEvent<HTMLButtonElement>, item: EditorItem, mode: "start" | "end") {
     if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
-    if (disabled || document.tracks.find(track => track.id === item.trackId)?.locked || item.visualizerSourceItemId || timingLockedIds.has(item.id)) return;
+    if (disabled || tracks.find(track => track.id === item.trackId)?.locked || item.visualizerSourceItemId || timingLockedIds.has(item.id)) return;
     const range = timelineKeyboardAdjustment(event, mode, { from: item.node.from ?? 0, duration: item.node.duration ?? 1, fps });
     if (!range) return;
     event.preventDefault();
@@ -413,7 +422,7 @@ export function EditorTimeline({
         className="editor-timeline-scroll" style={{ "--editor-track-label-width": `${TRACK_LABEL_WIDTH}px` } as CSSProperties}>
         <div className="editor-timeline-labels sticky left-0 z-30 shrink-0 border-r border-[var(--editor-border)] bg-[var(--editor-panel)]" style={{ width: TRACK_LABEL_WIDTH }}>
           <div className="sticky top-0 z-30 h-7 border-b border-[var(--editor-border)] bg-[var(--editor-panel)]" />
-          <div className="relative" style={{ height: document.tracks.length * ROW_HEIGHT }}>
+          <div className="relative" style={{ height: tracks.length * ROW_HEIGHT }}>
           {renderedTracks.map((track) => (
             <div
               key={track.id}
@@ -424,7 +433,7 @@ export function EditorTimeline({
               className="flex flex-col justify-center gap-1 border-b border-[var(--editor-border)] px-2"
             >
               <span className="truncate text-xs text-[var(--editor-text)]">
-                {t(track.name)}
+                {editorTimelineTrackName(track, document.items, t)}
               </span>
               <div className="flex gap-2 text-[var(--editor-muted)]">
                 <button
@@ -460,9 +469,9 @@ export function EditorTimeline({
                 {!index.tracks.has(track.id) && <button
                   type="button"
                   className="editor-track-delete"
-                  aria-label={`${t("Delete empty track")}: ${t(track.name)}`}
-                  title={t(track.locked ? "Unlock the track to delete it" : document.tracks.length < 2 ? "Keep at least one track" : "Delete empty track")}
-                  disabled={disabled || !!drag || track.locked || document.tracks.length < 2}
+                  aria-label={`${t("Delete empty track")}: ${editorTimelineTrackName(track, document.items, t)}`}
+                  title={t(track.locked ? "Unlock the track to delete it" : tracks.length < 2 ? "Keep at least one track" : "Delete empty track")}
+                  disabled={disabled || !!drag || track.locked || tracks.length < 2}
                   onPointerDown={event => event.stopPropagation()}
                   onKeyDown={event => event.stopPropagation()}
                   onClick={event => { event.stopPropagation(); onDeleteTrack(track.id); }}
@@ -489,7 +498,7 @@ export function EditorTimeline({
               ))}
               <EditorTimelinePlayhead pxPerFrame={pxPerFrame} frame={frame} head />
             </div>
-            <div className="relative" style={{ height: document.tracks.length * ROW_HEIGHT }}>
+            <div className="relative" style={{ height: tracks.length * ROW_HEIGHT }}>
             {renderedTracks.map((track) => {
               const normal = visibleTimelineItems(index, track.id, visibleFrom, visibleEnd, pinnedIds);
               const moving = movingIds.size ? visibleTimelineItems(index, track.id, visibleFrom - moveDelta, visibleEnd - moveDelta).filter(item => movingIds.has(item.id)) : [];
@@ -512,6 +521,8 @@ export function EditorTimeline({
                       drag?.id === item.id
                         ? drag.nextDuration
                         : (item.node.duration ?? 1);
+                    const kind = editorItemKind(item);
+                    const KindIcon = itemIcons[kind];
                     const preview = previews[item.node.assetId ?? ""];
                     const assetDuration =
                       document.assets[item.node.assetId ?? ""]
@@ -526,12 +537,14 @@ export function EditorTimeline({
                       <div
                         key={item.id}
                         data-timeline-item={item.id}
+                        data-item-kind={kind}
+                        aria-description={t(editorItemKinds[kind])}
                         ref={element => { if (element) itemElements.current.set(item.id, element); else itemElements.current.delete(item.id); }}
                         role="button"
                         tabIndex={0}
                         aria-label={`${item.name}, ${(from / fps).toFixed(2)} seconds, ${(duration / fps).toFixed(2)} seconds long`}
                         aria-pressed={selectedSet.has(item.id)}
-                        className={`editor-timeline-item absolute top-1.5 flex h-11 touch-none items-center rounded border px-3 text-xs text-white shadow-sm border-white/10 ${item.caption ? "bg-amber-800" : item.node.type === "audio" ? "bg-emerald-800" : item.node.type === "text" ? "bg-indigo-800" : item.node.type === "effect" ? "bg-pink-800" : "bg-violet-800"} ${track.hidden ? "opacity-40" : ""} ${track.locked ? "cursor-not-allowed" : "cursor-grab"}`}
+                        className={`editor-timeline-item absolute top-1.5 flex h-11 touch-none items-center rounded border px-3 text-xs text-white shadow-sm border-white/10 ${itemColors[kind]} ${track.hidden ? "opacity-40" : ""} ${track.locked ? "cursor-not-allowed" : "cursor-grab"}`}
                         style={{
                           left: from * pxPerFrame,
                           top: movingIds.has(item.id) ? 6 + trackDelta * ROW_HEIGHT : undefined,
@@ -658,8 +671,10 @@ export function EditorTimeline({
                           onClick={event => { event.stopPropagation(); onDeleteItem(item.id); }}
                         ><Trash2 size={14} /></button>}
                         <span className="editor-clip-name pointer-events-none relative z-10 ml-1.5 min-w-0 truncate rounded bg-black/40 px-1">
+                          <KindIcon size={12} className="mr-1 inline-block shrink-0" aria-hidden="true" />
                           {item.name}
                         </span>
+                        {(kind === "svg" || kind === "three") && duration * pxPerFrame >= 200 && <span className="editor-clip-kind">{kind === "svg" ? t("SVG / Vector") : "Three.js"}</span>}
                         <button
                           aria-label={`Trim end of ${item.name}`}
                           aria-describedby={keyboardHelpId}

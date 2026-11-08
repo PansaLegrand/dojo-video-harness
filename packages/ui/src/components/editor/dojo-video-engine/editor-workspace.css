@@ -115,6 +115,13 @@
 .editor-center { isolation: isolate; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .editor-preview { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
 .editor-preview-stage { container-type: size; position: relative; flex: 1; min-height: 0; padding: 24px; overflow: hidden; background-color: var(--editor-surface); background-image: linear-gradient(to right, #80808014 1px, transparent 1px), linear-gradient(to bottom, #80808014 1px, transparent 1px); background-size: 16px 16px; }
+.editor-missing-media { margin: auto; width: min(100%, 500px); max-height: 100%; overflow: auto; overscroll-behavior: contain; padding: 20px; border: 1px solid var(--editor-border); border-radius: 12px; background: var(--editor-panel); color: var(--editor-text); text-align: center; }
+.editor-missing-media h2 { margin: 10px 0; font-size: 18px; font-weight: 600; }
+.editor-missing-media p { margin: 8px 0; font-size: 13px; line-height: 1.5; color: var(--editor-muted); }
+.editor-missing-media ul { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; list-style: none; }
+.editor-missing-media li { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; font-size: 13px; overflow-wrap: anywhere; }
+.editor-missing-media li span { flex: 1 1 160px; }
+.editor-missing-media button { flex-shrink: 0; max-width: 100%; white-space: normal; }
 .editor-preview-stage:fullscreen { padding: 24px; }
 .editor-empty-preview { position: absolute; z-index: 2; inset: 0; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; text-align: center; color: #f8fafc; margin: auto; width: min(100%, calc(100cqh * var(--editor-aspect-ratio))); max-height: 100%; padding: 18px; pointer-events: none; }
 .editor-empty-preview h2 { font-size: 20px; font-weight: 600; }
@@ -204,6 +211,7 @@
 
 /* Selection is distinct from hover and remains clear over thumbnails and audio. */
 .editor-timeline-item { isolation: isolate; z-index: 0; }
+.editor-clip-kind { position: relative; z-index: 10; flex-shrink: 0; margin-left: auto; padding: 2px 4px; border: 1px solid #ffffff50; border-radius: 4px; background: #0005; font-size: 9px; font-weight: 600; }
 .editor-timeline-item:hover:not([aria-pressed="true"]) { border-color: var(--editor-selection); }
 .editor-timeline-item[aria-pressed="true"] { z-index: 5; border-color: var(--editor-selection); background-color: var(--editor-selection-fill); box-shadow: 0 0 0 2px var(--editor-panel), 0 0 0 5px var(--editor-selection); }
 .editor-timeline-item[aria-pressed="true"] .editor-clip-name { background: #fff; color: #172554; font-weight: 700; }

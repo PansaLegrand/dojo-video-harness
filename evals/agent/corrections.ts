@@ -71,6 +71,11 @@ export function gradeCorrection(
     target = { itemId: added[0].id, textId: texts[0].id };
     assert.equal(added[0].node.from, 0);
     assert.equal(added[0].node.duration, 150);
+    assert.equal(
+      after.tracks.find((track) => track.id === added[0].trackId)?.kind,
+      "visual",
+      "The title belongs on a visual lane",
+    );
   } else {
     assert(target, "Missing grader target");
     assert.equal(added.length, 0, "Corrections must not duplicate the title");
@@ -86,9 +91,42 @@ export function gradeCorrection(
   const text = allNodes(item.node).find((node) => node.id === target.textId);
   assert(text?.type === "text", "Keep original text node ID");
   assert.equal(text.text, "Hello", "Preserve wording");
+  const oldTracks = new Set(before.tracks.map((track) => track.id));
+  const newTracks = after.tracks.filter((track) => !oldTracks.has(track.id));
+  if (turn === 0) {
+    assert(
+      newTracks.length <= 1,
+      "At most one target-owned title lane may be created",
+    );
+    for (const track of newTracks) {
+      assert.equal(
+        track.id,
+        item.trackId,
+        "A new lane must contain the requested title",
+      );
+      assert.equal(track.kind, "visual");
+      assert.equal(track.locked || track.hidden || track.muted, false);
+      assert.match(track.name, /^Text(?: \d+)?$/);
+      assert.deepEqual(
+        after.items
+          .filter((candidate) => candidate.trackId === track.id)
+          .map((candidate) => candidate.id),
+        [target.itemId],
+      );
+    }
+  } else
+    assert.equal(
+      newTracks.length,
+      0,
+      "Style corrections must retain all existing lanes",
+    );
   const withoutTarget = (document: VideoProjectDocument) => ({
     ...document,
     items: document.items.filter((item) => item.id !== target!.itemId),
+    tracks:
+      turn === 0
+        ? document.tracks.filter((track) => oldTracks.has(track.id))
+        : document.tracks,
   });
   assert.deepEqual(
     withoutTarget(after),

@@ -8,6 +8,11 @@ DojoClip components behind local host adapters. Rendering comes from versioned
 `@dojo-video-engine/*` npm packages; a sibling engine/product checkout is not needed
 to run the application or its normal CI.
 
+The DojoClip web UI is the gold reference for managed components. The open-source
+engine and harness are upstream for renderer and agent runtime development;
+commercial hosts consume them while retaining their own accounts, billing, jobs
+and persistence. See [synchronization/readiness](docs/synchronization-readiness-2026-11-08.md).
+
 Start with:
 
 1. [README.md](README.md) for startup, provider configuration and supported scope.
@@ -33,25 +38,26 @@ Keep the loop small: domain invariants belong in the command kernel, transport
 in adapters, and persistence/approval in the host. Next.js serves the application;
 it does not own the domain's commit semantics.
 
-| Location                                                                                      | Responsibility                                                                           |
-| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `app/`, `middleware.ts`                                                                       | English pages, local routing and HTTP boundary                                           |
-| `app/api/[...path]/route.ts`, `apps/server/src/next-route.ts`, `apps/server/src/local-api.ts` | Next route adapter and local service dispatch                                            |
-| `apps/server/src/agent-service.ts`                                                            | Durable runs, clarification, comparison, approval, cancellation and selective undo       |
-| `apps/server/src/store.ts`, `apps/server/src/atomic-replace.ts`                               | Serialized local transactions, document revisions, receipts and atomic file writes       |
-| `apps/server/src/provider-settings.ts`, `apps/server/src/exports.ts`                          | Private provider configuration and saved-output handling                                 |
-| `packages/agent-kit/src/`                                                                     | Shared tool metadata/schemas, capability-gated skill snapshots and prompt composition    |
-| `packages/agent/src/loop.ts`, `tools.ts`, `skills.ts`, `types.ts`                             | Bounded loop, trusted tool registry, Markdown skill loading and model interface          |
-| `packages/adapters/src/`                                                                      | GPT Responses, ASR and bounded provider HTTP                                             |
-| `packages/core/src/lib/video-project/`                                                        | Document, commands, source clocks, capabilities, compilation, scope and review semantics |
-| `packages/ui/src/components/editor/dojo-video-engine/`                                        | Shared manual editor, timeline and chat/review UI                                        |
-| `packages/ui/src/host/`                                                                       | Local user, provider requests and product-copy adapters                                  |
-| `apps/server/src/music-service.ts`, `music-tools.ts`, `editing-workflow.ts`                   | Durable approved music jobs and compound editing plans                                   |
-| `apps/server/src/skill-loader.ts`, `packages/ui/src/host/harness-editor.tsx`                  | Bounded local Markdown loading and local-only editor extensions                          |
-| `skills/`, `evals/agent/`, `tests/`                                                           | Domain guidance, outcome-graded scenarios and host/agent regression tests                |
-| `config/product-ui.manifest.json`, `scripts/sync-product-ui.mjs`                              | Managed UI hashes and conflict-aware synchronization                                     |
-| `config/engine-release.json`, `package-lock.json`                                             | Engine provenance and exact installed dependency graph                                   |
-| `tsconfig.json`, `config/aliases.ts`, `vitest.config.ts`                                      | Source-workspace resolution and test discovery                                           |
+| Location                                                                                      | Responsibility                                                                               |
+| --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `app/`, `middleware.ts`                                                                       | English pages, local routing and HTTP boundary                                               |
+| `app/api/[...path]/route.ts`, `apps/server/src/next-route.ts`, `apps/server/src/local-api.ts` | Next route adapter and local service dispatch                                                |
+| `apps/server/src/agent-service.ts`                                                            | Durable runs, clarification, comparison, approval, cancellation and selective undo           |
+| `apps/server/src/store.ts`, `apps/server/src/atomic-replace.ts`                               | Serialized local transactions, document revisions, receipts and atomic file writes           |
+| `apps/server/src/provider-settings.ts`, `apps/server/src/exports.ts`                          | Private provider configuration and saved-output handling                                     |
+| `packages/agent-kit/src/`                                                                     | Shared tool metadata/schemas, capability-gated skill snapshots and prompt composition        |
+| `packages/agent/src/loop.ts`, `tools.ts`, `skills.ts`, `types.ts`                             | Bounded loop, trusted tool registry, Markdown skill loading and model interface              |
+| `packages/adapters/src/`                                                                      | GPT Responses, ASR and bounded provider HTTP                                                 |
+| `packages/core/src/lib/video-project/`                                                        | Document, commands, source clocks, capabilities, compilation, scope and review semantics     |
+| `packages/ui/src/components/editor/dojo-video-engine/`                                        | Shared manual editor, timeline and chat/review UI                                            |
+| `packages/ui/src/host/`                                                                       | Local user, provider requests and product-copy adapters                                      |
+| `apps/server/src/music-service.ts`, `music-tools.ts`, `editing-workflow.ts`                   | Durable approved music jobs and compound editing plans                                       |
+| `apps/server/src/agent-speech.ts`                                                             | Consent, source-bound ASR prerequisite receipts and continuation of the original instruction |
+| `apps/server/src/skill-loader.ts`, `packages/ui/src/host/harness-editor.tsx`                  | Bounded local Markdown loading and local-only editor extensions                              |
+| `skills/`, `evals/agent/`, `tests/`                                                           | Domain guidance, outcome-graded scenarios and host/agent regression tests                    |
+| `config/product-ui.manifest.json`, `scripts/sync-product-ui.mjs`                              | Managed UI hashes and conflict-aware synchronization                                         |
+| `config/engine-release.json`, `package-lock.json`                                             | Engine provenance and exact installed dependency graph                                       |
+| `tsconfig.json`, `config/aliases.ts`, `vitest.config.ts`                                      | Source-workspace resolution and test discovery                                               |
 
 The current loop already supports model → tool → observation and bounded validation
 correction. Ordinary local editor requests apply automatically after the browser
@@ -59,6 +65,9 @@ saves active manual edits. Compare and Undo remain available afterward. The mode
 returns validated commands; the host controls application. Headless evaluation
 hosts default to review mode, and paid/cloud workflows retain their approvals.
 This is not an autonomous render/inspect/revise loop. Multiple commands may form one proposal.
+Ordinary speech-dependent chat can obtain missing ASR evidence after consent;
+it is not limited to the optional join/logo workflow. Keep the full instruction,
+frozen source identity, task receipts and cancellation/restart fences through continuation.
 Use the readiness plan to qualify this actual workflow before broadening claims.
 
 ## Startup and development commands

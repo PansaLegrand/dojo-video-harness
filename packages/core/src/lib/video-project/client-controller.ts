@@ -10,6 +10,7 @@ import {
   type WorkspaceRecoveryStore,
 } from "./recovery-storage";
 import { timelineSelection, type TimelineSelectionGesture } from "./selection";
+import { editorTimelineTracks } from "@/lib/editor/timeline-tracks";
 import type { EditorCommand } from "@/lib/editor/commands";
 import {
   editorCommandsToVideoCommands,
@@ -670,11 +671,10 @@ export class VideoWorkspaceController {
   selectTimelineItem(itemId: string, gesture: TimelineSelectionGesture = {}) {
     const document = this.state.document;
     if (!document?.items.some((item) => item.id === itemId)) return;
-    const groups = new Map(
-      document.tracks.map((track) => [track.id, [] as string[]]),
-    );
+    const tracks = editorTimelineTracks(document.tracks);
+    const groups = new Map(tracks.map((track) => [track.id, [] as string[]]));
     document.items.forEach((item) => groups.get(item.trackId)?.push(item.id));
-    const order = document.tracks.flatMap((track) => groups.get(track.id)!);
+    const order = tracks.flatMap((track) => groups.get(track.id)!);
     const selection = timelineSelection(
       this.state.selectedItemIds,
       this.state.selectedItemId,
