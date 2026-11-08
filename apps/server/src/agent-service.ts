@@ -44,6 +44,7 @@ import type { NativeAgentRequest } from "../../../packages/core/src/lib/video-pr
 import {
   prepareAgentSpeech,
   assertAgentSpeechEvidence,
+  agentSpeechBasisMatches,
   type AgentSpeechPort,
 } from "./agent-speech";
 import { parseVideoProjectDocument } from "../../../packages/core/src/lib/video-project/document";
@@ -297,7 +298,7 @@ export class AgentService {
       })
       .strict()
       .parse(raw);
-    const run = await this.store.transaction(projectId, (p) => {
+    const run = await this.store.transaction(projectId, async (p) => {
       const r = runOf(p, id);
       if (r.status !== "needs_evidence") return r;
       if (
@@ -305,7 +306,8 @@ export class AgentService {
         p.documentHash !== input.baseHash
       )
         throw new HttpError("Refresh the project before continuing.", 409);
-      if (p.documentHash !== r.baseHash || p.revision !== r.baseRevision) {
+      if (input.cloudConsent) r.cloudConsent = true;
+      if (!(await agentSpeechBasisMatches(p, r))) {
         r.status = "stale";
         r.phase = "stale";
         r.error = {
@@ -315,7 +317,6 @@ export class AgentService {
         r.updatedAt = new Date().toISOString();
         return r;
       }
-      if (input.cloudConsent) r.cloudConsent = true;
       return r;
     });
     if (run.status === "needs_evidence") this.launch(projectId, id);

@@ -217,11 +217,24 @@ it("waits for consent and local upload, deduplicates resumes, then stages eviden
     p.sources[0].status = "available";
     p.sources[0].assetId = "speech";
   });
+  await f.store.commit(f.p.id, {
+    operationId: "consented-upload",
+    baseHash: f.p.documentHash,
+    baseRevision: f.p.revision,
+    commands: [
+      {
+        type: "bindAsset",
+        id: "speech",
+        assetId: "speech",
+        sourceRevision: "source-v1",
+      },
+    ],
+  });
   await Promise.all(Array.from({ length: 8 }, () => resume(f)));
   const task = await readyTask(f);
   expect(f.port.start).toHaveBeenCalledTimes(1);
   expect(f.model.complete).not.toHaveBeenCalled();
-  expect((await f.store.read(f.p.id)).documentHash).toBe(f.p.documentHash);
+  expect((await f.store.read(f.p.id)).document.evidence).toEqual({});
   task.status = "completed";
   task.raw_asr_result = rawAsr;
   await Promise.all(Array.from({ length: 8 }, () => resume(f)));
@@ -551,4 +564,30 @@ it("preserves the approval card before ASR for the fully represented basic workf
       ),
     }),
   ).toBe(false);
+});
+
+it("rejects source-revision or unrelated asset metadata changes disguised as upload promotion", async () => {
+  for (const tamper of ["revision", "metadata"] as const) {
+    const f = await fixture();
+    await f.agent.start(f.p.id, { ...f.input, cloudConsent: true });
+    await waitFor(f, "needs_evidence");
+    await f.store.transaction(f.p.id, async (p) => {
+      p.sources[0].status = "available";
+      p.sources[0].assetId = "speech";
+      const document = structuredClone(p.document);
+      document.assets.speech = {
+        ...document.assets.speech,
+        source: "project",
+        assetId: "speech",
+      };
+      if (tamper === "revision")
+        document.sources.speech.revision = "unowned-revision";
+      else document.assets.speech.name = "Changed source metadata";
+      await commitDocument(p, document);
+    });
+    await resume(f);
+    expect((await f.store.read(f.p.id)).runs[0].status).toBe("stale");
+    expect(f.port.start).not.toHaveBeenCalled();
+    expect(f.model.complete).not.toHaveBeenCalled();
+  }
 });

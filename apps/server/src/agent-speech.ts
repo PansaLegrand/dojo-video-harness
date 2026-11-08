@@ -113,6 +113,38 @@ function currentSource(p: Project, frozen: AgentSpeechSource) {
   return source;
 }
 
+/** The shared UI durably promotes a consented local source after uploading.
+ * Reproduce only that owned binding; no authored item/style/timing edit is
+ * accepted as part of prerequisite preparation. Keep the original run basis. */
+export async function agentSpeechBasisMatches(p: Project, run: StoredRun) {
+  if (p.documentHash === run.baseHash) return true;
+  if (!run.cloudConsent || !run.speechContinuation) return false;
+  const base = parseVideoProjectDocument(run.request.document);
+  const commands: VideoProjectCommand[] = [];
+  for (const frozen of run.speechContinuation.sources) {
+    const source = currentSource(p, frozen);
+    if (
+      base.assets[frozen.assetId]?.source === "local" &&
+      p.document.assets[frozen.assetId]?.source === "project" &&
+      source.status === "available" &&
+      source.assetId &&
+      p.document.assets[frozen.assetId]?.assetId === source.assetId
+    )
+      commands.push({
+        type: "bindAsset",
+        id: frozen.assetId,
+        assetId: source.assetId,
+        sourceRevision: base.sources[frozen.assetId]!.revision,
+      });
+  }
+  return (
+    commands.length > 0 &&
+    (await hashVideoProjectDocument(
+      executeVideoProjectCommands(base, commands).document,
+    )) === p.documentHash
+  );
+}
+
 /** Replay the owned receipt at review/apply; stored model-facing evidence is
  * never sufficient authority by itself. This never starts provider work. */
 export async function assertAgentSpeechEvidence(
@@ -178,11 +210,11 @@ export async function prepareAgentSpeech(
   port: AgentSpeechPort,
   signal: AbortSignal,
 ): Promise<NativeAgentRequest | null> {
-  const run = await store.transaction(projectId, (p) => {
+  const run = await store.transaction(projectId, async (p) => {
     const r = runOf(p, runId);
     if (r.status === "cancelled") return null;
     if (port.defer?.(r.request)) return r;
-    if (p.documentHash !== r.baseHash || p.revision !== r.baseRevision)
+    if (!(await agentSpeechBasisMatches(p, r)))
       throw new HttpError("The project changed. Start a new request.", 409);
     const document = parseVideoProjectDocument(r.request.document);
     if (
@@ -310,7 +342,7 @@ export async function prepareAgentSpeech(
   return store.transaction(projectId, async (p) => {
     const r = runOf(p, runId);
     if (r.status === "cancelled") return null;
-    if (p.documentHash !== r.baseHash || p.revision !== r.baseRevision)
+    if (!(await agentSpeechBasisMatches(p, r)))
       throw new HttpError("The project changed. Start a new request.", 409);
     const sources = r.speechContinuation!.sources;
     sources.forEach((s) => currentSource(p, s));
