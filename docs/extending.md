@@ -1,5 +1,10 @@
 # Add a capability without growing the loop
 
+See [the agent system map](agent-system.md). Shared built-in definitions live in
+`packages/agent-kit`; local `packages/agent` supplies kernel ports and the host
+registers external services. The kit returns the active capability inventory and
+filters named skills by their required executors.
+
 ## A read-only tool
 
 Implement `AgentTool` from `packages/agent/src/tools.ts` and pass it through

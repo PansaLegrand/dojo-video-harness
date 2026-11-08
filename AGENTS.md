@@ -40,6 +40,7 @@ it does not own the domain's commit semantics.
 | `apps/server/src/agent-service.ts`                                                            | Durable runs, clarification, comparison, approval, cancellation and selective undo       |
 | `apps/server/src/store.ts`, `apps/server/src/atomic-replace.ts`                               | Serialized local transactions, document revisions, receipts and atomic file writes       |
 | `apps/server/src/provider-settings.ts`, `apps/server/src/exports.ts`                          | Private provider configuration and saved-output handling                                 |
+| `packages/agent-kit/src/`                                                                     | Shared tool metadata/schemas, capability-gated skill snapshots and prompt composition    |
 | `packages/agent/src/loop.ts`, `tools.ts`, `skills.ts`, `types.ts`                             | Bounded loop, trusted tool registry, Markdown skill loading and model interface          |
 | `packages/adapters/src/`                                                                      | GPT Responses, ASR and bounded provider HTTP                                             |
 | `packages/core/src/lib/video-project/`                                                        | Document, commands, source clocks, capabilities, compilation, scope and review semantics |
