@@ -209,6 +209,25 @@ try {
     root: temp,
     configFile: false,
     envDir: temp,
+    plugins: [
+      {
+        name: "reference-local-usage-copy",
+        enforce: "pre",
+        load(id) {
+          // Usage policy is deliberately host-owned. Compare the product UI with
+          // the same local copy adapter rather than commercial credit notices.
+          if (
+            id.split("?")[0] !==
+            path.join(
+              source,
+              "components/editor/motionforge/native-editor-copy.ts",
+            )
+          )
+            return;
+          return `export { useNativeEditorText } from ${JSON.stringify(path.join(root, "packages/ui/src/components/editor/dojo-video-engine/native-editor-copy.ts"))};`;
+        },
+      },
+    ],
     cacheDir: path.join(temp, ".vite"),
     optimizeDeps: {
       noDiscovery: true,
@@ -426,7 +445,7 @@ try {
       {
         checks,
         reference:
-          "Current DojoClip components with identical local project/i18n adapters",
+          "Current DojoClip components with identical local project/i18n/usage-copy adapters",
         host: "Production Next.js application",
       },
       null,
