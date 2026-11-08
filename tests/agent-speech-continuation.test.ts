@@ -416,16 +416,32 @@ it("reuses the same ASR receipt across a clarification child while preserving th
     cloudConsent: true,
   });
   const task = await readyTask(f);
+  await f.store.commit(f.p.id, {
+    operationId: "upload-before-question",
+    baseHash: f.p.documentHash,
+    baseRevision: f.p.revision,
+    commands: [
+      {
+        type: "bindAsset",
+        id: "speech",
+        assetId: "speech",
+        sourceRevision: "source-v1",
+      },
+    ],
+  });
   task.status = "completed";
   task.raw_asr_result = rawAsr;
   await resume(f);
   const parent = await waitFor(f, "needs_input");
+  const promoted = await f.store.read(f.p.id);
+  expect(parent.baseHash).toBe(f.p.documentHash);
+  expect(promoted.documentHash).not.toBe(parent.baseHash);
   const child = await f.agent.answer(f.p.id, started.run.id, {
     operationId: "answer",
     questionId: parent.clarification!.id,
     text: "Use a clean pop animation",
-    baseHash: f.p.documentHash,
-    baseRevision: f.p.revision,
+    baseHash: promoted.documentHash,
+    baseRevision: promoted.revision,
   });
   await expect
     .poll(async () => (await f.store.read(f.p.id)).runs[1]?.status)
@@ -437,7 +453,7 @@ it("reuses the same ASR receipt across a clarification child while preserving th
   expect(completed.speechContinuation!.sources[0].taskId).toBe(task.id);
   expect(f.port.start).toHaveBeenCalledTimes(1);
   expect(f.model.complete).toHaveBeenCalledTimes(2);
-  expect((await f.store.read(f.p.id)).documentHash).toBe(f.p.documentHash);
+  expect((await f.store.read(f.p.id)).documentHash).toBe(promoted.documentHash);
 });
 
 it("stops a waiting request after canonical manual edits instead of polling stale work forever", async () => {

@@ -440,7 +440,7 @@ export class AgentService {
   async answer(projectId: string, id: string, raw: unknown) {
     const input = nativeClarificationAnswerSchema.parse(raw);
     let created = false;
-    const child = await this.store.transaction(projectId, (p) => {
+    const child = await this.store.transaction(projectId, async (p) => {
       const parent = runOf(p, id),
         hash = canonicalSerialize(input),
         prior = parent.answers?.[input.operationId];
@@ -458,7 +458,7 @@ export class AgentService {
       if (
         input.baseHash !== p.documentHash ||
         input.baseRevision !== p.revision ||
-        parent.baseHash !== p.documentHash
+        !(await agentSpeechBasisMatches(p, parent))
       )
         throw new HttpError(
           "The project changed. Start a new request using the current project.",
