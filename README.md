@@ -32,7 +32,7 @@ npm run launch
 overwriting an existing file, checks the local environment, and starts the editor.
 It opens the browser automatically from an interactive terminal. Otherwise open
 **http://127.0.0.1:4310**. The engine is installed automatically from the public
-`@dojo-video-engine/*` npm packages, pinned to **1.2.1**; no separate engine clone
+`@dojo-video-engine/*` npm packages, pinned to **1.2.2**; no separate engine clone
 or pnpm installation is needed. Node 22 is pinned in `.nvmrc`.
 
 Create a project and import media. Manual editing, subtitle import, preview,
