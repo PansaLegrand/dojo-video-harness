@@ -640,6 +640,8 @@ it.each([
     if (++step === 1)
       return {
         text: "",
+        // Fixed synthetic counts permit the known second model turn.
+        usage: { inputTokens: 10, outputTokens: 5 },
         calls: ["title", "lowerThird", "caption"].map((kind, index) => ({
           id: `prepare-${kind}`,
           name: "prepare_text_overlay",
@@ -659,6 +661,7 @@ it.each([
     expect(commands).toHaveLength(3);
     return {
       text: "",
+      usage: { inputTokens: 10, outputTokens: 5 },
       calls: [
         {
           id: "supplied-edit",

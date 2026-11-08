@@ -221,6 +221,8 @@ const provider = createServer(async (req, res) => {
   res.end(
     JSON.stringify({
       status: "completed",
+      // Synthetic provider accounting for bounded multi-turn tests; no billing.
+      usage: { input_tokens: 10, output_tokens: 5 },
       output: [
         {
           type: "function_call",
