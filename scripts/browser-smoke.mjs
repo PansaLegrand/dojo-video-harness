@@ -7,6 +7,7 @@ import {
   verifyIntroOutro,
 } from "./lib/intro-outro-browser-proof.mjs";
 import { setupMusicProof } from "./lib/music-browser-proof.mjs";
+import { verifyMediaRecovery } from "./lib/media-recovery-browser-proof.mjs";
 import {
   realMediaReply,
   verifyRealMedia,
@@ -603,6 +604,17 @@ checksBlock: try {
     "media import stores bytes in IndexedDB, without provider calls",
     asrCalls === 0,
   );
+  await verifyMediaRecovery({
+    page,
+    api,
+    id,
+    clip,
+    source: audio,
+    tmp,
+    output,
+    check,
+    counts: () => ({ asrCalls }),
+  });
   await page.locator(`[data-timeline-item="${clip.id}"]`).click();
   await page
     .getByRole("button", {
