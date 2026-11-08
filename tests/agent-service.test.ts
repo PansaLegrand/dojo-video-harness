@@ -459,6 +459,8 @@ it("captures one model instance per run even when provider settings change betwe
   release({
     text: "",
     calls: [{ id: "inspect", name: "inspect_project", arguments: "{}" }],
+    // Fixed synthetic counts, not provider billing evidence.
+    usage: { inputTokens: 10, outputTokens: 5 },
   });
   const result = await settle(store, p.id);
   expect(result.runs.find((r) => r.id === started.run.id)?.status).toBe(

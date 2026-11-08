@@ -36,6 +36,10 @@ import type { EditingWorkflow } from "./editing-workflow";
 import type { MusicJob } from "./music-service";
 import type { ExportReceipt } from "./exports";
 import type { AgentSpeechContinuation } from "./agent-speech";
+import {
+  agentCheckpointRecovery,
+  type StoredAgentLoopCheckpoint,
+} from "./agent-loop-checkpoint";
 
 export class HttpError extends Error {
   constructor(
@@ -64,6 +68,7 @@ export type StoredRun = VideoProjectAgentRun & {
   appliedAfter?: VideoProjectDocument;
   answers?: Record<string, { hash: string; childId: string }>;
   speechContinuation?: AgentSpeechContinuation;
+  loopCheckpoint?: StoredAgentLoopCheckpoint;
 };
 export type Project = {
   id: string;
@@ -179,10 +184,24 @@ export class ProjectStore {
           "Cancel active edits before deleting this project.",
           409,
         );
-      if (Object.values(project.musicJobs ?? {}).some(job => ["submitting", "running", "downloading"].includes(job.status)))
-        throw new HttpError("Cancel active music generation before deleting this project.", 409);
-      if (Object.values(project.editingWorkflows ?? {}).some(plan => plan.status === "approved"))
-        throw new HttpError("Cancel active workflow preparation before deleting this project.", 409);
+      if (
+        Object.values(project.musicJobs ?? {}).some((job) =>
+          ["submitting", "running", "downloading"].includes(job.status),
+        )
+      )
+        throw new HttpError(
+          "Cancel active music generation before deleting this project.",
+          409,
+        );
+      if (
+        Object.values(project.editingWorkflows ?? {}).some(
+          (plan) => plan.status === "approved",
+        )
+      )
+        throw new HttpError(
+          "Cancel active workflow preparation before deleting this project.",
+          409,
+        );
       const trash = path.join(this.directory, "trash");
       await mkdir(trash, { recursive: true, mode: 0o700 });
       await atomicReplace(
@@ -261,7 +280,16 @@ export class ProjectStore {
       await this.transaction(id, (p) => {
         for (const run of p.runs)
           if (["queued", "running"].includes(run.status)) {
+            const checkpoint = agentCheckpointRecovery(p, run);
+            if (checkpoint.kind === "resume") {
+              run.status = "queued";
+              run.phase = "checkpoint_resume";
+              run.error = null;
+              run.updatedAt = new Date().toISOString();
+              continue;
+            }
             if (
+              checkpoint.kind === "none" &&
               run.speechContinuation &&
               !run.speechContinuation.modelStarted
             ) {
@@ -275,6 +303,7 @@ export class ProjectStore {
             run.error = {
               code: "INTERRUPTED",
               message:
+                checkpoint.message ??
                 "The local server restarted. No provider call was automatically repeated. Start a new request when ready.",
             };
             run.updatedAt = new Date().toISOString();
@@ -337,6 +366,7 @@ export function publicRun({
   appliedAfter: _after,
   answers: _answers,
   speechContinuation: _speech,
+  loopCheckpoint: _checkpoint,
   ...run
 }: StoredRun) {
   return {

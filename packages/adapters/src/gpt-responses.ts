@@ -110,7 +110,20 @@ function responseInput(
 
 /** GPT-only Responses transport. No SDK, retries, tool execution, or project writes. */
 export class GptResponsesModel implements LanguageModel {
-  constructor(private config: ProviderConfig) {}
+  readonly identity: string;
+  constructor(private config: ProviderConfig) {
+    this.config = { ...config };
+    const endpoint = new URL(config.baseUrl);
+    endpoint.username = "";
+    endpoint.password = "";
+    endpoint.search = "";
+    endpoint.hash = "";
+    this.identity = JSON.stringify({
+      adapter: "gpt-responses",
+      endpoint: endpoint.href.replace(/\/$/, ""),
+      model: config.model,
+    });
+  }
   async complete(
     messages: ChatMessage[],
     tools: ToolSpec[],

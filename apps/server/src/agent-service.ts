@@ -49,8 +49,14 @@ import {
 } from "./agent-speech";
 import { parseVideoProjectDocument } from "../../../packages/core/src/lib/video-project/document";
 import { nativeChangedItemIds } from "../../../packages/core/src/lib/video-project/agent-review";
+import {
+  agentCheckpointHistory,
+  createAgentCheckpointPort,
+  AgentCheckpointConflict,
+} from "./agent-loop-checkpoint";
 export class AgentService {
   private active = new Map<string, AbortController>();
+  private recovery?: Promise<void>;
   constructor(
     private store: ProjectStore,
     private model: LanguageModel | (() => LanguageModel),
@@ -63,6 +69,20 @@ export class AgentService {
     private applicationMode: "review" | "direct" = "review",
     private speech?: AgentSpeechPort,
   ) {}
+  /** Explicit startup recovery: only durable, checked boundaries are launched.
+   * In-flight provider/unsafe-tool outcomes remain failed for manual recovery. */
+  recover() {
+    return (this.recovery ??= this.recoverStoredRuns());
+  }
+  private async recoverStoredRuns() {
+    await this.store.recoverInterrupted();
+    for (const { id } of await this.store.list()) {
+      const project = await this.store.read(id);
+      for (const run of project.runs)
+        if (run.status === "queued" && run.phase === "checkpoint_resume")
+          this.launch(id, run.id);
+    }
+  }
   async start(projectId: string, raw: unknown) {
     const input = agentRunInputSchema.parse(raw),
       hash = canonicalSerialize(input);
@@ -153,17 +173,24 @@ export class AgentService {
       () => controller.abort(new Error("Agent deadline reached.")),
       180_000,
     );
-    const model = typeof this.model === "function" ? this.model() : this.model;
-    void this.execute(projectId, id, controller.signal, model)
+    void (async () => {
+      const model =
+        typeof this.model === "function" ? this.model() : this.model;
+      await this.execute(projectId, id, controller.signal, model);
+    })()
       .catch(async (cause) => {
         await this.store
           .transaction(projectId, (p) => {
             const run = runOf(p, id);
-            if (run.status === "cancelled") return;
+            if (!["queued", "running", "needs_evidence"].includes(run.status))
+              return;
             run.status = "failed";
             run.phase = "failed";
             run.error = {
-              code: "AGENT_FAILED",
+              code:
+                cause instanceof AgentCheckpointConflict
+                  ? cause.code
+                  : "AGENT_FAILED",
               message: cause instanceof Error ? cause.message : "Agent failed",
             };
             run.updatedAt = new Date().toISOString();
@@ -182,8 +209,25 @@ export class AgentService {
     signal: AbortSignal,
     model: LanguageModel,
   ) {
-    const request = this.speech
-      ? await prepareAgentSpeech(this.store, projectId, id, this.speech, signal)
+    const initial = await this.store.read(projectId);
+    const initialRun = runOf(initial, id);
+    if (initialRun.status === "cancelled") return;
+    const history = agentCheckpointHistory(initial, initialRun);
+    // A checkpoint resume may consume only existing ASR receipts. It cannot
+    // silently create a replacement paid transcription if any receipt was lost.
+    const speech =
+      this.speech && initialRun.loopCheckpoint
+        ? {
+            ...this.speech,
+            start: async () => {
+              throw new AgentCheckpointConflict(
+                "A saved agent checkpoint cannot submit replacement transcription work.",
+              );
+            },
+          }
+        : this.speech;
+    const request = speech
+      ? await prepareAgentSpeech(this.store, projectId, id, speech, signal)
       : (await this.store.read(projectId)).runs.find((r) => r.id === id)!
           .request;
     if (!request) return;
@@ -203,11 +247,39 @@ export class AgentService {
       skills: this.skills,
       extraTools: this.extraTools?.(projectId, id, request),
       signal,
-      messages: project.messages.slice(-12),
+      messages:
+        history ??
+        project.messages.slice(-12).map(({ role, text }) => ({ role, text })),
+      checkpoint: ({ inventory, skills }) =>
+        createAgentCheckpointPort({
+          store: this.store,
+          projectId,
+          runId: id,
+          request,
+          history:
+            history ??
+            project.messages
+              .slice(-12)
+              .map(({ role, text }) => ({ role, text })),
+          inventory,
+          skills,
+          modelIdentity: model.identity,
+          signal,
+        }),
       onEvent: (event) =>
         this.store.transaction(projectId, (p) => {
           const r = runOf(p, id);
           if (r.status !== "running") return;
+          const previous = r.events.find(
+            (saved) => saved.sequence === event.sequence,
+          );
+          if (previous) {
+            if (canonicalSerialize(previous) !== canonicalSerialize(event))
+              throw new AgentCheckpointConflict(
+                "The saved agent event sequence changed.",
+              );
+            return;
+          }
           r.events.push(event);
           r.updatedAt = new Date().toISOString();
           r.phase = event.name ?? event.type;
@@ -490,6 +562,7 @@ export class AgentService {
         clarificationParentRunId: parent.id,
         error: null,
         events: [],
+        loopCheckpoint: undefined,
         scope,
         requestHash: hash,
         answers: undefined,
@@ -588,6 +661,7 @@ export class AgentService {
         },
         requestHash: fingerprint,
         events: [],
+        loopCheckpoint: undefined,
         error: null,
         clarification: undefined,
         replyState: undefined,

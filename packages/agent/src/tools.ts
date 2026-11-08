@@ -20,7 +20,23 @@ import { searchNativeTranscript } from "../../core/src/lib/video-project/agent-t
 import { nativeClarificationSchema } from "../../core/src/lib/video-project/agent-authoring";
 import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
 import { prepareReadableOverlay } from "../../core/src/lib/video-project/readable-overlay";
-export type AgentTool = KitTool<NativeAgentResult>;
+import type { LoopTool } from "../../agent-loop/src/index";
+export type AgentTool = Omit<KitTool<NativeAgentResult>, "execute"> &
+  Pick<
+    LoopTool<NativeAgentResult>,
+    "execute" | "replaySafe" | "compactionSafe"
+  >;
+export const replaySafeNativeToolNames = [
+  "inspect_project",
+  "read_skill",
+  "search_transcript",
+  "inspect_graphics_schema",
+  "prepare_svg_graphic",
+  "prepare_three_scene",
+  "prepare_text_overlay",
+  "propose_edit",
+  "ask_user",
+] as const;
 export type ToolOutcome = Awaited<ReturnType<AgentTool["execute"]>>;
 
 /** Local kernel ports. Tool definitions, effects, input bounds and skill gating live in agent-kit. */
@@ -30,7 +46,7 @@ export function createVideoToolset(
   extraTools: AgentTool[] = [],
 ) {
   const document = parseVideoProjectDocument(request.document);
-  return createEditorToolset<NativeAgentResult>({
+  const toolset = createEditorToolset<NativeAgentResult>({
     skills,
     profile: "local-editor-v1",
     extraTools,
@@ -67,15 +83,13 @@ export function createVideoToolset(
               ),
             }
           : {
-              items: document.items
-                .slice(0, 300)
-                .map((item) => ({
-                  id: item.id,
-                  name: item.name,
-                  type: item.node.type,
-                  from: item.node.from,
-                  duration: item.node.duration,
-                })),
+              items: document.items.slice(0, 300).map((item) => ({
+                id: item.id,
+                name: item.name,
+                type: item.node.type,
+                from: item.node.from,
+                duration: item.node.duration,
+              })),
               omitted: Math.max(0, document.items.length - 300),
             }),
       }),
@@ -134,6 +148,18 @@ export function createVideoToolset(
       },
     },
   });
+  return {
+    ...toolset,
+    tools: toolset.tools.map(
+      (tool): AgentTool => ({
+        ...tool,
+        replaySafe: (replaySafeNativeToolNames as readonly string[]).includes(
+          tool.name,
+        ),
+        compactionSafe: ["inspect_project", "read_skill"].includes(tool.name),
+      }),
+    ),
+  };
 }
 export function createVideoTools(
   request: NativeAgentRequest,

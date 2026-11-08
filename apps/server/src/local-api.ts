@@ -337,6 +337,8 @@ export async function createLocalApi() {
     }
   }
 
+  await agent.recover();
+
   async function api(req: IncomingMessage, res: ServerResponse) {
     const host = req.headers.host,
       allowed = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
