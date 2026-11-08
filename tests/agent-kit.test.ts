@@ -100,10 +100,12 @@ describe("shared agent capability and skill catalog", () => {
   it("renders only available helper instructions from the same canonical Markdown", async () => {
     for (const skill of builtInSkills())
       expect(skill.instructions).toBe(
-        await readFile(
-          new URL(`../skills/${skill.name}.md`, import.meta.url),
-          "utf8",
-        ),
+        (
+          await readFile(
+            new URL(`../skills/${skill.name}.md`, import.meta.url),
+            "utf8",
+          )
+        ).replace(/\r\n?/g, "\n"),
       );
     const commercial = fixture().skills.find(
       (skill) => skill.name === "motion-design",
@@ -126,6 +128,26 @@ describe("shared agent capability and skill catalog", () => {
     expect(fixture().tools.some((tool) => tool.name === "nonexistent")).toBe(
       false,
     );
+  });
+  it("gates conditional Markdown identically for Windows and Unix line endings", () => {
+    const instructions =
+      "Read the project.\n<!-- requires-tool:prepare_background_music -->\nPrepare paid music.\n<!-- /requires-tool -->\nKeep existing timing.";
+    for (const text of [instructions, instructions.replaceAll("\n", "\r\n")]) {
+      const [skill] = selectSkills(
+        [
+          {
+            name: "custom-guidance",
+            description: "Custom",
+            instructions: text,
+          },
+        ],
+        [],
+        "local-editor-v1",
+      );
+      expect(skill.instructions).toBe(
+        "Read the project.\nKeep existing timing.",
+      );
+    }
   });
   it("rejects oversized or duplicate skill identities and duplicated executors", () => {
     const skills = builtInSkills();

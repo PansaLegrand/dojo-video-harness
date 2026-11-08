@@ -12,10 +12,9 @@ const names = [
 ];
 const skills = await Promise.all(
   names.map(async (name) => {
-    const instructions = await fs.readFile(
-      path.join(source, name + ".md"),
-      "utf8",
-    );
+    const instructions = (
+      await fs.readFile(path.join(source, name + ".md"), "utf8")
+    ).replace(/\r\n?/g, "\n");
     if (Buffer.byteLength(instructions) > 65536)
       throw new Error("Built-in skill exceeds its byte budget.");
     return {
@@ -35,7 +34,7 @@ const output =
   " as const;\n";
 const target = path.join(root, "src/skills.generated.ts");
 if (process.argv.includes("--check")) {
-  if ((await fs.readFile(target, "utf8")) !== output)
+  if ((await fs.readFile(target, "utf8")).replace(/\r\n?/g, "\n") !== output)
     throw new Error("Rebuild agent-kit after changing canonical skills.");
 } else {
   await fs.mkdir(path.dirname(target), { recursive: true });

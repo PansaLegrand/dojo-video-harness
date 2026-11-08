@@ -17,6 +17,7 @@ function availableInstructions(
   tools: Set<string>,
 ): string {
   return instructions
+    .replace(/\r\n?/g, "\n")
     .replace(
       /<!-- requires-tool:([a-z][a-z0-9_]*) -->\n([\s\S]*?)<!-- \/requires-tool -->\n?/g,
       (_match, tool: string, content: string) =>
