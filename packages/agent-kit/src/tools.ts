@@ -1,4 +1,9 @@
 import {
+  editingOnlyProposalSchema,
+  embedEditingSchema,
+  assertEditingProposal,
+} from "./editing-schema.js";
+import {
   toolMetadata,
   type AgentTool,
   type Skill,
@@ -6,6 +11,7 @@ import {
   usesCompletionPreflight,
   usesPagedReaders,
   usesEfficientReaders,
+  usesResolvedEditSchema,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -417,7 +423,9 @@ export function createEditorToolset<T>(input: {
           requirements: usesPagedReaders(input.profile)
             ? pagedCompletionRequirementsSchema
             : completionRequirementsSchema,
-          edit: input.proposalSchema,
+          edit: usesResolvedEditSchema(input.profile)
+            ? embedEditingSchema(input.proposalSchema)
+            : input.proposalSchema,
         },
         ["edit"],
       ),
@@ -445,6 +453,8 @@ export function createEditorToolset<T>(input: {
         let checks: CompletionCheck[];
         let receipt: CompletionReceipt | undefined;
         try {
+          if (usesResolvedEditSchema(input.profile))
+            assertEditingProposal(value.edit);
           if (requirementsHash !== state.requirementsHash)
             throw new Error(
               "The first valid requirements are frozen. Repair the edit instead of weakening or replacing the checklist.",
@@ -558,7 +568,9 @@ export function createEditorToolset<T>(input: {
         ...toolMetadata("list_assets"),
         parameters: object(
           {
-            snapshotHash: string,
+            ...(usesResolvedEditSchema(input.profile)
+              ? {}
+              : { snapshotHash: string }),
             name: { type: "string", maxLength: 128 },
             type: { enum: ["video", "audio", "image", "font", "lottie"] },
             usage: { enum: ["all", "used", "unused"] },
@@ -568,7 +580,7 @@ export function createEditorToolset<T>(input: {
         ),
         execute: async (args, signal) => {
           const value = record(args, [
-            "snapshotHash",
+            ...(usesResolvedEditSchema(input.profile) ? [] : ["snapshotHash"]),
             "name",
             "type",
             "usage",
@@ -614,7 +626,9 @@ export function createEditorToolset<T>(input: {
         ...toolMetadata("read_caption_cues"),
         parameters: object(
           {
-            snapshotHash: string,
+            ...(usesResolvedEditSchema(input.profile)
+              ? {}
+              : { snapshotHash: string }),
             sourceItemId: { type: "string", minLength: 1, maxLength: 191 },
             evidenceId: { type: "string", minLength: 1, maxLength: 191 },
             sourceRange: sourceRangeParameters,
@@ -626,7 +640,7 @@ export function createEditorToolset<T>(input: {
         ),
         execute: async (args, signal) => {
           const value = record(args, [
-            "snapshotHash",
+            ...(usesResolvedEditSchema(input.profile) ? [] : ["snapshotHash"]),
             "sourceItemId",
             "evidenceId",
             "sourceRange",
@@ -657,8 +671,11 @@ export function createEditorToolset<T>(input: {
   tools.push(
     {
       ...toolMetadata("propose_edit"),
-      parameters: input.proposalSchema,
+      parameters: usesResolvedEditSchema(input.profile)
+        ? editingOnlyProposalSchema(input.proposalSchema)
+        : input.proposalSchema,
       execute: async (args, signal) => {
+        if (usesResolvedEditSchema(input.profile)) assertEditingProposal(args);
         if (!completion)
           return {
             kind: "terminal",

@@ -60,3 +60,11 @@ Kit 0.1.3 built-in guidance is retained for its older profiles, with regression
 digests covering inventory, skill text and prompt bytes. Current canonical skills
 continue in skills/*.md. Host-owned new-profile execution defaults can use sixteen
 model steps while retaining existing tool/output allowances and accepted-run budgets.
+
+Kit 0.1.5 adds local-editor-v5/commercial-editing-v6. Both editing tools advertise
+proposal-only, nonempty command schemas. review_edit rebases all embedded local
+references under its edit property; propose_edit retains valid root references.
+Requirements remain frozen while command batches remain repairable. Model reader
+schemas omit snapshotHash entirely and the host binds it internally. Initial
+caption context is an overview; exact requested-range cues are read before translation.
+Earlier 0.1.4 guidance/schemas remain frozen for its profiles.

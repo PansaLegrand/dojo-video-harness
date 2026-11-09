@@ -5,6 +5,7 @@ import {
   type BuiltinSkillName,
   type Skill,
 } from "./catalog.js";
+import { legacySkillsV14 } from "./skills.legacy-v14.generated.js";
 import { legacySkillsV13 } from "./skills.legacy-v13.generated.js";
 import { generatedSkills } from "./skills.generated.js";
 export const builtInSkills = (): Skill[] =>
@@ -43,11 +44,16 @@ export function selectSkills(
     const currentBuiltin = generatedSkills.find(
       (skill) => skill.name === inputSkill.name,
     );
-    const frozenBuiltin = legacySkillsV13.find(
+    const frozenSkills =
+      profile === "local-editor-v3" || profile === "commercial-editing-v4"
+        ? legacySkillsV13
+        : profile === "local-editor-v4" || profile === "commercial-editing-v5"
+          ? legacySkillsV14
+          : undefined;
+    const frozenBuiltin = frozenSkills?.find(
       (skill) => skill.name === inputSkill.name,
     );
-    const frozenProfile =
-      profile === "local-editor-v3" || profile === "commercial-editing-v4";
+    const frozenProfile = frozenSkills !== undefined;
     const skill =
       frozenProfile &&
       frozenBuiltin &&

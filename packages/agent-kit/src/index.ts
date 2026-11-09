@@ -4,3 +4,5 @@ export * from "./tools.js";
 export * from "./inventory.js";
 export * from "./prompt.js";
 export * from "./completion.js";
+
+export * from "./editing-schema.js";

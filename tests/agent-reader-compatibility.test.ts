@@ -234,3 +234,77 @@ it("uses the frozen host snapshot for omitted hashes only in efficient reader pr
     old.tools.find((tool) => tool.name === "list_assets")!.parameters.required,
   ).toEqual(["snapshotHash"]);
 });
+
+it.each(["local-editor-v4", "commercial-editing-v5"] as const)(
+  "preserves kit14 %s complete advertised contracts",
+  (profile) => {
+    const frozen = JSON.parse(
+      readFileSync(
+        new URL("./fixtures/agent-kit-v14-profiles.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const set = toolset(profile),
+      value = {
+        inventory: set.inventory,
+        skills: set.skills,
+        prompt: composeToolAgentPrompt({
+          profile,
+          editingGuide: "Fixture editor guide.",
+          toolNames: set.tools.map((tool) => tool.name),
+          skills: set.skills,
+        }),
+      };
+    expect(set.inventory.kitVersion).toBe("0.1.4");
+    expect(
+      createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+    ).toBe(frozen.hashes[profile]);
+  },
+);
+it("removes model reader snapshot arguments entirely only in resolved-edit profiles", async () => {
+  const set = toolset("commercial-editing-v6"),
+    signal = new AbortController().signal;
+  for (const name of ["list_assets", "read_caption_cues"]) {
+    const tool = set.tools.find((value) => value.name === name)!;
+    expect(tool.parameters.properties).not.toHaveProperty("snapshotHash");
+    await expect(
+      tool.execute(
+        {
+          snapshotHash: "sha256:" + "a".repeat(64),
+          ...(name === "read_caption_cues"
+            ? { sourceItemId: "clip", evidenceId: "e" }
+            : {}),
+        },
+        signal,
+      ),
+    ).rejects.toThrow(/Unknown tool field/);
+  }
+  const edit = { outcome: "proposal", commands: [] };
+  const result = await set.tools
+    .find((tool) => tool.name === "review_edit")!
+    .execute(
+      {
+        requirements: [
+          { id: "required", kind: "item_present", itemId: "item" },
+        ],
+        edit,
+      },
+      signal,
+    );
+  expect(result).toMatchObject({
+    kind: "observation",
+    pinned: true,
+    value: {
+      completionPreflight: {
+        status: "failed",
+        requirements: [{ id: "required" }],
+        checks: [
+          {
+            passed: false,
+            message: expect.stringMatching(/Commands|commands/),
+          },
+        ],
+      },
+    },
+  });
+});
