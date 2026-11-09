@@ -79,6 +79,24 @@ export type VideoProjectAgentRun = {
   /** Explicit host policy for integrations that require a human review. */
   manualReviewRequired?: boolean;
   progress?: import("./agent-progress").NativeAgentProgress;
+  verification?: {
+    version: 1;
+    source: "shared-loop" | "native-template" | "external-job";
+    coverage:
+      | "declared-outcomes"
+      | "recipe-outcomes"
+      | "stored-media-and-placement";
+    status: "passed";
+    outcomes: Array<{ id: string; passed: true; message: string }>;
+    receiptHash: string;
+  };
+  hostRequests?: { count: number; pending: number };
+  outputRequests?: {
+    count: number;
+    pending: number;
+    waitingForApplication: number;
+  };
+  externalJobs?: import("./external-job-types").EditorExternalJobSummary[];
   /** Optional host disclosure; absence never grants upload consent. */
   cloudConsent?: boolean;
   id: string;

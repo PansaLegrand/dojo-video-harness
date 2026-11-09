@@ -10,6 +10,7 @@ import {
 } from "./document";
 import type { VideoProjectSnapshot } from "./types";
 import type { WorkspacePendingOperation } from "./client-controller";
+import { captionSegmentationReceiptSchema } from "./caption-segmentation";
 
 export type WorkspaceRecovery = {
   snapshot: VideoProjectSnapshot;
@@ -195,6 +196,7 @@ const operationMetadata = z.object({
   operationId: z.string().min(1).max(191),
   baseRevision: z.number().int().nonnegative().optional(),
   baseHash: z.string().min(1).optional(),
+  captionSegmentation: captionSegmentationReceiptSchema.optional(),
 });
 function commands(value: unknown): VideoProjectCommand[] {
   videoProjectCommandsSchema.parse(value);

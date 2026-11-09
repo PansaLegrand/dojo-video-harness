@@ -10,7 +10,7 @@ Keep useful shared components intact so updates remain straightforward.
 The sync manifest manages the editor, timeline, inspector, media panels, preview,
 chat, clarification and review cards, motion graphics controls, project home/cards,
 the English dictionary, shared global CSS, Tailwind theme, and editor page.
-It currently manages 81 files. It records both source hashes and generated target hashes.
+It currently manages 110 files. It records both source hashes and generated target hashes.
 
 Allowed transformations are explicit and mechanical:
 
@@ -68,6 +68,10 @@ Accounts, billing, marketing/SEO pages, and hosted worker infrastructure are out
 the local app. Shared home components may contain optional product props; the host
 only enables the features it implements. Sync shared UI when useful, not to match
 every product feature or release.
+
+See [named local host follow-ups](managed-ui-host-followups.md) for the optional
+source-inspection, generated-media and output-request registries. Their shared UI
+and pure contracts do not imply local service availability.
 
 ## Where local differences belong
 

@@ -17,9 +17,10 @@ const seconds = (scene: Scene) => scene.duration / scene.fps;
 const frameAt = (scene: Scene, ms: number) => Math.max(0, Math.min(scene.duration - 1, Math.round(ms * scene.fps / 1000)));
 
 /** The two immutable review versions share composition time; one is always silent. */
-export function EditorAgentReview({ comparison, sources, stale, applying, onClose, onRefresh, onApply, onSeekFrame, onPausePreview, mainPreviewPlaying = false }: {
+export function EditorAgentReview({ comparison, sources, stale, applying, onClose, onRefresh, onApply, onSeekFrame, onPausePreview, returnFocus, mainPreviewPlaying = false }: {
   comparison: NativeAgentComparison; sources: Record<string, string>; stale: boolean; applying: boolean;
   onClose: () => void; onRefresh: () => void; onApply: () => void; onSeekFrame?: (frame: number) => void; onPausePreview?: () => void; mainPreviewPlaying?: boolean;
+  returnFocus?: HTMLElement | null;
 }) {
   const t = useNativeEditorText(), dialog = useRef<HTMLDialogElement>(null), before = useRef<DojoVideoEngineCanvasPreviewHandle>(null), after = useRef<DojoVideoEngineCanvasPreviewHandle>(null);
   const [audible, setAudible] = useState<"before" | "after">("after");
@@ -42,7 +43,14 @@ export function EditorAgentReview({ comparison, sources, stale, applying, onClos
     pause(); desiredTime.current = ms; setTimeMs(ms);
     if (!("error" in scenePair)) { before.current?.seek(frameAt(scenePair.before, ms)); after.current?.seek(frameAt(scenePair.after, ms)); }
   };
-  useEffect(() => { onPausePreview?.(); dialog.current?.showModal(); return () => { before.current?.pause(); after.current?.pause(); }; }, []);
+  useEffect(() => {
+    const element = dialog.current, previous = returnFocus ?? element?.ownerDocument.activeElement as HTMLElement | null;
+    onPausePreview?.(); element?.showModal();
+    return () => {
+      before.current?.pause(); after.current?.pause(); element?.close();
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, []);
   useEffect(() => { if (stale || mainPreviewPlaying) pause(); }, [stale, mainPreviewPlaying]);
   useEffect(() => { if (ready.before && ready.after) seek(desiredTime.current); }, [ready.before, ready.after, scenePair]);
   useEffect(() => { seek(comparison.review.focusTimeMs); }, [comparison]);

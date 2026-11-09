@@ -28,6 +28,10 @@ import {
   type WorkspaceSaveFailure,
 } from "./save-failure";
 import type { VideoProjectSnapshot } from "./types";
+import {
+  captionSegmentationReceiptSchema,
+  type CaptionSegmentationReceipt,
+} from "./caption-segmentation";
 export type { VideoProjectSnapshot, VideoSourceResolution } from "./types";
 export type WorkspacePendingOperation = {
   operationId: string;
@@ -35,6 +39,7 @@ export type WorkspacePendingOperation = {
   baseDocument?: VideoProjectDocument;
   baseRevision?: number;
   baseHash?: string;
+  captionSegmentation?: CaptionSegmentationReceipt;
 };
 export type VideoWorkspaceState = {
   snapshot: VideoProjectSnapshot | null;
@@ -440,7 +445,10 @@ export class VideoWorkspaceController {
     );
     if (lifetime === this.lifecycle) this.acceptSnapshot(snapshot);
   }
-  dispatch(commands: VideoProjectCommand[]) {
+  dispatch(
+    commands: VideoProjectCommand[],
+    options?: { captionSegmentation?: CaptionSegmentationReceipt },
+  ) {
     if (this.closed || !this.state.document || !commands.length) return;
     try {
       commands = structuredClone(commands);
@@ -448,10 +456,17 @@ export class VideoWorkspaceController {
         this.state.document,
         commands,
       ).document;
-      const operation = {
+      const operation: WorkspacePendingOperation = {
         operationId: crypto.randomUUID(),
         commands,
         baseDocument: this.state.document,
+        ...(options?.captionSegmentation
+          ? {
+              captionSegmentation: captionSegmentationReceiptSchema.parse(
+                structuredClone(options.captionSegmentation),
+              ),
+            }
+          : {}),
       };
       if (this.recoveryWriter)
         this.recoveryCodec.transition(this.state.document, document, commands);
@@ -576,6 +591,9 @@ export class VideoWorkspaceController {
                   commands: operation.commands,
                   baseRevision: operation.baseRevision,
                   baseHash: operation.baseHash,
+                  ...(operation.captionSegmentation
+                    ? { captionSegmentation: operation.captionSegmentation }
+                    : {}),
                 }),
               },
             ),
@@ -759,10 +777,13 @@ export class VideoWorkspaceController {
       const pending =
         choice === "pending"
           ? previous.map((operation) => {
-              const replay = {
+              const replay: WorkspacePendingOperation = {
                 operationId: crypto.randomUUID(),
                 commands: operation.commands,
                 baseDocument: expectedBase,
+                ...(operation.captionSegmentation
+                  ? { captionSegmentation: operation.captionSegmentation }
+                  : {}),
               };
               const next = executeVideoProjectCommands(
                 expectedBase,

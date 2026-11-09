@@ -504,6 +504,10 @@ checksBlock: try {
     "pending question survives a page reload",
     await pending.getByRole("button", { name: /Green/ }).isVisible(),
   );
+  const answeredRunId = await pending.evaluate((element) =>
+    element.closest("[data-run-id]")?.getAttribute("data-run-id"),
+  );
+  assert(answeredRunId, "The durable question belongs to a saved run.");
   await pending.getByRole("button", { name: /Green/ }).click();
   await until(
     async () =>
@@ -511,11 +515,15 @@ checksBlock: try {
         .color === "#16a34a",
   );
   check(
-    "question answer resumes and applies a linked run without confirmation",
+    "question answer resumes and applies the same original run without confirmation",
     modelCalls === 5,
   );
   const greenRun = (await api(`/api/projects/${id}/agent-runs`)).runs.find(
-    (run) => run.status === "applied" && run.clarificationParentRunId,
+    (run) => run.status === "applied" && run.id === answeredRunId,
+  );
+  assert(
+    greenRun,
+    "The answered run applies in place rather than creating a replacement model attempt.",
   );
   await page
     .locator(`[data-run-id="${greenRun.id}"]`)

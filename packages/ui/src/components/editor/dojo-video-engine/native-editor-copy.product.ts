@@ -11,6 +11,11 @@ import { editorMissingMediaCopy } from "./editor-missing-media-copy";
 import { editorTimelineCopy } from "./editor-timeline-copy";
 import { editorMediaBatchCopy } from "./editor-media-batch-copy";
 import { editorAuthoringCopy } from "./editor-authoring-copy";
+import { editorAgentProgressCopy } from "./editor-agent-progress-copy";
+import { editorCaptionEditCopy } from "./editor-caption-edit-copy";
+import { editorOutputCopy } from "./editor-output-copy";
+import { editorStageProgressCopy } from "./editor-stage-progress-copy";
+import { editorGenerationCopy } from "./editor-generation-copy";
 
 // Reuse the established editor wording in all nine supported locales.
 const existing: Record<string, string> = {
@@ -300,6 +305,11 @@ export function useNativeEditorText() {
   const { t: translate, locale } = useTranslation();
   return (text: string) => {
     if (locale === "en") return text;
+    if (editorOutputCopy[locale]?.[text]) return editorOutputCopy[locale][text];
+    if (editorStageProgressCopy[locale]?.[text]) return editorStageProgressCopy[locale][text];
+    if (editorGenerationCopy[locale]?.[text]) return editorGenerationCopy[locale][text];
+    if (editorCaptionEditCopy[locale]?.[text]) return editorCaptionEditCopy[locale][text];
+    if (editorAgentProgressCopy[locale]?.[text]) return editorAgentProgressCopy[locale][text];
     if (editorMediaBatchCopy[locale]?.[text]) return editorMediaBatchCopy[locale][text];
     if (editorTimelineCopy[locale]?.[text]) return editorTimelineCopy[locale][text];
     if (editorContinuationCopy[locale]?.[text]) return editorContinuationCopy[locale][text];

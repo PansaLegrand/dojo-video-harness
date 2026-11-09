@@ -22,6 +22,8 @@ import { EditorFontPicker } from "./editor-font-picker";
 import { EditorField, EditorSelect, EditorTextArea, inputColor } from "./editor-fields";
 export { EditorField, EditorSelect, EditorTextArea } from "./editor-fields";
 import { EditorCaptionContent } from "./editor-caption-content";
+import type { VideoProjectDocument } from "@/lib/video-project/document";
+import type { CaptionSegmentationPlan } from "@/lib/video-project/caption-segmentation";
 import { useNativeEditorText } from "./native-editor-copy";
 import { useTranslation } from "@/lib/i18n";
 import { VisualizerTemplatePreview } from "@/components/music-visualizer/music-visualizer-template-preview";
@@ -147,6 +149,12 @@ export function EditorInspector({
   onPreviewCue,
   onApplyCaptionPreset,
   contextualControls,
+  nativeDocument,
+  sources,
+  onCaptionStructure,
+  onPausePreview,
+  mainPreviewPlaying,
+  onRelinkSource,
 }: {
   document: EditorDocument;
   selected: EditorItem | null;
@@ -174,6 +182,8 @@ export function EditorInspector({
   onPreviewCue: (item: EditorItem, cue: CaptionCue | null) => void;
   onApplyCaptionPreset: (item: EditorItem, preset: string) => void;
   contextualControls?: ReactNode;
+  nativeDocument?: VideoProjectDocument | null; sources?: Readonly<Record<string, string>>;
+  onCaptionStructure?: (plan: CaptionSegmentationPlan) => Promise<void>; onPausePreview?: () => void; mainPreviewPlaying?: boolean; onRelinkSource?: (assetId: string) => void;
 }) {
   const t = useNativeEditorText();
   const { t: translate, locale } = useTranslation();
@@ -305,7 +315,7 @@ export function EditorInspector({
             images={Object.values(document.assets).filter(asset => asset.type === "image")}
             imageId={selected.node.children?.find(node => node.id.endsWith(":media-frame"))?.children?.[0]?.assetId}
             onImage={id => onUpdate(selected.id, { node: updateMotionGraphic(selected, document.format, {}, id ? document.assets[id] : null).node })} /></div>}
-          {selected.caption && <EditorCaptionContent item={selected} document={document} frame={frame} disabled={locked || busyCaption} onUpdate={onUpdate} onSelect={onSelect} onSeek={onSeek} onTranslate={item => onTranslate(item, item.caption?.language === "en" ? "es" : "en")} onStyle={onApplyCaptionPreset} onPreviewCue={onPreviewCue} />}
+          {selected.caption && <EditorCaptionContent item={selected} document={document} nativeDocument={nativeDocument} sources={sources} frame={frame} disabled={locked || busyCaption} onUpdate={onUpdate} onSelect={onSelect} onSeek={onSeek} onTranslate={item => onTranslate(item, item.caption?.language === "en" ? "es" : "en")} onStyle={onApplyCaptionPreset} onPreviewCue={onPreviewCue} onApplyStructure={onCaptionStructure} onPausePreview={onPausePreview} mainPreviewPlaying={mainPreviewPlaying} onRelinkSource={onRelinkSource} />}
           {node?.type === "effect" && (
             <Section title="Visualizer">
               {visualizerKey && <div className="editor-visualizer-current" data-visualizer-preview={visualizerKey}><VisualizerTemplatePreview template={getMusicVisualizerLayerTemplate(visualizerKey)} /></div>}
