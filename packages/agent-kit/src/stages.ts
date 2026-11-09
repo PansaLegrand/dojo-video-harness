@@ -36,6 +36,7 @@ export type EditStageBinding = {
 export type EditStageKind =
   | "evidence"
   | "caption_batch"
+  | "external_job"
   | "assemble"
   | "verify";
 export type EditStageStatus =
@@ -331,9 +332,13 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
     const id = text(stage.id);
     if (prior.has(id)) fail("Duplicate stage ID.");
     if (
-      !["evidence", "caption_batch", "assemble", "verify"].includes(
-        String(stage.kind),
-      ) ||
+      ![
+        "evidence",
+        "caption_batch",
+        "external_job",
+        "assemble",
+        "verify",
+      ].includes(String(stage.kind)) ||
       !statuses.includes(stage.status as EditStageStatus)
     )
       fail("Invalid stage kind/status.");
@@ -430,6 +435,7 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
     const allowed: Record<EditStageKind, EditArtifactKind[]> = {
       evidence: ["evidence", "provider-receipt"],
       caption_batch: ["caption-batch"],
+      external_job: ["provider-receipt"],
       assemble: ["commands"],
       verify: ["verification"],
     };
