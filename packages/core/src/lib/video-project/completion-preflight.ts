@@ -1,7 +1,9 @@
 import {
   evaluateScene,
   layoutScene,
-  type LayoutBox,
+  compileDisplayList,
+  parseColor,
+  type DisplayGroup,
 } from "@dojo-video-engine/core";
 import type { SceneNodeInput } from "@dojo-video-engine/schema";
 import {
@@ -349,36 +351,60 @@ function layoutChecks(
   );
   const observed = new Set<string>();
   for (const frame of selected) {
-    const boxes: Array<{ box: LayoutBox; itemId: string }> = [];
-    const visit = (box: LayoutBox, visible = true) => {
-      visible = visible && Number(box.node.style.opacity ?? 1) > 0.15;
-      const itemId = itemFor(box.node.id);
-      if (
-        visible &&
-        itemId &&
-        box.node.type === "text" &&
-        box.node.text?.trim()
-      ) {
-        boxes.push({ box, itemId });
-        if (targets.has(itemId)) {
-          observed.add(itemId);
-          if (
-            box.width <= 0 ||
-            box.height <= 0 ||
-            !Number.isFinite(box.width + box.height + box.x + box.y) ||
-            box.x < -1 ||
-            box.y < -1 ||
-            box.x + box.width > after.format.width + 1 ||
-            box.y + box.height > after.format.height + 1
-          )
-            throw new Error(
-              `Text ${box.node.id} has zero/off-canvas layout at frame ${frame}.`,
-            );
+    const boxes: Array<{
+      box: { id: string; x: number; y: number; width: number; height: number };
+      itemId: string;
+    }> = [];
+    const minimumFont = Math.max(
+      8,
+      Math.min(16, Math.min(after.format.width, after.format.height) / 18),
+    );
+    const visit = (group: DisplayGroup, ancestorOpacity = 1) => {
+      const opacity = ancestorOpacity * group.composite.opacity;
+      const itemId = itemFor(group.nodeId),
+        content = group.content;
+      if (itemId && content?.kind === "text" && content.value.trim()) {
+        const alpha =
+          content.fill.trim().toLowerCase() === "transparent"
+            ? 0
+            : (parseColor(content.fill)?.a ?? 1);
+        const visible = opacity * alpha > 0.15;
+        if (visible) {
+          const box = { id: group.nodeId, ...group.transformedBounds };
+          boxes.push({ box, itemId });
+          if (targets.has(itemId)) {
+            observed.add(itemId);
+            if (
+              box.width <= 0 ||
+              box.height <= 0 ||
+              !Number.isFinite(box.width + box.height + box.x + box.y) ||
+              box.x < -1 ||
+              box.y < -1 ||
+              box.x + box.width > after.format.width + 1 ||
+              box.y + box.height > after.format.height + 1
+            )
+              throw new Error(
+                `Text ${group.nodeId} has zero/off-canvas layout at frame ${frame}.`,
+              );
+            const m = group.worldTransform;
+            const size =
+              content.font.size *
+              Math.min(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d));
+            if (
+              required.has(itemId) &&
+              (!Number.isFinite(size) || size < minimumFont - 0.01)
+            )
+              throw new Error(
+                `Required text ${group.nodeId} renders at ${size.toFixed(2)}px, below the ${minimumFont.toFixed(2)}px readable floor at frame ${frame}.`,
+              );
+          }
         }
       }
-      box.children.forEach((child) => visit(child, visible));
+      group.children.forEach((child) => visit(child, opacity));
     };
-    layoutScene(evaluateScene(scene, frame)).boxes.forEach((box) => visit(box));
+    compileDisplayList(layoutScene(evaluateScene(scene, frame))).groups.forEach(
+      (group) => visit(group),
+    );
     for (let i = 0; i < boxes.length; i++)
       for (let j = i + 1; j < boxes.length; j++) {
         const a = boxes[i]!,
@@ -402,7 +428,7 @@ function layoutChecks(
               0.02
         )
           throw new Error(
-            `Text ${a.box.node.id} overlaps ${b.box.node.id} at frame ${frame}.`,
+            `Text ${a.box.id} overlaps ${b.box.id} at frame ${frame}.`,
           );
       }
   }

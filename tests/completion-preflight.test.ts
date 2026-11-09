@@ -414,3 +414,92 @@ it("requires actual property absence and accepts ordinary clarification/answer w
     compileNativeCompletionResponse(f.request, f.edit),
   ).rejects.toThrow(/reviewed/);
 });
+
+it("rejects tiny/fitted/scaled required fonts and cumulatively transparent required text", async () => {
+  const f = await fixture();
+  const requirement = f.requirements.filter(
+    (requirement) => requirement.kind === "appended_ending",
+  );
+  const source = f.edit.commands.find(
+    (command) =>
+      command.type === "insertGraphic" && command.itemId === "ending",
+  )!;
+  if (!("node" in source)) throw new Error("fixture");
+  const scenarios = [
+    { ...source.node, style: { ...source.node.style, fontSize: 1 } },
+    {
+      ...source.node,
+      style: {
+        ...source.node.style,
+        width: 5,
+        textFit: "shrink",
+        minFontSize: 1,
+      },
+    },
+    {
+      id: "ending",
+      type: "div",
+      from: 300,
+      duration: 90,
+      style: { width: 560, height: 64, transform: "scale(0.01)" },
+      animations: [{ preset: "fadeIn" }],
+      children: [
+        {
+          id: "brand",
+          type: "text",
+          text: "Made by DojoClip.com",
+          style: { width: 560, height: 64, fontSize: 32, color: "white" },
+        },
+      ],
+    },
+    {
+      id: "ending",
+      type: "div",
+      from: 300,
+      duration: 90,
+      style: { width: 560, height: 64, opacity: 0.2 },
+      children: [
+        {
+          id: "inner",
+          type: "div",
+          style: { width: 560, height: 64, opacity: 0.2 },
+          children: [
+            {
+              id: "brand",
+              type: "text",
+              text: "Made by DojoClip.com",
+              style: { width: 560, height: 64, fontSize: 32, color: "white" },
+              animations: [{ preset: "popIn" }],
+            },
+          ],
+        },
+      ],
+    },
+    { ...source.node, style: { ...source.node.style, color: "transparent" } },
+    {
+      ...source.node,
+      style: { ...source.node.style, color: "rgba(255,255,255,0)" },
+    },
+  ];
+  for (const node of scenarios) {
+    const reviewed = await reviewNativeCompletionEdit(f.request, {
+      requirements: requirement,
+      edit: {
+        summary: "Ending",
+        commands: [
+          {
+            type: "set",
+            target: { kind: "format" },
+            path: ["durationInFrames"],
+            value: 390,
+          },
+          { ...source, node },
+        ],
+      },
+    });
+    expect(reviewed.receipt).toBeUndefined();
+    expect(reviewed.checks.find((check) => check.id === "layout")!.passed).toBe(
+      false,
+    );
+  }
+});
