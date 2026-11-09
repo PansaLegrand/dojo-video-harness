@@ -11,3 +11,5 @@ export * from "./artifacts.js";
 export * from "./staged-tools.js";
 export * from "./staged-coordinator.js";
 export * from "./stage-progress.js";
+
+export * from "./host-tools.js";
