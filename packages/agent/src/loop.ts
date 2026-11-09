@@ -2,6 +2,7 @@ import {
   composeToolAgentPrompt,
   restoreCompletionStateFromMessages,
   usesCompletionPreflight,
+  usesPagedReaders,
   type AgentProfile,
 } from "../../agent-kit/src/index";
 import {
@@ -69,6 +70,7 @@ export async function runAgent(input: {
       document,
       nativeTranscriptScopedSourceItemIds({ ...request, document }) ??
         undefined,
+      { pagedReaders: usesPagedReaders(input.profile ?? "local-editor-v1") },
     );
     try {
       const initial = JSON.parse(prompts.userPrompt);

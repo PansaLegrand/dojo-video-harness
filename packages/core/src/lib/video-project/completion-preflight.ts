@@ -76,16 +76,18 @@ function propertyPath(target: VideoProjectTarget, path: string[]) {
 function declaredItems(requirements: CompletionRequirement[]) {
   return new Set(
     requirements.flatMap((requirement) =>
-      requirement.kind === "caption_pair"
-        ? [requirement.originalItemId, requirement.translatedItemId]
-        : requirement.kind === "property" ||
-            requirement.kind === "property_absent"
-          ? "itemId" in requirement.target
-            ? [requirement.target.itemId]
-            : []
-          : requirement.kind === "item_absent"
-            ? []
-            : [requirement.itemId],
+      requirement.kind === "asset_sequence"
+        ? requirement.items.map((item) => item.itemId)
+        : requirement.kind === "caption_pair"
+          ? [requirement.originalItemId, requirement.translatedItemId]
+          : requirement.kind === "property" ||
+              requirement.kind === "property_absent"
+            ? "itemId" in requirement.target
+              ? [requirement.target.itemId]
+              : []
+            : requirement.kind === "item_absent"
+              ? []
+              : [requirement.itemId],
     ),
   );
 }
@@ -99,6 +101,33 @@ function assertRequirement(
     if (!found) throw new Error(`Required item ${id} is missing.`);
     return found;
   };
+  if (requirement.kind === "asset_sequence") {
+    for (const expected of requirement.items) {
+      const candidate = item(expected.itemId);
+      if (
+        !["video", "audio", "img"].includes(candidate.node.type) ||
+        candidate.node.assetId !== expected.assetId ||
+        (candidate.node.from ?? 0) !== expected.from ||
+        candidate.node.duration !== expected.duration
+      )
+        throw new Error(
+          `Asset placement ${expected.itemId} needs its declared media identity and composition timing.`,
+        );
+      if (expected.sourceStartSeconds !== undefined) {
+        if (!["video", "audio"].includes(candidate.node.type))
+          throw new Error("Source offsets apply to video/audio assets.");
+        const actual =
+          candidate.node.type === "video"
+            ? (candidate.node.videoStartTime ?? 0)
+            : (candidate.node.audioStartTime ?? 0);
+        if (Math.abs(actual - expected.sourceStartSeconds) > 1e-9)
+          throw new Error(
+            `Asset placement ${expected.itemId} has the wrong source offset.`,
+          );
+      }
+    }
+    return;
+  }
   if (requirement.kind === "item_present") {
     item(requirement.itemId);
     return;
@@ -202,7 +231,10 @@ function assertRequirement(
     }
     return;
   }
-  if (requirement.kind === "speech_highlight") {
+  if (
+    requirement.kind === "speech_highlight" ||
+    requirement.kind === "speech_callout"
+  ) {
     const candidate = item(requirement.itemId),
       binding = after.bindings[requirement.bindingId];
     const expected = resolveSpeechAnchor(after, {
@@ -250,6 +282,22 @@ function assertRequirement(
     )
       .map((word) => word.text)
       .join(" ");
+    const normalizedWords = (value: string) =>
+      value
+        .normalize("NFKC")
+        .toLowerCase()
+        .match(/[\p{L}\p{N}]+/gu)
+        ?.join(" ") ?? "";
+    if (requirement.kind === "speech_callout") {
+      if (
+        !normalizedWords(sourceWords) ||
+        normalizedWords(sourceWords) !== normalizedWords(requirement.exactText)
+      )
+        throw new Error(
+          "Callout text does not match its selected genuine source words.",
+        );
+      return;
+    }
     if (
       normalizeCompletionNumber(sourceWords) !==
       normalizeCompletionNumber(requirement.exactText)
@@ -456,7 +504,10 @@ export function checkNativeCompletionRequirements(
 ): CompletionCheck[] {
   const before = parseVideoProjectDocument(beforeInput),
     after = parseVideoProjectDocument(afterInput),
-    requirements = parseCompletionRequirements(raw);
+    requirements = parseCompletionRequirements(raw, {
+      assetSequence: true,
+      speechCallout: true,
+    });
   const checks = requirements.map((requirement) => {
     try {
       assertRequirement(before, after, requirement);
@@ -498,7 +549,10 @@ export async function reviewNativeCompletionEdit(
   request: NativeAgentRequest,
   input: { requirements: unknown; edit: unknown },
 ) {
-  const requirements = parseCompletionRequirements(input.requirements),
+  const requirements = parseCompletionRequirements(input.requirements, {
+      assetSequence: true,
+      speechCallout: true,
+    }),
     base = parseVideoProjectDocument(request.document);
   const compiled = await compileNativeAgentResult(request, input.edit);
   if (!compiled.proposal)
@@ -587,7 +641,10 @@ export async function compileNativeCompletionResponse(
   return {
     ...reviewed.result,
     completion: {
-      requirements: parseCompletionRequirements(contract.requirements),
+      requirements: parseCompletionRequirements(contract.requirements, {
+        assetSequence: true,
+        speechCallout: true,
+      }),
       receipt,
     },
   };

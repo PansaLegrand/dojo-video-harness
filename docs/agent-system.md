@@ -1,7 +1,7 @@
 # Editor agent ownership and extensions
 
 The shared model/tool loop is `packages/agent-loop` **0.1.2**. Portable editor definitions
-are `packages/agent-kit` **0.1.2**: tool metadata and schemas, trusted Markdown skill
+are `packages/agent-kit` **0.1.3**: tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
 
@@ -120,3 +120,20 @@ then behavior tests in both hosts. External services retain their approval,
 idempotency, recovery and asset receipts. Do not put executable code in Markdown.
 Build/check the kit and qualify actual editor rendering/export before release.
 The loop does not yet autonomously render, inspect and revise its own output.
+
+
+The current default local-editor-v3 profile also exposes `list_assets` and
+`read_caption_cues`. The commercial counterpart is commercial-editing-v4. Cursor
+pages bind the immutable snapshot, normalized filters, edit scope and (for cues)
+source/evidence/grouping identity. Readers return explicit total/offset/returned
+coverage, byte bounds and nextCursor. Imported unused assets remain readable.
+A local source registration reports local_required until the host resolves its
+browser-original availability.
+
+Cue pages include genuine word IDs. The new-profile sourceRange argument uses
+source milliseconds within the current window. The host projects frame duration
+and returns matching source edits with `prepare_caption_pair`; original ASR data
+stays source-bound. New grouped `asset_sequence` requirements cover exact media
+placements, and `speech_callout` verifies quoted words. Numeric highlights retain
+their numeric checks. Previous profiles retain exact inventory/skill/prompt bytes,
+covered by digests produced from the retained 0.1.2 build.

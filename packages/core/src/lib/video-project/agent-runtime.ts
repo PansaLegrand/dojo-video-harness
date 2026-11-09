@@ -1,3 +1,4 @@
+import { requiresWordGroundedTiming } from "./agent-timing-intent";
 import { importSvgGraphic } from "@dojo-video-engine/interchange/svg";
 import { z } from "zod/v3";
 import {
@@ -301,6 +302,13 @@ export async function compileNativeAgentResult(
   const parsed = checked.data;
   assertNativeTranscriptCoverage({ ...request, document: base }, parsed);
   const scope = new NativeAgentScopeSession(base, request.authoring?.scope);
+  const wordTimingRequired = requiresWordGroundedTiming(
+    request.instruction ?? "",
+    [
+      ...Object.values(base.assets).flatMap((asset) => [asset.id, asset.name]),
+      ...base.items.flatMap((item) => [item.id, item.name]),
+    ],
+  );
   const clarification = parsed.clarification
     ? validateNativeClarification(base, parsed.clarification)
     : request.authoring && parsed.outcome === "needs_input"
@@ -403,9 +411,7 @@ export async function compileNativeAgentResult(
           "Evidence and source bindings must come from host-resolved sources and words.",
         );
       if (
-        /\b(spoken|speech|says?|said|fillers?|silences?)\b|说到|说出|说的|口癖|停顿/i.test(
-          request.instruction ?? "",
-        ) &&
+        wordTimingRequired &&
         (["trimItem", "splitItem", "removeTimelineRange"].includes(
           candidate.type,
         ) ||

@@ -5,6 +5,7 @@ import { normalizeCaptionLanguage } from "./caption-pair";
 export function prepareCompletionCaptionCuePacket(
   document: VideoProjectDocument,
   sourceItemIds?: readonly string[],
+  options: { pagedReaders?: boolean } = {},
 ) {
   const selected =
     sourceItemIds === undefined ? undefined : new Set(sourceItemIds);
@@ -32,8 +33,9 @@ export function prepareCompletionCaptionCuePacket(
   const packet = () => ({
     version: 1 as const,
     grouping: "phrase-safe-v1",
-    instruction:
-      "Use THESE exact cue IDs/text/times with prepare_caption_pair; this new-profile manifest supersedes legacy contextPlan.captionSources grouping. If incomplete, inspect a specific source or ask to narrow; never invent/omit cues.",
+    instruction: options.pagedReaders
+      ? "Use these exact initial cue IDs/text/times. For complete source coverage beyond this packet, use read_caption_cues and follow coverage.nextCursor. list_assets discovers all owned imported assets. Preserve every retrieved cue and genuine word ID."
+      : "Use THESE exact cue IDs/text/times with prepare_caption_pair; this new-profile manifest supersedes legacy contextPlan.captionSources grouping. If incomplete, inspect a specific source or ask to narrow; never invent/omit cues.",
     complete:
       omittedSources === 0 && sources.every((source) => source.complete),
     omittedSources,

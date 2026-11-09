@@ -136,7 +136,7 @@ npm start
   revisions, conflict detection, operation receipts, and history.
 - A framework-independent agent loop using real function calls. Inspect a project,
   read a skill, search transcript evidence, propose an edit, or ask a question.
-- New editor runs use the completion-preflight profile: freeze a typed checklist,
+- New editor runs use local-editor-v3 with paginated asset/cue readers and the completion-preflight profile: freeze a typed checklist,
   review the complete in-memory candidate, repair failed checks, then propose
   exactly the reviewed commands. Deterministic receipts bind the snapshot,
   checklist, commands and preview; the host checks outcomes again after rebase.
@@ -246,7 +246,15 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The current loop 0.1.2/kit 0.1.2 candidate passed **511 tests**. Its host
+The paginated-reader update uses loop 0.1.2/kit 0.1.3. Focused reader, range and
+completion regressions pass with frozen legacy profile digests, and the full unit
+suite passes 547 tests. The final UI/package release gates are recorded separately.
+The new readers bind snapshot/filter/scope/source identity to cursor pages, retain
+UTF-8 byte bounds and expose complete/incomplete coverage. Explicit source ranges
+are prepared in a candidate and produce matching source-trim/caption commands.
+
+
+The earlier loop 0.1.2/kit 0.1.2 candidate passed **511 tests**. Its host
 regressions cover saved-response/tool/terminal recovery, uncertain paid outcomes,
 cumulative and unknown usage, request/source/provider/tool drift, cancellation,
 ASR receipt reuse and fresh clarification-child budgets. The host retains original
