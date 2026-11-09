@@ -126,6 +126,7 @@ export function prepareCompletionCaptionCuePacket(
 export function prepareCaptionSourceOverview(
   document: VideoProjectDocument,
   sourceItemIds?: readonly string[],
+  options: { referenceOnly?: boolean } = {},
 ) {
   const packet = prepareCompletionCaptionCuePacket(document, sourceItemIds, {
     pagedReaders: true,
@@ -141,6 +142,14 @@ export function prepareCaptionSourceOverview(
     sources: packet.sources.map(
       ({ cues: _cues, cuesComplete: _cuesComplete, ...source }) => ({
         ...source,
+        ...(options.referenceOnly && source.timingOmissions
+          ? {
+              timingOmissions: {
+                count: source.timingOmissions.count,
+                examples: [],
+              },
+            }
+          : {}),
         complete: false,
         rangeReaderRequired: true,
       }),

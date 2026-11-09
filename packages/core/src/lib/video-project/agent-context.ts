@@ -75,6 +75,7 @@ export type NativeAgentContextPlan = {
     { totalWords: number; omittedWords: number; windows: WordWindow[] }
   >;
   transcriptSearch: ReturnType<typeof nativeTranscriptSearchOverview>;
+  sourceReferences?: ReturnType<typeof referenceOnlyEvidenceView>["references"];
   omitted: {
     items: number;
     itemIndex: number;
@@ -321,6 +322,92 @@ function evidenceExcerpt(
 }
 
 /** A bounded, explicitly partial model view; never replaces the replay snapshot. */
+/** Model planning metadata is separate from the immutable compiler document. */
+export function referenceOnlyEvidenceView(document: VideoProjectDocument) {
+  const references: {
+    mode: "reference-only";
+    evidence: Array<{
+      evidenceId: string;
+      sourceAssetId: string;
+      sourceRevision: string;
+      transcriptHash: string;
+      language?: string;
+      wordCount: number;
+      timingOmissions: number;
+    }>;
+    captions: Array<{
+      itemId: string;
+      sourceItemId?: string;
+      language?: string;
+      role?: string;
+      cueCount: number;
+    }>;
+    omittedEvidence: number;
+    omittedCaptions: number;
+    coverage: "metadata-only";
+  } = {
+    mode: "reference-only",
+    evidence: [],
+    captions: [],
+    omittedEvidence: Object.keys(document.evidence).length,
+    omittedCaptions: document.items.filter((item) => item.caption).length,
+    coverage: "metadata-only",
+  };
+  for (const evidence of Object.values(document.evidence).slice(0, 12)) {
+    const ref = {
+      evidenceId: evidence.id,
+      sourceAssetId: evidence.sourceAssetId,
+      sourceRevision: evidence.sourceRevision,
+      transcriptHash: evidence.transcriptHash,
+      ...(evidence.language ? { language: evidence.language } : {}),
+      wordCount: evidence.words.length,
+      timingOmissions: evidence.timingOmissions?.length ?? 0,
+    };
+    references.evidence.push(ref);
+    if (JSON.stringify(references).length > 8000) {
+      references.evidence.pop();
+      break;
+    }
+    references.omittedEvidence--;
+  }
+  for (const item of document.items
+    .filter((item) => item.caption)
+    .slice(0, 24)) {
+    const caption = item.caption!;
+    references.captions.push({
+      itemId: item.id,
+      sourceItemId: caption.sourceItemId,
+      language: caption.language,
+      role: caption.role,
+      cueCount: caption.cues.length,
+    });
+    if (JSON.stringify(references).length > 8000) {
+      references.captions.pop();
+      break;
+    }
+    references.omittedCaptions--;
+  }
+  return {
+    references,
+    document: {
+      ...document,
+      evidence: {} as VideoProjectDocument["evidence"],
+      items: document.items.map((item) =>
+        item.caption
+          ? {
+              ...item,
+              caption: { ...item.caption, cues: [] },
+              node: {
+                ...item.node,
+                ...(item.node.text !== undefined ? { text: "" } : {}),
+                ...(item.node.children ? { children: [] } : {}),
+              },
+            }
+          : item,
+      ),
+    },
+  };
+}
 export function planNativeAgentContext(
   input: {
     document: VideoProjectDocument;
@@ -328,9 +415,14 @@ export function planNativeAgentContext(
     context: VideoProjectAgentContext;
     authoring?: NativeTranscriptSnapshot["authoring"];
   },
-  options: { maxChars?: number } = {},
+  options: { maxChars?: number; evidenceMode?: "reference-only" } = {},
 ): NativeAgentContextPlan {
-  const { document, context } = input;
+  const { context } = input;
+  const referenceView =
+    options.evidenceMode === "reference-only"
+      ? referenceOnlyEvidenceView(input.document)
+      : undefined;
+  const document = referenceView?.document ?? input.document;
   const maxChars = options.maxChars ?? NATIVE_AGENT_CONTEXT_MAX_CHARS;
   if (
     !Number.isInteger(maxChars) ||
@@ -423,6 +515,7 @@ export function planNativeAgentContext(
     sourceClocks: [],
     evidenceWindows: {},
     transcriptSearch: [],
+    ...(referenceView ? { sourceReferences: referenceView.references } : {}),
     omitted: {
       items: document.items.length,
       itemIndex: document.items.length,
@@ -501,13 +594,15 @@ export function planNativeAgentContext(
     include(track, () => plan.document.tracks.push(track));
   for (const entry of ranked.filter((entry) => entry.priority >= 800))
     addItem(entry);
-  for (const page of nativeTranscriptSearchOverview({
-    document,
-    instruction: input.instruction,
-    context,
-    authoring: input.authoring,
-    baseHash: "",
-  })) {
+  for (const page of referenceView
+    ? []
+    : nativeTranscriptSearchOverview({
+        document,
+        instruction: input.instruction,
+        context,
+        authoring: input.authoring,
+        baseHash: "",
+      })) {
     if (!include(page, () => plan.transcriptSearch.push(page))) {
       const summary = { ...page, matches: [], complete: false };
       include(summary, () => plan.transcriptSearch.push(summary));
@@ -519,6 +614,11 @@ export function planNativeAgentContext(
       clock: sourceClock(entry.item, document, context.playheadFrame),
     }))
     .filter((value) => value.clock !== null);
+  if (referenceView)
+    for (const { clock } of clocks
+      .filter(({ entry }) => entry.priority >= 800 || speechRequest)
+      .slice(0, 12))
+      include(clock, () => plan.sourceClocks.push(clock!));
   const evidence = Object.values(document.evidence)
     .map((value) => {
       const matches = searchWordPositions(value, terms);
@@ -651,7 +751,7 @@ export function planNativeAgentContext(
       Object.keys(document.assets).length -
       Object.keys(plan.document.assets).length,
     evidence:
-      Object.keys(document.evidence).length -
+      Object.keys(input.document.evidence).length -
       Object.keys(plan.document.evidence).length,
     decisions:
       document.creativeContext.decisions.length -

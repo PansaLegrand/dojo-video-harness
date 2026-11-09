@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`preserves the legacy default prompt bytes > legacy default full-evidence prompt v1 1`] = `"sha256:cc45837ec9db1653459056cb91913a1dfcb22852baee9a973ac171d8e0c46cf0"`;
