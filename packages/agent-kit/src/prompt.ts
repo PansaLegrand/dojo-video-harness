@@ -20,6 +20,11 @@ export function composeToolAgentPrompt(input: {
       ? [OVERLAY_GUIDE]
       : []),
     CORRECTION_GUIDE,
+    ...(input.toolNames.includes("review_edit")
+      ? [
+          "Completion preflight: use review_edit with a small typed requirement for EVERY requested output (max12). The first valid list freezes for this run. Use host cue IDs/prepare_caption_pair for complete bilingual captions; word-bound highlights need readable holdMs and genuine IDs. Repair every failed check, including bounded layout checks, then propose_edit with EXACTLY the successful reviewed commands. A review receipt proves only the declared checklist, never universal semantic or visual quality. A fancy ending must follow the original full duration and reach the final timeline end. Never claim completion after silently dropping a dependent request.",
+        ]
+      : []),
     "Available skills: " + JSON.stringify(skillIndex(input.skills)),
   ].join("\n\n");
 }

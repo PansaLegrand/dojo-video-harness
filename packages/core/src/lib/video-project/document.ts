@@ -64,6 +64,7 @@ export const videoSourceBindingSchema = z
     sourceEndMs: z.number().finite().positive(),
     evidenceId: id.optional(),
     wordIds: z.array(id).max(500).optional(),
+    holdMs: z.number().int().min(0).max(3000).optional(),
     status: z.enum(["active", "unresolved"]).default("active"),
   })
   .strict()
@@ -198,7 +199,10 @@ export function parseVideoProjectDocument(
     creativeContext: _context,
     ...native
   } = document;
-  assertEditorDocumentStructure({ ...native, kind: "dojo-video-engine-editor" });
+  assertEditorDocumentStructure({
+    ...native,
+    kind: "dojo-video-engine-editor",
+  });
   const unsafe = new Set(["__proto__", "prototype", "constructor"]);
   const inspectIds = (value: unknown): void => {
     if (!value || typeof value !== "object") return;

@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.1.1" as const;
+export const AGENT_KIT_VERSION = "0.1.2" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -11,7 +11,8 @@ export type AgentTool<T> = ToolSpec & {
     args: unknown,
     signal: AbortSignal,
   ): Promise<
-    { kind: "observation"; value: unknown } | { kind: "terminal"; result: T }
+    | { kind: "observation"; value: unknown; pinned?: boolean }
+    | { kind: "terminal"; result: T }
   >;
 };
 export type Skill = { name: string; description: string; instructions: string };
@@ -82,6 +83,18 @@ export const toolCatalog = {
     description:
       "Prepare ONE reviewed multi-step workflow for joining existing video clips, overlaying an imported logo, generating source-bound captions, translating them, then exporting. This only creates a plan. The user explicitly approves provider/media access, then compares/applies the resulting proposal before export. Use exact existing clip/image asset IDs; never claim jobs or exports are already done.",
   },
+  review_edit: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "Preflight an in-memory edit against a frozen list of every requested outcome. First valid requirements become immutable. Failed checks must be repaired; a successful review authorizes only the exact reviewed commands for propose_edit. This never applies edits.",
+  },
+  prepare_caption_pair: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "Prepare original and translated caption tracks using genuine host cue IDs, exact complete cue coverage/timing and explicit non-overlapping colored bounds. Supply one translation per host cue ID; no provider call or edit is performed.",
+  },
 } as const;
 export type CatalogToolName = keyof typeof toolCatalog;
 export function toolMetadata(name: CatalogToolName) {
@@ -100,13 +113,27 @@ export const skillRequirements = {
   "speech-editing": ["search_transcript", "propose_edit"],
   "basic-editing-workflow": ["inspect_project", "prepare_editing_workflow"],
   "music-generation": ["inspect_project", "prepare_background_music"],
+  "completion-preflight": ["review_edit", "propose_edit"],
 } as const;
 export type BuiltinSkillName = keyof typeof skillRequirements;
-export type AgentProfile = "local-editor-v1" | "commercial-editing-v2";
+export type AgentProfile =
+  | "local-editor-v1"
+  | "commercial-editing-v2"
+  | "local-editor-v2"
+  | "commercial-editing-v3";
+export const usesCompletionPreflight = (profile: AgentProfile) =>
+  profile === "local-editor-v2" || profile === "commercial-editing-v3";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
 > = {
   "local-editor-v1": null,
   "commercial-editing-v2": ["precise-editing", "motion-design"],
+  "local-editor-v2": null,
+  "commercial-editing-v3": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+  ],
 };

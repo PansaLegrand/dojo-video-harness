@@ -34,7 +34,7 @@ npm run launch
 overwriting an existing file, checks the local environment, and starts the editor.
 It opens the browser automatically from an interactive terminal. Otherwise open
 **http://127.0.0.1:4310**. The engine is installed automatically from the public
-`@dojo-video-engine/*` npm packages, pinned to **1.2.2**; no separate engine clone
+`@dojo-video-engine/*` npm packages, pinned to **1.2.3**; no separate engine clone
 or pnpm installation is needed. Node 22 is pinned in `.nvmrc`.
 
 Create a project and import media. Manual editing, subtitle import, preview,
@@ -136,6 +136,10 @@ npm start
   revisions, conflict detection, operation receipts, and history.
 - A framework-independent agent loop using real function calls. Inspect a project,
   read a skill, search transcript evidence, propose an edit, or ask a question.
+- New editor runs use the completion-preflight profile: freeze a typed checklist,
+  review the complete in-memory candidate, repair failed checks, then propose
+  exactly the reviewed commands. Deterministic receipts bind the snapshot,
+  checklist, commands and preview; the host checks outcomes again after rebase.
 - Durable local model/tool checkpoints, with cumulative budgets and frozen request,
   source, tool/skill and provider bindings. A restart can continue a saved model
   response or completed tool boundary without requesting that response again.
@@ -236,13 +240,13 @@ adapter can be added without giving it authority over document commits.
 
 The harness packages are source workspaces in this repository. They are not
 published npm packages. The engine is consumed from the public
-`@dojo-video-engine/*` packages at exact version 1.2.2. There is no runtime dependency on a sibling checkout. Development
+`@dojo-video-engine/*` packages at exact version 1.2.3. There is no runtime dependency on a sibling checkout. Development
 uses the product’s Next.js 15.5 family, React 18.3, Tailwind 3.4, and shared TypeScript aliases; independently packaged
 embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The current loop 0.1.2/local-checkpoint candidate passed **490 tests**. Its host
+The current loop 0.1.2/kit 0.1.2 candidate passed **511 tests**. Its host
 regressions cover saved-response/tool/terminal recovery, uncertain paid outcomes,
 cumulative and unknown usage, request/source/provider/tool drift, cancellation,
 ASR receipt reuse and fresh clarification-child budgets. The host retains original
@@ -251,6 +255,12 @@ it does not call an LLM to summarize the conversation. See
 [the agent system map](docs/agent-system.md) for the recovery limits.
 The byte-bound regressions cover multibyte context, host-envelope overhead,
 opaque provider output, frozen request configuration and legacy checkpoint replay.
+Completion regressions cover complete bilingual cue coverage, reciprocal pairing,
+spoken-number evidence and display holds, ending timing/text, fitted font size,
+cumulative visibility, overlap, checklist/receipt tampering and pinned-state replay.
+These checks protect declared intent and bounded layout samples; they do not
+establish universal semantic or creative quality. Provider generation remains
+host-owned external work.
 
 The [earlier release checks](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41330893940)
 passed on **2026-11-02**: 228 tests, production build, 25 browser editing/export

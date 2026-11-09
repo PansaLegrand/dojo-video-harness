@@ -49,6 +49,7 @@ export function resolveSpeechAnchor(
     sourceItemId: string;
     evidenceId: string;
     wordIds: string[];
+    holdMs?: number;
   },
 ): VideoSourceBinding {
   const evidence = document.evidence[input.evidenceId];
@@ -107,6 +108,14 @@ export function reprojectVideoSourceBindings(
               binding.sourceStartMs,
               binding.sourceEndMs,
             );
+      if (projected && binding.holdMs)
+        projected.duration = Math.min(
+          (source.node.from ?? 0) + source.node.duration! - projected.from,
+          Math.max(
+            projected.duration,
+            Math.ceil((binding.holdMs * document.format.fps) / 1000),
+          ),
+        );
       binding.status = projected ? "active" : "unresolved";
       if (
         projected &&

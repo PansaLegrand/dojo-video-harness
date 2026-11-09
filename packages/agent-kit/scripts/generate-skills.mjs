@@ -5,6 +5,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.resolve(root, "../../skills");
 const names = [
   "basic-editing-workflow",
+  "completion-preflight",
   "motion-design",
   "music-generation",
   "precise-editing",

@@ -65,6 +65,7 @@ const anchorSchema = z
     sourceItemId: id,
     evidenceId: id,
     wordIds: z.array(id).min(1).max(500),
+    holdMs: z.number().int().min(0).max(3000).optional(),
   })
   .strict();
 const speechCutSchema = z
@@ -296,6 +297,8 @@ export function nativeAgentOperationDescriptors(): readonly NativeAgentOperation
   operationDescriptors = operations.map((schema) => {
     const name = schema.shape.type.value as string;
     const parameters = shallowSchema(schema);
+    if (name === "anchorSpeech")
+      delete (parameters.properties as Record<string, JsonSchema>).holdMs;
     const example: Record<string, unknown> | undefined =
       name === "set"
         ? {
@@ -453,11 +456,15 @@ const compositionOperations = new Set([
   "duplicateLinkedGroup",
 ]);
 export function nativeAgentResponseSchema(
-  options: { clarification?: boolean; composition?: boolean } = {},
+  options: {
+    clarification?: boolean;
+    composition?: boolean;
+    anchorHold?: boolean;
+  } = {},
 ): JsonSchema {
   const mode = options.clarification === true;
   const composition = mode || options.composition === true,
-    cacheKey = `${mode}:${composition}`;
+    cacheKey = `${mode}:${composition}:${options.anchorHold === true}`;
   if (responseSchemas.has(cacheKey)) return responseSchemas.get(cacheKey)!;
   const descriptors = nativeAgentOperationDescriptors().filter(
     (operation) =>
@@ -478,6 +485,26 @@ export function nativeAgentResponseSchema(
         : value.parameters,
     ]),
   );
+  if (options.anchorHold && definitions.anchorSpeech) {
+    definitions.anchorSpeech = structuredClone(definitions.anchorSpeech);
+    (definitions.anchorSpeech.properties as Record<string, JsonSchema>).holdMs =
+      { type: "integer", minimum: 0, maximum: 3000 };
+  }
+  if (!options.anchorHold) {
+    // Preserve legacy model-visible schema/checkpoint bytes exactly.
+    for (const name of ["anchorSpeech", "bindSource"])
+      if (definitions[name]) {
+        definitions[name] = structuredClone(definitions[name]);
+        const properties = definitions[name].properties as Record<
+          string,
+          JsonSchema
+        >;
+        if (name === "anchorSpeech") delete properties.holdMs;
+        else if (properties.binding?.properties)
+          delete (properties.binding.properties as Record<string, JsonSchema>)
+            .holdMs;
+      }
+  }
   definitions.NativeTarget = shallowSchema(videoProjectTargetSchema);
   const envelope = shallowSchema(nativeAgentModelResultSchema);
   const properties = envelope.properties as Record<string, JsonSchema>;

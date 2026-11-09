@@ -49,6 +49,7 @@ import {
 } from "./agent-speech";
 import { parseVideoProjectDocument } from "../../../packages/core/src/lib/video-project/document";
 import { nativeChangedItemIds } from "../../../packages/core/src/lib/video-project/agent-review";
+import { checkNativeCompletionRequirements } from "../../../packages/core/src/lib/video-project/completion-preflight";
 import { LoopCheckpointCapacityError } from "../../../packages/agent-loop/src/index";
 import { ProviderReplyByteBudgetError } from "../../../packages/adapters/src/gpt-responses";
 import {
@@ -70,6 +71,9 @@ export class AgentService {
     ) => AgentTool[],
     private applicationMode: "review" | "direct" = "review",
     private speech?: AgentSpeechPort,
+    private agentProfile:
+      | "local-editor-v1"
+      | "local-editor-v2" = "local-editor-v1",
   ) {}
   /** Explicit startup recovery: only durable, checked boundaries are launched.
    * In-flight provider/unsafe-tool outcomes remain failed for manual recovery. */
@@ -128,6 +132,7 @@ export class AgentService {
         updatedAt: now,
         scope,
         reviewBasisRequired: true,
+        agentProfile: this.agentProfile,
         events: [],
         requestHash: hash,
         request: {
@@ -247,10 +252,13 @@ export class AgentService {
     const project = await this.store.read(projectId);
     const result = await runAgent({
       request,
+      profile: run.agentProfile ?? "local-editor-v1",
       model,
       skills: this.skills,
       extraTools: this.extraTools?.(projectId, id, request),
       signal,
+      maxOutputTokens:
+        run.agentProfile === "local-editor-v2" ? 16384 : undefined,
       messages:
         history ??
         project.messages.slice(-12).map(({ role, text }) => ({ role, text })),
@@ -298,6 +306,7 @@ export class AgentService {
       r.proposal = result.proposal
         ? { ...result.proposal, impact: this.applicationMode }
         : null;
+      r.completion = result.completion;
       if (r.proposal && r.speechContinuation?.evidenceCommands?.length) {
         const base = parseVideoProjectDocument(r.request.document);
         const commands = [
@@ -439,15 +448,33 @@ export class AgentService {
           }
         : snapshot(p);
     // Historical comparisons use the actual pre-commit basis stored when applied.
+    const comparison = await prepareNativeAgentReview({
+      runId: r.id,
+      baseDocument: r.request.document as typeof p.document,
+      baseHash: r.baseHash,
+      proposal: r.proposal,
+      current,
+      organizeTracks: !r.undoOfRunId,
+    });
+    if (r.completion) {
+      const checks = checkNativeCompletionRequirements(
+        comparison.beforeDocument,
+        comparison.afterDocument,
+        r.completion.requirements,
+      );
+      if (checks.some((check) => !check.passed))
+        throw new HttpError(
+          checks
+            .filter((check) => !check.passed)
+            .map((check) => check.message)
+            .join(" ")
+            .slice(0, 2000),
+          409,
+          "COMPLETION_PREFLIGHT_FAILED",
+        );
+    }
     return {
-      ...(await prepareNativeAgentReview({
-        runId: r.id,
-        baseDocument: r.request.document as typeof p.document,
-        baseHash: r.baseHash,
-        proposal: r.proposal,
-        current,
-        organizeTracks: !r.undoOfRunId,
-      })),
+      ...comparison,
       applied: r.status === "applied",
       run: publicRun(r),
       sources: p.sources,
@@ -503,6 +530,23 @@ export class AgentService {
         current: snapshot(p),
         organizeTracks: !r.undoOfRunId,
       });
+      if (r.completion) {
+        const checks = checkNativeCompletionRequirements(
+          comparison.beforeDocument,
+          comparison.afterDocument,
+          r.completion.requirements,
+        );
+        if (checks.some((check) => !check.passed))
+          throw new HttpError(
+            checks
+              .filter((check) => !check.passed)
+              .map((check) => check.message)
+              .join(" ")
+              .slice(0, 2000),
+            409,
+            "COMPLETION_PREFLIGHT_FAILED",
+          );
+      }
       assertNativeReviewBasis(comparison.review.basis, input.reviewBasis);
       r.appliedBefore = p.document;
       r.appliedAfter = comparison.afterDocument;
@@ -567,6 +611,7 @@ export class AgentService {
         error: null,
         events: [],
         loopCheckpoint: undefined,
+        completion: undefined,
         scope,
         requestHash: hash,
         answers: undefined,
@@ -666,6 +711,7 @@ export class AgentService {
         requestHash: fingerprint,
         events: [],
         loopCheckpoint: undefined,
+        completion: undefined,
         error: null,
         clarification: undefined,
         replyState: undefined,

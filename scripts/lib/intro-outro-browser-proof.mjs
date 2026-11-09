@@ -48,11 +48,44 @@ export function introOutroReply(context) {
           name: test.before ? "Countdown intro" : "Animated outro",
           node: test.before
             ? {
-                macro: "countdown",
-                start: 3,
-                end: 1,
+                id: "segment",
+                type: "div",
                 from,
                 duration: test.duration,
+                style: {
+                  position: "absolute",
+                  inset: 0,
+                  backgroundColor: "#0f172a",
+                },
+                // The scripted model chooses readable bounded geometry after
+                // preflight rejects a preset's visible off-canvas exit motion.
+                children: [3, 2, 1].map((number, index) => ({
+                  id: `countdown-${number}`,
+                  type: "text",
+                  text: String(number),
+                  from: index * 30,
+                  duration: 30,
+                  style: {
+                    position: "absolute",
+                    left: 160,
+                    top: 90,
+                    width: 320,
+                    height: 180,
+                    fontSize: 112,
+                    color: "#ffffff",
+                    textAlign: "center",
+                  },
+                  animations: [
+                    {
+                      kind: "keyframes",
+                      property: "opacity",
+                      frames: [
+                        { frame: 0, value: 0 },
+                        { frame: 5, value: 1 },
+                      ],
+                    },
+                  ],
+                })),
               }
             : {
                 id: "segment",

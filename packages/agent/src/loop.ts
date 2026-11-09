@@ -1,4 +1,9 @@
-import { composeToolAgentPrompt } from "../../agent-kit/src/index";
+import {
+  composeToolAgentPrompt,
+  restoreCompletionStateFromMessages,
+  usesCompletionPreflight,
+  type AgentProfile,
+} from "../../agent-kit/src/index";
 import {
   runToolLoop,
   parseLoopCheckpoint,
@@ -15,6 +20,8 @@ import { parseVideoProjectDocument } from "../../core/src/lib/video-project/docu
 import { type Skill } from "./skills";
 import { createVideoToolset, type AgentTool } from "./tools";
 import type { LanguageModel, ChatMessage, AgentEvent } from "./types";
+import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
+import { nativeTranscriptScopedSourceItemIds } from "../../core/src/lib/video-project/agent-transcript-search";
 
 export type AgentCheckpointContext = {
   inventory: ReturnType<typeof createVideoToolset>["inventory"];
@@ -40,6 +47,7 @@ export async function runAgent(input: {
       ) => LoopCheckpointPort | Promise<LoopCheckpointPort>);
   compaction?: LoopCompactionOptions;
   extraTools?: AgentTool[];
+  profile?: AgentProfile;
 }): Promise<NativeAgentResult> {
   const { request, model, skills, signal } = input;
   signal.throwIfAborted();
@@ -56,7 +64,27 @@ export async function runAgent(input: {
     messages: input.messages ?? [],
     responseMode: "tools",
   });
-  const toolset = createVideoToolset(request, skills, input.extraTools ?? []);
+  if (usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
+    const packet = prepareCompletionCaptionCuePacket(
+      document,
+      nativeTranscriptScopedSourceItemIds({ ...request, document }) ??
+        undefined,
+    );
+    try {
+      const initial = JSON.parse(prompts.userPrompt);
+      if (initial.contextPlan) delete initial.contextPlan.captionSources;
+      prompts.userPrompt = JSON.stringify({
+        ...initial,
+        completionCaptionSources: packet,
+      });
+    } catch {
+      prompts.userPrompt +=
+        "\nCompletion caption sources: " + JSON.stringify(packet);
+    }
+  }
+  const toolset = createVideoToolset(request, skills, input.extraTools ?? [], {
+    profile: input.profile,
+  });
   const tools = toolset.tools;
   const system = composeToolAgentPrompt({
     editingGuide: prompts.systemPrompt,
@@ -98,6 +126,18 @@ export async function runAgent(input: {
       sequence = next.sequence;
     },
   };
+  if (port && usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
+    const saved = await checkpoint!.load();
+    toolset.restoreCompletionState(
+      saved === null
+        ? undefined
+        : await restoreCompletionStateFromMessages(
+            parseLoopCheckpoint(saved).messages,
+            request.baseHash,
+          ),
+    );
+    checkpoint!.load = async () => saved;
+  }
   const completed = await runToolLoop({
     model,
     messages,
