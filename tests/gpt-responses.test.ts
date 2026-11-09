@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GptResponsesModel } from "../packages/adapters/src/gpt-responses";
+import { measureModelReplyBytes } from "../packages/agent-loop/src/index";
 import { runAgent } from "../packages/agent/src/loop";
 import {
   createVideoProjectDocument,
@@ -54,6 +55,97 @@ function provider(body: unknown, status = 200) {
   return fetch;
 }
 describe("GPT Responses transport", () => {
+  it("counts opaque provider output and UTF-8 bytes in the complete normalized reply budget", async () => {
+    const opaque = { ...reasoning, encrypted_content: "界".repeat(1000) };
+    const expected = {
+      text: "Done",
+      calls: [],
+      providerOutput: [opaque, answer],
+      usage: { inputTokens: 15, outputTokens: 5 },
+    };
+    const bytes = measureModelReplyBytes(expected);
+    expect(bytes).toBeGreaterThan(JSON.stringify(expected).length);
+    const fetch = provider(complete([opaque, answer]));
+    const model = new GptResponsesModel(config);
+    const result = await model.complete([], [], signal(), {
+      maxOutputTokens: 100,
+      maxReplyBytes: bytes,
+    });
+    expect(result).toEqual(expected);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await expect(
+      model.complete([], [], signal(), {
+        maxOutputTokens: 100,
+        maxReplyBytes: bytes - 1,
+      }),
+    ).rejects.toMatchObject({ code: "PROVIDER_REPLY_CAPACITY_EXCEEDED" });
+    expect(fetch).toHaveBeenCalledTimes(2); // Two explicit test invocations, no adapter retry.
+  });
+  it("keeps the legacy response contract when no normalized byte budget was declared", async () => {
+    const opaque = { ...reasoning, encrypted_content: "界".repeat(100000) };
+    const fetch = provider(complete([opaque, answer]));
+    const result = await new GptResponsesModel(config).complete(
+      [],
+      [],
+      signal(),
+      { maxOutputTokens: 100 },
+    );
+    expect(measureModelReplyBytes(result)).toBeGreaterThan(256 * 1024);
+    expect(result.providerOutput).toEqual([opaque, answer]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it.each([0, 1.5, Infinity])(
+    "rejects an invalid reply byte budget before calling the provider: %s",
+    async (maxReplyBytes) => {
+      const fetch = provider(complete([answer]));
+      await expect(
+        new GptResponsesModel(config).complete([], [], signal(), {
+          maxOutputTokens: 100,
+          maxReplyBytes,
+        }),
+      ).rejects.toThrow(/positive integer/);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+  it("freezes the concrete endpoint, model and credentials behind a compatible non-secret identity", async () => {
+    const fetch = provider(complete([answer]));
+    const mutable = { ...config };
+    const model = new GptResponsesModel(mutable);
+    const legacyIdentity = JSON.stringify({
+      adapter: "gpt-responses",
+      endpoint: config.baseUrl,
+      model: config.model,
+    });
+    expect(model.identity).toBe(legacyIdentity);
+    mutable.baseUrl = "https://different.example/v2";
+    mutable.model = "gpt-other";
+    mutable.apiKey = "changed-credential";
+    expect(Reflect.set(model, "identity", "changed-identity")).toBe(false);
+    await model.complete([], [], signal());
+    const [url, init] = fetch.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(url.href).toBe("https://api.kie.ai/codex/v1/responses");
+    expect(JSON.parse(String(init.body)).model).toBe(config.model);
+    expect(init.headers).toMatchObject({
+      Authorization: `Bearer ${config.apiKey}`,
+    });
+    expect(model.identity).toBe(legacyIdentity);
+    expect(JSON.stringify(model)).not.toContain(config.apiKey);
+  });
+  it.each([
+    "https://user:password@example.test/v1",
+    "https://example.test/v1?key=secret",
+    "https://example.test/v1#private",
+    "http://insecure.example/v1",
+  ])(
+    "rejects a configuration that cannot identify an allowed concrete endpoint: %s",
+    (baseUrl) => {
+      const fetch = provider(complete([answer]));
+      expect(() => new GptResponsesModel({ ...config, baseUrl })).toThrow(
+        /Provider URLs/,
+      );
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
   it("preserves an explicitly selected Gateway GPT model and function-call protocol", async () => {
     const fetch = provider(complete([call()]));
     const reply = await new GptResponsesModel({

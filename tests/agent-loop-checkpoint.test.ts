@@ -749,7 +749,7 @@ it("gives a clarification child fresh model budgets/checkpoints while retaining 
 
 it("binds provider endpoint/model identity without credentials or mutable configuration", () => {
   const config = {
-    baseUrl: "https://user:password@example.test/v1?key=secret#private",
+    baseUrl: "https://example.test/v1",
     apiKey: "credential-one",
     model: "gpt-test",
   };
