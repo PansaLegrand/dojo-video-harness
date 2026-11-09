@@ -24,7 +24,7 @@ export function requiresWordGroundedTiming(
       );
     if (!cut) return false;
     const contentBoundary =
-      /\b(?:words?|phrases?|sentences?|fillers?|silences?|pauses?|says?|said|when|where|quoted)\b|口癖|停顿|说到|说出|说的|台词|词语|句子|静音片段/iu.test(
+      /\b(?:words?|phrases?|sentences?|fillers?|silences?|pauses?|says?|said|quoted)\b|口癖|停顿|说到|说出|说的|台词|词语|句子|静音片段/iu.test(
         clause,
       );
     if (contentBoundary) return true;
