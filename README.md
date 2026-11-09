@@ -136,7 +136,7 @@ npm start
   revisions, conflict detection, operation receipts, and history.
 - A framework-independent agent loop using real function calls. Inspect a project,
   read a skill, search transcript evidence, propose an edit, or ask a question.
-- New editor runs use local-editor-v4 with paginated asset/cue readers and the completion-preflight profile: freeze a typed checklist,
+- New editor runs use local-editor-v5 with paginated asset/cue readers and the completion-preflight profile: freeze a typed checklist,
   review the complete in-memory candidate, repair failed checks, then propose
   exactly the reviewed commands. Deterministic receipts bind the snapshot,
   checklist, commands and preview; the host checks outcomes again after rebase.
@@ -246,15 +246,29 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The current efficient-reader update uses loop 0.1.2/kit 0.1.4. The full check passes
-565 tests, TypeScript, kit generation/integrity, 85 managed UI hashes and production
-build. All 66 browser checks also pass under the new default profile. New
-local-editor-v4 runs default to sixteen model steps with existing
-output/tool allowances. Earlier profiles retain their original budgets and exact
-inventory/skill/prompt digests. Provided metadata is authoritative, and discovery
-focuses on missing facts for requested assets and source ranges. Reader hashes can
-be omitted at the model boundary and are bound by the host.
+The current schema-repair update uses loop 0.1.2/kit 0.1.5. The full check passes
+576 tests, TypeScript, kit generation/integrity, 85 managed UI hashes and production
+build. All 66 actual browser checks pass under local-editor-v5, including the
+source-overview → cue-reader → dependent-edit path with one ASR and five model
+fixture calls. New local-editor-v5 runs default to sixteen model steps with existing
+tool/output allowances. Editing schemas require nonempty proposals, and nested
+review-schema references resolve against the advertised tool root. Regression
+tests resolve every advertised local reference, compile the schemas with Ajv,
+and validate a mixed-media command batch while rejecting empty/answer/retrieval
+edits. Caption context initially supplies source identity and counts; the agent
+reads exact requested-range cues before translation. The host supplies reader
+snapshot hashes. Earlier profiles retain their budgets and exact
+inventory/skill/prompt digests.
 
+Readers can page beyond 500 cues; caption-pair preparation remains bounded to
+500 cues per operation. Larger assembly and general continuation remain roadmap
+work. These local gates use controlled provider HTTP; live commercial Kie
+qualification is tracked separately before release acceptance.
+
+The preceding efficient-reader update used kit 0.1.4 and passed 565 tests,
+TypeScript, kit generation/integrity, 85 managed UI hashes, production build and
+all 66 browser checks. Provided metadata is authoritative, and discovery focuses
+on missing facts for requested assets and source ranges.
 
 The earlier paginated-reader update uses loop 0.1.2/kit 0.1.3. Focused reader, range and
 completion regressions pass with frozen legacy profile digests, and the full unit
@@ -264,7 +278,6 @@ fixtures while React, persistence, media, rendering and export execute normally.
 The new readers bind snapshot/filter/scope/source identity to cursor pages, retain
 UTF-8 byte bounds and expose complete/incomplete coverage. Explicit source ranges
 are prepared in a candidate and produce matching source-trim/caption commands.
-
 
 The earlier loop 0.1.2/kit 0.1.2 candidate passed **511 tests**. Its host
 regressions cover saved-response/tool/terminal recovery, uncertain paid outcomes,
