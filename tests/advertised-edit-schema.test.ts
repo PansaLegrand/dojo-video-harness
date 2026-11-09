@@ -109,7 +109,7 @@ async function fixture(
       path: ["videoStartTime"],
       value: 1,
     });
-    commands.push({
+    const originalCaption = {
       type: "addItem",
       item: {
         id: `captions-${i}`,
@@ -137,6 +137,7 @@ async function fixture(
           sourceItemId: `item-${i}`,
           language: "en",
           role: "original",
+          pairedItemId: `translation-${i}`,
           cues: [
             {
               id: "cue:0",
@@ -145,6 +146,33 @@ async function fixture(
               endMs: 1000,
             },
           ],
+        },
+      },
+    };
+    commands.push(originalCaption, {
+      type: "addItem",
+      item: {
+        ...originalCaption.item,
+        id: `translation-${i}`,
+        name: "Chinese captions",
+        node: {
+          ...originalCaption.item.node,
+          id: `translation-${i}`,
+          style: {
+            ...originalCaption.item.node.style,
+            top: 320,
+            color: "#ffffff",
+          },
+        },
+        caption: {
+          ...originalCaption.item.caption,
+          language: "zh",
+          role: "translation",
+          pairedItemId: `captions-${i}`,
+          cues: originalCaption.item.caption.cues.map((cue) => ({
+            ...cue,
+            text: "准确的原文。",
+          })),
         },
       },
     });
@@ -219,6 +247,37 @@ async function fixture(
           duration: 90,
           ...(i < 3 ? { sourceStartSeconds: 1 } : {}),
         })),
+      },
+      ...Array.from({ length: 2 }, (_, i) => ({
+        id: `pair-${i}`,
+        kind: "caption_pair",
+        sourceItemId: `item-${i}`,
+        evidenceId: `evidence-${i}`,
+        originalItemId: `captions-${i}`,
+        translatedItemId: `translation-${i}`,
+        originalLanguage: "en",
+        translatedLanguage: "zh",
+        originalColor: "#ff0000",
+        translatedColor: "#ffffff",
+      })),
+      ...Array.from({ length: 2 }, (_, i) => ({
+        id: `callout-${i}`,
+        kind: "speech_callout",
+        itemId: `quote-${i}`,
+        bindingId: `quote-binding-${i}`,
+        sourceItemId: `item-${i}`,
+        evidenceId: `evidence-${i}`,
+        wordIds: [`word-${i}-0`, `word-${i}-1`, `word-${i}-2`],
+        exactText: "Exact source words",
+        minReadableMs: 1000,
+      })),
+      {
+        id: "ending",
+        kind: "appended_ending",
+        itemId: "ending",
+        exactText: "Made by DojoClip.com",
+        minDurationMs: 1000,
+        animated: true,
       },
     ],
   };
