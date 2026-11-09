@@ -668,99 +668,138 @@ it("resumes a returned model turn with the same completed ASR receipt and no pai
   expect(start).toHaveBeenCalledTimes(1);
 });
 
-it("gives a clarification child fresh model budgets/checkpoints while retaining its ASR receipt", async () => {
-  const f = await seed(true);
-  await f.store.transaction(f.projectId, (p) => {
-    p.runs = [];
-  });
-  const { port, start } = speechPort();
-  let turn = 0;
-  const complete = vi.fn<LanguageModel["complete"]>(async (messages) => {
-    const context = JSON.parse(
-      String(messages.find((message) => message.role === "user")!.content),
-    );
-    if (++turn === 1)
+it.each(["local-editor-v1", "local-editor-v2"] as const)(
+  "gives a clarification child fresh checkpoints and retains ASR after restart (%s)",
+  async (profile) => {
+    const f = await seed(true);
+    await f.store.transaction(f.projectId, (p) => {
+      p.runs = [];
+    });
+    const { port, start } = speechPort();
+    let turn = 0;
+    const complete = vi.fn<LanguageModel["complete"]>(async (messages) => {
+      const context = JSON.parse(
+        String(messages.find((message) => message.role === "user")!.content),
+      );
+      if (++turn === 1)
+        return reply([
+          {
+            id: "question",
+            name: "ask_user",
+            arguments: JSON.stringify({
+              id: "language",
+              question: "Which language?",
+              options: [
+                { id: "english", label: "English" },
+                { id: "chinese", label: "Chinese" },
+              ],
+              allowText: true,
+            }),
+          },
+        ]);
+      expect(context.authoring.clarification.answer).toBe("English");
+      const evidenceId = Object.keys(context.document.evidence)[0];
+      const edit = {
+        summary: "Add English captions",
+        commands: [
+          {
+            type: "captionSource",
+            sourceItemId: "speech",
+            evidenceId,
+            itemId: "captions",
+            trackId: "visual",
+          },
+        ],
+      };
+      const reviewed = messages.some(
+        (message) =>
+          message.role === "tool" &&
+          String(message.content).includes('"status":"passed"'),
+      );
+      const preflight = profile === "local-editor-v2" && !reviewed;
       return reply([
         {
-          id: "question",
-          name: "ask_user",
-          arguments: JSON.stringify({
-            id: "language",
-            question: "Which language?",
-            options: [
-              { id: "english", label: "English" },
-              { id: "chinese", label: "Chinese" },
-            ],
-            allowText: true,
-          }),
+          id: preflight ? "review" : "caption",
+          name: preflight ? "review_edit" : "propose_edit",
+          arguments: JSON.stringify(
+            preflight
+              ? {
+                  requirements: [
+                    {
+                      id: "captions",
+                      kind: "item_present",
+                      itemId: "captions",
+                    },
+                  ],
+                  edit,
+                }
+              : edit,
+          ),
         },
       ]);
-    expect(context.authoring.clarification.answer).toBe("English");
-    const evidenceId = Object.keys(context.document.evidence)[0];
-    return reply([
-      {
-        id: "caption",
-        name: "propose_edit",
-        arguments: JSON.stringify({
-          summary: "Add English captions",
-          commands: [
-            {
-              type: "captionSource",
-              sourceItemId: "speech",
-              evidenceId,
-              itemId: "captions",
-              trackId: "visual",
-            },
-          ],
-        }),
+    });
+    let host = new AgentService(
+      f.store,
+      { identity: "fixture", complete },
+      [],
+      undefined,
+      "review",
+      port,
+      profile,
+    );
+    const started = await host.start(f.projectId, f.input);
+    await expect
+      .poll(async () => (await f.store.read(f.projectId)).runs[0]!.status)
+      .toBe("needs_input");
+    const p = await f.store.read(f.projectId);
+    const parent = p.runs[0]!;
+    host = new AgentService(
+      f.store,
+      { identity: "fixture", complete },
+      [],
+      undefined,
+      "review",
+      port,
+      profile,
+    );
+    await host.recover();
+    const child = await host.answer(f.projectId, started.run.id, {
+      operationId: randomUUID(),
+      questionId: parent.clarification!.id,
+      baseRevision: p.revision,
+      baseHash: p.documentHash,
+      optionId: "english",
+    });
+    await expect
+      .poll(
+        async () =>
+          (await f.store.read(f.projectId)).runs.find(
+            (run) => run.id === child.run.id,
+          )!.status,
+      )
+      .toBe("awaiting_review");
+    const saved = await f.store.read(f.projectId);
+    const next = saved.runs.find((run) => run.id === child.run.id)!;
+    expect(complete).toHaveBeenCalledTimes(
+      profile === "local-editor-v2" ? 3 : 2,
+    );
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(next.speechContinuation!.sources[0]!.taskId).toBe(
+      parent.speechContinuation!.sources[0]!.taskId,
+    );
+    expect(next.loopCheckpoint!.checkpoint).toMatchObject({
+      modelCalls: profile === "local-editor-v2" ? 2 : 1,
+      usage: {
+        inputTokens: profile === "local-editor-v2" ? 20 : 10,
+        outputTokens: profile === "local-editor-v2" ? 10 : 5,
       },
-    ]);
-  });
-  const host = new AgentService(
-    f.store,
-    { identity: "fixture", complete },
-    [],
-    undefined,
-    "review",
-    port,
-  );
-  const started = await host.start(f.projectId, f.input);
-  await expect
-    .poll(async () => (await f.store.read(f.projectId)).runs[0]!.status)
-    .toBe("needs_input");
-  const p = await f.store.read(f.projectId);
-  const parent = p.runs[0]!;
-  const child = await host.answer(f.projectId, started.run.id, {
-    operationId: randomUUID(),
-    questionId: parent.clarification!.id,
-    baseRevision: p.revision,
-    baseHash: p.documentHash,
-    optionId: "english",
-  });
-  await expect
-    .poll(
-      async () =>
-        (await f.store.read(f.projectId)).runs.find(
-          (run) => run.id === child.run.id,
-        )!.status,
-    )
-    .toBe("awaiting_review");
-  const saved = await f.store.read(f.projectId);
-  const next = saved.runs.find((run) => run.id === child.run.id)!;
-  expect(complete).toHaveBeenCalledTimes(2);
-  expect(start).toHaveBeenCalledTimes(1);
-  expect(next.speechContinuation!.sources[0]!.taskId).toBe(
-    parent.speechContinuation!.sources[0]!.taskId,
-  );
-  expect(next.loopCheckpoint!.checkpoint).toMatchObject({
-    modelCalls: 1,
-    usage: { inputTokens: 10, outputTokens: 5 },
-  });
-  expect(next.loopCheckpoint!.checkpoint.snapshot.runId).toBe(next.id);
-  expect(next.loopCheckpoint!.contextHash).not.toBe(
-    parent.loopCheckpoint!.contextHash,
-  );
-});
+    });
+    expect(next.loopCheckpoint!.checkpoint.snapshot.runId).toBe(next.id);
+    expect(next.loopCheckpoint!.contextHash).not.toBe(
+      parent.loopCheckpoint!.contextHash,
+    );
+  },
+);
 
 it("binds provider endpoint/model identity without credentials or mutable configuration", () => {
   const config = {

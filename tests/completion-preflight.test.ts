@@ -346,6 +346,38 @@ it("recognizes genuine spoken decimals/percent and rejects the year or wrong val
     normalizeCompletionNumber("a growth rate around something"),
   ).toThrow();
 });
+
+it.each([
+  ["b0", "b1", "b2", "b3"],
+  ["y0", "y1", "y2"],
+])(
+  "rejects a genuine but wrong spoken range as the 3.3 percent label: %j",
+  async (...wordIds) => {
+    const f = await fixture();
+    const requirements = structuredClone(
+      f.requirements.filter(
+        (requirement) => requirement.kind === "speech_highlight",
+      ),
+    );
+    const requirement = requirements[0]!;
+    if (requirement.kind !== "speech_highlight") throw new Error("fixture");
+    requirement.wordIds = wordIds;
+    const edit = structuredClone(f.edit);
+    const anchor = edit.commands.find(
+      (command) => command.type === "anchorSpeech",
+    )!;
+    if (!("wordIds" in anchor)) throw new Error("fixture");
+    anchor.wordIds = wordIds;
+    const reviewed = await reviewNativeCompletionEdit(f.request, {
+      requirements,
+      edit,
+    });
+    expect(reviewed.receipt).toBeUndefined();
+    expect(
+      reviewed.checks.find((check) => check.id === "number")!.message,
+    ).toMatch(/numbers do not match/);
+  },
+);
 it("requires actual property absence and accepts ordinary clarification/answer without a receipt", async () => {
   const f = await fixture();
   const before = structuredClone(f.document);
