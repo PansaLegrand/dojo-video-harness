@@ -7,6 +7,8 @@ export {
   LoopCheckpointCapacityError,
   LoopProviderOutputBudgetError,
   LoopHostInputRequiredError,
+  LoopKnownModelRejectionError,
+  isKnownModelRejectionStatus,
   parseHostRequestRef,
   encodeLoopCheckpoint,
   measureLoopCheckpointBytes,

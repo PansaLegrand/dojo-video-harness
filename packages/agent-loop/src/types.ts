@@ -113,6 +113,7 @@ export type LoopSnapshot = {
   checkpointCapacity?: LoopCheckpointCapacity;
   outputBudgetPolicy?: "preserve-overrun-v1";
   hostInputPolicy?: "durable-host-wait-v1";
+  knownRejectionPolicy?: "preserve-known-rejection-v1";
 };
 export type LoopOutputBudgetOverrun = {
   kind: "provider-output-budget";
@@ -124,6 +125,7 @@ export type LoopOutputBudgetOverrun = {
 export type LoopCheckpointPhase =
   | "ready-for-model"
   | "model-pending"
+  | "model-rejected"
   | "model-returned"
   | "tool-pending"
   | "tool-observations"
@@ -147,6 +149,7 @@ export type LoopCheckpoint = {
   pinnedToolCallIds: string[];
   pendingTurn?: { reply: ModelReply; nextToolIndex: number };
   outputBudgetOverrun?: LoopOutputBudgetOverrun;
+  knownRejection?: { version: 1; status: number; modelCall: number };
   hostWait?: { requestRef: HostRequestRef; toolCallId: string };
   result?: unknown;
 };

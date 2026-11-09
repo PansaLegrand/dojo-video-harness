@@ -63,6 +63,26 @@ export class LoopProviderOutputBudgetError extends Error {
     this.name = "LoopProviderOutputBudgetError";
   }
 }
+export const isKnownModelRejectionStatus = (status: number) =>
+  [400, 401, 403, 404, 422].includes(status);
+/** Adapters may construct this only for an explicit pre-execution rejection.
+ * Never put provider bodies, request headers or keys in the exception. */
+export class LoopKnownModelRejectionError extends Error {
+  readonly code = "LOOP_KNOWN_MODEL_REJECTION";
+  constructor(
+    public readonly status: number,
+    public readonly checkpointSaved = false,
+  ) {
+    super(
+      "The model provider rejected this request before execution. The saved rejection is retained; no automatic paid retry is authorized.",
+    );
+    if (!isKnownModelRejectionStatus(status))
+      throw new Error(
+        "This response is not a qualified known model rejection.",
+      );
+    this.name = "LoopKnownModelRejectionError";
+  }
+}
 export class LoopHostInputRequiredError extends Error {
   readonly code = "LOOP_HOST_INPUT_REQUIRED";
   constructor(
@@ -248,6 +268,7 @@ export function validateSnapshot(
     "checkpointCapacity",
     "outputBudgetPolicy",
     "hostInputPolicy",
+    "knownRejectionPolicy",
   ]);
   text(data.runId, 256);
   text(data.snapshotHash, 1024);
@@ -262,6 +283,11 @@ export function validateSnapshot(
     data.hostInputPolicy !== "durable-host-wait-v1"
   )
     throw new Error("Invalid host input policy.");
+  if (
+    data.knownRejectionPolicy !== undefined &&
+    data.knownRejectionPolicy !== "preserve-known-rejection-v1"
+  )
+    throw new Error("Invalid known rejection policy.");
   validateMessages(data.messages);
   const budgets = object(data.budgets, [
     "maxSteps",
@@ -357,6 +383,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
       "pendingTurn",
       "outputBudgetOverrun",
       "hostWait",
+      "knownRejection",
       "result",
     ]);
     validateSnapshot(wire.snapshot);
@@ -408,6 +435,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     "pendingTurn",
     "outputBudgetOverrun",
     "hostWait",
+    "knownRejection",
     "result",
   ]);
   if (data.version !== 1)
@@ -455,6 +483,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
   const phases = [
     "ready-for-model",
     "model-pending",
+    "model-rejected",
     "model-returned",
     "tool-pending",
     "tool-observations",
@@ -476,6 +505,29 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     throw new Error("Invalid initial loop checkpoint.");
   if (checkpoint.phase !== "ready-for-model" && checkpoint.modelCalls < 1)
     throw new Error("Missing persisted model-call budget.");
+  if (checkpoint.knownRejection !== undefined) {
+    const rejection = object(checkpoint.knownRejection, [
+      "version",
+      "status",
+      "modelCall",
+    ]);
+    integer(rejection.status, 400, 499);
+    if (
+      snapshot.knownRejectionPolicy !== "preserve-known-rejection-v1" ||
+      checkpoint.phase !== "model-rejected" ||
+      rejection.version !== 1 ||
+      !isKnownModelRejectionStatus(Number(rejection.status)) ||
+      rejection.modelCall !== checkpoint.modelCalls ||
+      !checkpoint.usageKnown ||
+      checkpoint.pendingTurn ||
+      checkpoint.hostWait ||
+      checkpoint.result !== undefined
+    )
+      throw new Error("Invalid known provider rejection receipt.");
+  } else if (checkpoint.phase === "model-rejected")
+    throw new Error(
+      "The rejected model request has no saved rejection receipt.",
+    );
   const requiresTurn = [
     "model-returned",
     "tool-pending",
@@ -676,7 +728,11 @@ export function canResumeLoopCheckpoint(
 ): boolean {
   try {
     const checkpoint = parseLoopCheckpoint(value);
-    if (checkpoint.phase === "model-pending") return false;
+    if (
+      checkpoint.phase === "model-pending" ||
+      checkpoint.phase === "model-rejected"
+    )
+      return false;
     if (
       checkpoint.phase === "tool-pending" ||
       checkpoint.phase === "waiting-for-host"

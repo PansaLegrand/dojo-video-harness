@@ -13,6 +13,7 @@ import {
   LoopCheckpointCapacityError,
   LoopProviderOutputBudgetError,
   LoopHostInputRequiredError,
+  LoopKnownModelRejectionError,
   parseHostRequestRef,
   measureLoopCheckpointBytes,
   measureModelReplyBytes,
@@ -53,6 +54,9 @@ export async function runToolLoop<T>(
   const hostInputPolicy = existing
     ? existing.snapshot.hostInputPolicy
     : ("durable-host-wait-v1" as const);
+  const knownRejectionPolicy = existing
+    ? existing.snapshot.knownRejectionPolicy
+    : ("preserve-known-rejection-v1" as const);
   const hostWaitHeadroom = hostInputPolicy ? 1024 : 0;
   if (
     (capacity || encoding) &&
@@ -93,6 +97,7 @@ export async function runToolLoop<T>(
         : {}),
       ...(outputBudgetPolicy ? { outputBudgetPolicy } : {}),
       ...(hostInputPolicy ? { hostInputPolicy } : {}),
+      ...(knownRejectionPolicy ? { knownRejectionPolicy } : {}),
     },
     2_000_000,
   );
@@ -304,6 +309,11 @@ export async function runToolLoop<T>(
   while (true) {
     if (checkpoint.outputBudgetOverrun)
       throw new LoopProviderOutputBudgetError(checkpoint.outputBudgetOverrun);
+    if (checkpoint.knownRejection)
+      throw new LoopKnownModelRejectionError(
+        checkpoint.knownRejection.status,
+        true,
+      );
     signal.throwIfAborted();
     if (checkpoint.phase === "completed") return result();
     if (checkpoint.phase === "model-pending")
@@ -413,19 +423,36 @@ export async function runToolLoop<T>(
     const started = event("model.started");
     await persist("model-pending", true); // Includes UTF-8 reply reservation before paid submission.
     await emit(started);
-    const returned = await input.model.complete(
-      preparedMessages ?? copyJson(checkpoint.messages),
-      preparedTools ??
-        copyJson(
-          snapshot.tools.map(({ name, description, parameters }) => ({
-            name,
-            description,
-            parameters,
-          })),
-        ),
-      signal,
-      limits,
-    );
+    let returned: ModelReply;
+    try {
+      returned = await input.model.complete(
+        preparedMessages ?? copyJson(checkpoint.messages),
+        preparedTools ??
+          copyJson(
+            snapshot.tools.map(({ name, description, parameters }) => ({
+              name,
+              description,
+              parameters,
+            })),
+          ),
+        signal,
+        limits,
+      );
+    } catch (cause) {
+      if (
+        knownRejectionPolicy &&
+        cause instanceof LoopKnownModelRejectionError
+      ) {
+        checkpoint.knownRejection = {
+          version: 1,
+          status: cause.status,
+          modelCall: checkpoint.modelCalls,
+        };
+        await persist("model-rejected"); // Retain the sanitized known response before surfacing it.
+        throw new LoopKnownModelRejectionError(cause.status, true);
+      }
+      throw cause; // Timeouts/5xx/malformed output remain an uncertain paid fence.
+    }
     const reply = copyJson(returned);
     validateReply(reply);
     if (capacity && measureModelReplyBytes(reply) > capacity.maxReplyBytes)
