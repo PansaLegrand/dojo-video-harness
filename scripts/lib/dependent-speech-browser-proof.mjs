@@ -82,9 +82,18 @@ export function setupDependentSpeechProof() {
       const from = clip.node.from ?? 0,
         duration = clip.node.duration,
         end = from + duration;
-      const captionSource = context.contextPlan.captionSources.sources.find(
+      const packetSource = context.completionCaptionSources.sources.find(
         (source) => source.sourceItemId === clip.id,
       );
+      const captionSource = packetSource && {
+        ...packetSource,
+        cues: packetSource.cues.map((cue) => ({
+          id: cue.cueId,
+          text: cue.text,
+          startMs: cue.startMs,
+          endMs: cue.endMs,
+        })),
+      };
       assert(
         captionSource?.cues.length,
         "Complete host-timed cues must reach the original instruction",
