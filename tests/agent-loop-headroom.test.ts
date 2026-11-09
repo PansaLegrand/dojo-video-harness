@@ -144,7 +144,11 @@ describe("UTF-8 checkpoint reply headroom", () => {
     options.model.complete = vi.fn(
       async (actualMessages, _tools, _signal, limits) => {
         expect(actualMessages).toEqual(messages);
-        expect(limits).toEqual({ maxOutputTokens: 30, maxReplyBytes: 12000 });
+        expect(limits).toEqual({
+          maxOutputTokens: 30,
+          maxReplyBytes: 12000,
+          outputBudgetPolicy: "preserve-overrun-v1",
+        });
         return response(opaque);
       },
     );
@@ -238,6 +242,7 @@ describe("UTF-8 checkpoint reply headroom", () => {
     expect(options.model.complete).toHaveBeenCalledTimes(1);
     expect(vi.mocked(options.model.complete).mock.calls[0][3]).toEqual({
       maxOutputTokens: 30,
+      outputBudgetPolicy: "preserve-overrun-v1",
     });
   });
 

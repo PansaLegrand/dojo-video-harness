@@ -55,6 +55,28 @@ function provider(body: unknown, status = 200) {
   return fetch;
 }
 describe("GPT Responses transport", () => {
+  it.each([
+    [20000, 8192],
+    [4853, 4853],
+  ])(
+    "reports the exact transmitted limit only for the new output budget policy (%i)",
+    async (remaining, maximum) => {
+      const fetch = provider(complete([answer]));
+      const model = new GptResponsesModel(config);
+      const result = await model.complete([], [], signal(), {
+        maxOutputTokens: remaining,
+        outputBudgetPolicy: "preserve-overrun-v1",
+      });
+      expect(
+        JSON.parse(String(fetch.mock.calls[0][1]?.body)).max_output_tokens,
+      ).toBe(maximum);
+      expect(result.outputTokenLimit).toBe(maximum);
+      const old = await model.complete([], [], signal(), {
+        maxOutputTokens: remaining,
+      });
+      expect(old).not.toHaveProperty("outputTokenLimit");
+    },
+  );
   it("counts opaque provider output and UTF-8 bytes in the complete normalized reply budget", async () => {
     const opaque = { ...reasoning, encrypted_content: "界".repeat(1000) };
     const expected = {

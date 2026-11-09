@@ -5,6 +5,7 @@ export {
   LoopRecoveryRequiredError,
   DEFAULT_CHECKPOINT_CAPACITY,
   LoopCheckpointCapacityError,
+  LoopProviderOutputBudgetError,
   encodeLoopCheckpoint,
   measureLoopCheckpointBytes,
   measureModelReplyBytes,

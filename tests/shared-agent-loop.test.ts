@@ -47,9 +47,9 @@ describe("shared host-independent tool loop", () => {
       usage: { inputTokens: 21, outputTokens: 9 },
     });
     expect(complete.mock.calls.map((args) => (args as unknown[])[3])).toEqual([
-      { maxOutputTokens: 12 },
-      { maxOutputTokens: 9 },
-      { maxOutputTokens: 6 },
+      { maxOutputTokens: 12, outputBudgetPolicy: "preserve-overrun-v1" },
+      { maxOutputTokens: 9, outputBudgetPolicy: "preserve-overrun-v1" },
+      { maxOutputTokens: 6, outputBudgetPolicy: "preserve-overrun-v1" },
     ]);
   });
   it("stops after a terminal call even when the model proposes another effect", async () => {
