@@ -22,8 +22,8 @@ function fixture() {
   doc.evidence.asr = { id: "asr", asrTaskId: "owned-asr", sourceAssetId: "speech", sourceRevision: "original-speech", transcriptHash: "sha256:" + "a".repeat(64), text: "solid pace twenty point five percent.", language: "en", words: words.map((word, index) => ({ ...word, id: `w:aaaaaaaaaaaaaaaa:${index}` })) };
   const values = [
     { id: "en", language: "en", direction: "ltr" as const, text: ["solid", "pace", "twenty point five percent."], top: 200 },
-    { id: "zh", language: "zh", direction: "ltr" as const, text: ["稳健", "的步伐。", "百分之二十五点五。"], top: 260 },
-    { id: "ar", language: "ar", direction: "rtl" as const, text: ["بوتيرة", "ثابتة.", "خمسة وعشرون ونصف بالمئة."], top: 310 },
+    { id: "zh", language: "zh", direction: "ltr" as const, text: ["稳健", "的步伐。", "百分之二十点五。"], top: 260 },
+    { id: "ar", language: "ar", direction: "rtl" as const, text: ["بوتيرة", "ثابتة.", "عشرون ونصف بالمئة."], top: 310 },
   ];
   for (const row of values) doc.items.push({ id: row.id, name: row.id, trackId: row.id === "zh" ? "zh-track" : "visual",
     node: { id: row.id, type: "div", from: 0, duration: 180, style: { color: row.id === "en" ? "#ff0000" : "#ffffff", top: row.top, fontSize: 24 } },
