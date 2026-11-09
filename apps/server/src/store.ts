@@ -40,6 +40,11 @@ import {
   agentCheckpointRecovery,
   type StoredAgentLoopCheckpoint,
 } from "./agent-loop-checkpoint";
+import {
+  captionSegmentationReceiptSchema,
+  validateCaptionSegmentationReceipt,
+  type CaptionSegmentationReceipt,
+} from "../../../packages/core/src/lib/video-project/caption-segmentation";
 
 export class HttpError extends Error {
   constructor(
@@ -58,6 +63,7 @@ export const commitInput = z
     baseHash: z.string(),
     commands: videoProjectCommandsSchema,
     summary: z.string().max(2000).optional(),
+    captionSegmentation: captionSegmentationReceiptSchema.optional(),
   })
   .strict();
 export type StoredRun = VideoProjectAgentRun & {
@@ -89,7 +95,7 @@ export type Project = {
   past: VideoProjectDocument[];
   future: VideoProjectDocument[];
   versions: Record<string, VideoProjectDocument>;
-  receipts: Record<string, { hash: string; snapshot: VideoProjectSnapshot }>;
+  receipts: Record<string, { hash: string; snapshot: VideoProjectSnapshot; metadata?: { captionSegmentation: CaptionSegmentationReceipt } }>;
   runs: StoredRun[];
   messages: VideoProjectAgentMessage[];
   exports?: Record<string, ExportReceipt>;
@@ -269,6 +275,10 @@ export class ProjectStore {
           409,
           "REVISION_CONFLICT",
         );
+      if (input.captionSegmentation) {
+        try { await validateCaptionSegmentationReceipt(base, input.commands, input.captionSegmentation); }
+        catch (cause) { throw new HttpError(cause instanceof Error ? cause.message : "Prepare the linked caption edit again.", 409, "CAPTION_SEGMENTATION_STALE"); }
+      }
       const result = rebaseVideoProjectCommands(
         base,
         p.document,
@@ -276,10 +286,15 @@ export class ProjectStore {
       );
       if (!result.ok)
         throw new HttpError(result.reason, 409, "REVISION_CONFLICT");
+      if (input.captionSegmentation) {
+        try { await validateCaptionSegmentationReceipt(p.document, result.commands, input.captionSegmentation); }
+        catch (cause) { throw new HttpError(cause instanceof Error ? cause.message : "The linked caption edit changed during recovery.", 409, "CAPTION_SEGMENTATION_STALE"); }
+      }
       await validate?.(p, result.commands);
       await commitDocument(p, result.document);
       const next = snapshot(p);
-      p.receipts[input.operationId] = { hash, snapshot: next };
+      p.receipts[input.operationId] = { hash, snapshot: next,
+        ...(input.captionSegmentation ? { metadata: { captionSegmentation: input.captionSegmentation } } : {}) };
       return next;
     });
   }
