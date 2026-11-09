@@ -405,16 +405,15 @@ it("uses trimmed/rate-adjusted source clocks while preserving original word iden
 it("runs both readers through the actual registered new-profile tool path and preserves partial coverage", async () => {
   const r = await speech(201),
     tools = createVideoToolset(r, builtInSkills(), [], {
-      profile: "local-editor-v3",
+      profile: "local-editor-v4",
     });
   expect(tools.inventory).toMatchObject({
-    kitVersion: "0.1.3",
-    profile: "local-editor-v3",
+    kitVersion: "0.1.4",
+    profile: "local-editor-v4",
   });
   const read = tools.tools.find((t) => t.name === "read_caption_cues")!;
   const first = await read.execute(
     {
-      snapshotHash: r.baseHash,
       sourceItemId: "clip-0",
       evidenceId: "evidence-0",
     },

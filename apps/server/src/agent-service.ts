@@ -74,7 +74,8 @@ export class AgentService {
     private agentProfile:
       | "local-editor-v1"
       | "local-editor-v2"
-      | "local-editor-v3" = "local-editor-v1",
+      | "local-editor-v3"
+      | "local-editor-v4" = "local-editor-v1",
   ) {}
   /** Explicit startup recovery: only durable, checked boundaries are launched.
    * In-flight provider/unsafe-tool outcomes remain failed for manual recovery. */
@@ -258,9 +259,12 @@ export class AgentService {
       skills: this.skills,
       extraTools: this.extraTools?.(projectId, id, request),
       signal,
-      maxOutputTokens: ["local-editor-v2", "local-editor-v3"].includes(
-        run.agentProfile ?? "",
-      )
+      maxSteps: run.agentProfile === "local-editor-v4" ? 16 : undefined,
+      maxOutputTokens: [
+        "local-editor-v2",
+        "local-editor-v3",
+        "local-editor-v4",
+      ].includes(run.agentProfile ?? "")
         ? 16384
         : undefined,
       messages:

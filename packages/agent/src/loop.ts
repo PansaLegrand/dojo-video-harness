@@ -3,6 +3,7 @@ import {
   restoreCompletionStateFromMessages,
   usesCompletionPreflight,
   usesPagedReaders,
+  usesEfficientReaders,
   type AgentProfile,
 } from "../../agent-kit/src/index";
 import {
@@ -90,6 +91,7 @@ export async function runAgent(input: {
   const tools = toolset.tools;
   const system =
     composeToolAgentPrompt({
+      profile: input.profile,
       editingGuide: prompts.systemPrompt,
       toolNames: tools.map((tool) => tool.name),
       skills: toolset.skills,
@@ -149,7 +151,9 @@ export async function runAgent(input: {
     messages,
     tools,
     signal,
-    maxSteps: input.maxSteps,
+    maxSteps:
+      input.maxSteps ??
+      (usesEfficientReaders(input.profile ?? "local-editor-v1") ? 16 : 8),
     maxToolCalls: input.maxToolCalls,
     maxOutputTokens: input.maxOutputTokens,
     checkpoint,
