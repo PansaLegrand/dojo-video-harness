@@ -248,7 +248,7 @@ embeddable SDK distributions are a subsequent release step.
 
 The paginated-reader update uses loop 0.1.2/kit 0.1.3. Focused reader, range and
 completion regressions pass with frozen legacy profile digests, and the full unit
-suite passes 553 tests. The production build and all 66 browser checks also pass
+suite passes 554 tests. The production build and all 66 browser checks also pass
 with 85 managed product UI files. Browser model/ASR responses use controlled HTTP
 fixtures while React, persistence, media, rendering and export execute normally.
 The new readers bind snapshot/filter/scope/source identity to cursor pages, retain
