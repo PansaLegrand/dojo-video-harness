@@ -6,7 +6,8 @@ export function prepareCompletionCaptionCuePacket(
   document: VideoProjectDocument,
   sourceItemIds?: readonly string[],
 ) {
-  const selected = sourceItemIds?.length ? new Set(sourceItemIds) : undefined;
+  const selected =
+    sourceItemIds === undefined ? undefined : new Set(sourceItemIds);
   const candidates = document.items.filter(
     (item) =>
       ["audio", "video"].includes(item.node.type) &&

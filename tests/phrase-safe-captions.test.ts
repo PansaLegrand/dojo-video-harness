@@ -5,6 +5,7 @@ import {
 } from "../packages/core/src/lib/video-project/document";
 import { captionSourceCommands } from "../packages/core/src/lib/video-project/semantic";
 import { prepareCompletionCaptionCuePacket } from "../packages/core/src/lib/video-project/completion-caption-context";
+import { nativeTranscriptScopedSourceItemIds } from "../packages/core/src/lib/video-project/agent-transcript-search";
 function fixture(
   prefix: string,
   number: string[],
@@ -141,4 +142,26 @@ it("builds an exact packet for audio-only documents and bounds the full serializ
   ).toBeLessThanOrEqual(32000);
   expect(packet.complete).toBe(false);
   expect(packet.sources.length).toBeLessThanOrEqual(12);
+});
+
+it("keeps explicit empty source filters and out-of-range scopes empty", () => {
+  const document = fixture(
+    "GDP expanded at",
+    ["three", "point", "three", "percent."],
+    "time",
+  );
+  expect(prepareCompletionCaptionCuePacket(document).sources).toHaveLength(1);
+  expect(prepareCompletionCaptionCuePacket(document, []).sources).toEqual([]);
+  const ids = nativeTranscriptScopedSourceItemIds({
+    baseHash: "fixture",
+    document,
+    context: { selectedItemIds: [] },
+    authoring: {
+      scope: { kind: "range", fromFrame: 600, durationInFrames: 30 },
+    },
+  });
+  expect(ids).toEqual([]);
+  expect(
+    prepareCompletionCaptionCuePacket(document, ids ?? undefined).sources,
+  ).toEqual([]);
 });

@@ -21,6 +21,7 @@ import { type Skill } from "./skills";
 import { createVideoToolset, type AgentTool } from "./tools";
 import type { LanguageModel, ChatMessage, AgentEvent } from "./types";
 import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
+import { nativeTranscriptScopedSourceItemIds } from "../../core/src/lib/video-project/agent-transcript-search";
 
 export type AgentCheckpointContext = {
   inventory: ReturnType<typeof createVideoToolset>["inventory"];
@@ -64,7 +65,11 @@ export async function runAgent(input: {
     responseMode: "tools",
   });
   if (usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
-    const packet = prepareCompletionCaptionCuePacket(document);
+    const packet = prepareCompletionCaptionCuePacket(
+      document,
+      nativeTranscriptScopedSourceItemIds({ ...request, document }) ??
+        undefined,
+    );
     try {
       const initial = JSON.parse(prompts.userPrompt);
       if (initial.contextPlan) delete initial.contextPlan.captionSources;

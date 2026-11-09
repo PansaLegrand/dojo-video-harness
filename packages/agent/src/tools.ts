@@ -19,7 +19,10 @@ import {
   type NativeAgentResult,
 } from "../../core/src/lib/video-project/agent-runtime";
 import { nativeAgentResponseSchema } from "../../core/src/lib/video-project/agent-schema";
-import { searchNativeTranscript } from "../../core/src/lib/video-project/agent-transcript-search";
+import {
+  searchNativeTranscript,
+  nativeTranscriptScopedSourceItemIds,
+} from "../../core/src/lib/video-project/agent-transcript-search";
 import { nativeClarificationSchema } from "../../core/src/lib/video-project/agent-authoring";
 import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
 import { prepareReadableOverlay } from "../../core/src/lib/video-project/readable-overlay";
@@ -61,6 +64,10 @@ export function createVideoToolset(
   } = {},
 ) {
   const document = parseVideoProjectDocument(request.document);
+  const scopedSources = nativeTranscriptScopedSourceItemIds({
+    ...request,
+    document,
+  });
   const toolset = createEditorToolset<NativeAgentResult>({
     skills,
     profile: options.profile ?? "local-editor-v1",
@@ -84,7 +91,11 @@ export function createVideoToolset(
           ? {
               completionCaptionSources: prepareCompletionCaptionCuePacket(
                 document,
-                query.itemIds,
+                scopedSources === null
+                  ? query.itemIds
+                  : query.itemIds === undefined
+                    ? scopedSources
+                    : query.itemIds.filter((id) => scopedSources.includes(id)),
               ),
             }
           : {}),
