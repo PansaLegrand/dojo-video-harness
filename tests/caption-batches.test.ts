@@ -14,6 +14,7 @@ import {
 } from "../packages/core/src/lib/video-project/document";
 import { executeVideoProjectCommands } from "../packages/core/src/lib/video-project/commands";
 import { reviewNativeCompletionEdit } from "../packages/core/src/lib/video-project/completion-preflight";
+import { completionHash } from "../packages/agent-kit/src/completion";
 function fixture(count = 501, fps = 30, rate = 1) {
   const document = createVideoProjectDocument({
     width: 640,
@@ -110,6 +111,9 @@ it("assembles all 501 genuine cues from two batches into one complete guarded ca
     f.document,
     manifest,
     batches.slice().reverse(),
+  );
+  expect(await completionHash(prepared.commands)).toMatchSnapshot(
+    "501-cue native commands v1",
   );
   const after = executeVideoProjectCommands(
     f.document,
@@ -251,6 +255,9 @@ it("matches ordinary preparation exactly for a ranged, non-30fps playback source
       { sourceRange: true },
     );
   expect(assembled.commands).toEqual(ordinary.commands);
+  expect(await completionHash(assembled.commands)).toMatchSnapshot(
+    "trimmed-25fps-1.25x native commands v1",
+  );
   expect(assembled.cues).toEqual(ordinary.cues);
   expect(JSON.stringify(f.document.evidence)).toBe(
     JSON.stringify(

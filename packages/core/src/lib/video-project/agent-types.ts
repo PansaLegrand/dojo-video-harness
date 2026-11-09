@@ -78,6 +78,7 @@ export type VideoProjectAgentProposal = {
 export type VideoProjectAgentRun = {
   /** Explicit host policy for integrations that require a human review. */
   manualReviewRequired?: boolean;
+  progress?: import("./agent-progress").NativeAgentProgress;
   /** Optional host disclosure; absence never grants upload consent. */
   cloudConsent?: boolean;
   id: string;
