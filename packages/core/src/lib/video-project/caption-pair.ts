@@ -82,6 +82,7 @@ export function prepareCaptionPair(
     evidenceId: input.evidenceId,
     itemId: input.originalItemId,
     trackId: input.trackId,
+    phraseSafe: true,
   });
   const original = commands.find(
     (command): command is Extract<VideoProjectCommand, { type: "addItem" }> =>

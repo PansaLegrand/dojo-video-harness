@@ -149,6 +149,7 @@ function assertRequirement(
       evidenceId: requirement.evidenceId,
       itemId: "completion-cues",
       trackId: original.trackId,
+      phraseSafe: true,
     }).find((command) => command.type === "addItem");
     if (expected?.type !== "addItem")
       throw new Error("Host source cues are unavailable.");

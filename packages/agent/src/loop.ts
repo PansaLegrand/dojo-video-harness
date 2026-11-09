@@ -20,6 +20,7 @@ import { parseVideoProjectDocument } from "../../core/src/lib/video-project/docu
 import { type Skill } from "./skills";
 import { createVideoToolset, type AgentTool } from "./tools";
 import type { LanguageModel, ChatMessage, AgentEvent } from "./types";
+import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
 
 export type AgentCheckpointContext = {
   inventory: ReturnType<typeof createVideoToolset>["inventory"];
@@ -62,6 +63,20 @@ export async function runAgent(input: {
     messages: input.messages ?? [],
     responseMode: "tools",
   });
+  if (usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
+    const packet = prepareCompletionCaptionCuePacket(document);
+    try {
+      const initial = JSON.parse(prompts.userPrompt);
+      if (initial.contextPlan) delete initial.contextPlan.captionSources;
+      prompts.userPrompt = JSON.stringify({
+        ...initial,
+        completionCaptionSources: packet,
+      });
+    } catch {
+      prompts.userPrompt +=
+        "\nCompletion caption sources: " + JSON.stringify(packet);
+    }
+  }
   const toolset = createVideoToolset(request, skills, input.extraTools ?? [], {
     profile: input.profile,
   });

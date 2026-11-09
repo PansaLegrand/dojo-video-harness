@@ -28,6 +28,7 @@ import {
   compileNativeCompletionResponse,
 } from "../../core/src/lib/video-project/completion-preflight";
 import { prepareCaptionPair } from "../../core/src/lib/video-project/caption-pair";
+import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
 import type { LoopTool } from "../../agent-loop/src/index";
 export type AgentTool = Omit<KitTool<NativeAgentResult>, "execute"> &
   Pick<
@@ -79,6 +80,14 @@ export function createVideoToolset(
         extension: THREE_EXTENSION,
       }),
       inspectProject: (query) => ({
+        ...(usesCompletionPreflight(options.profile ?? "local-editor-v1")
+          ? {
+              completionCaptionSources: prepareCompletionCaptionCuePacket(
+                document,
+                query.itemIds,
+              ),
+            }
+          : {}),
         snapshotHash: request.baseHash,
         format: document.format,
         assets: Object.values(document.assets)

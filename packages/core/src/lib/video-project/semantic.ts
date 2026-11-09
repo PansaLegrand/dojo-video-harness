@@ -12,6 +12,7 @@ import {
   sourceWindow,
 } from "./source-clock";
 import type { VideoProjectCommand } from "./commands";
+import { normalizeCompletionNumber } from "./completion-number";
 
 export function requiresTranscript(instruction: string) {
   return /\b(captions?|subtitles?|transcri\w*|spoken|speech|says?|said|speaks?|fillers?|silences?|translate|translation)\b|字幕|口播|说到|说出|说的|台词|转录|翻译|停顿|口癖|静音片段/i.test(
@@ -138,6 +139,7 @@ export function captionSourceCommands(
     itemId: string;
     trackId: string;
     preset?: string;
+    phraseSafe?: boolean;
   },
 ): VideoProjectCommand[] {
   const source = document.items.find((item) => item.id === input.sourceItemId);
@@ -156,16 +158,96 @@ export function captionSourceCommands(
     );
   const groups: (typeof words)[] = [];
   let current: typeof words = [];
-  for (const word of words) {
+  const units: (typeof words)[] = [];
+  for (let index = 0; index < words.length; ) {
+    let count = 1;
+    if (input.phraseSafe) {
+      const numeric =
+        /^(?:[+-]?\d|zero\b|one\b|two\b|three\b|four\b|five\b|six\b|seven\b|eight\b|nine\b|ten\b|eleven\b|twelve\b|thirteen\b|fourteen\b|fifteen\b|sixteen\b|seventeen\b|eighteen\b|nineteen\b|twenty\b|thirty\b|forty\b|fifty\b|sixty\b|seventy\b|eighty\b|ninety\b)/i;
+      if (numeric.test(words[index]!.text)) {
+        for (let size = 1; index + size <= words.length; size++) {
+          const run = words.slice(index, index + size),
+            last = run.at(-1)!;
+          const token = last.text.toLowerCase().replace(/[.!?,;:]+$/g, "");
+          if (
+            !token
+              .split(/[-\s]+/)
+              .every(
+                (part) =>
+                  /^[+\-]?\d+(?:\.\d+)?%?$/.test(part) ||
+                  [
+                    "zero",
+                    "one",
+                    "two",
+                    "three",
+                    "four",
+                    "five",
+                    "six",
+                    "seven",
+                    "eight",
+                    "nine",
+                    "ten",
+                    "eleven",
+                    "twelve",
+                    "thirteen",
+                    "fourteen",
+                    "fifteen",
+                    "sixteen",
+                    "seventeen",
+                    "eighteen",
+                    "nineteen",
+                    "twenty",
+                    "thirty",
+                    "forty",
+                    "fifty",
+                    "sixty",
+                    "seventy",
+                    "eighty",
+                    "ninety",
+                    "hundred",
+                    "thousand",
+                    "and",
+                    "point",
+                    "percent",
+                    "per",
+                    "cent",
+                  ].includes(part),
+              )
+          )
+            break;
+          const phrase = wordsText(evidence, run);
+          if (
+            size > 16 ||
+            phrase.length > 160 ||
+            last.endMs - run[0]!.startMs > 8000
+          )
+            throw new Error(
+              "A number phrase exceeds safe caption bounds (16 words/160 characters/8s). Select a shorter source range.",
+            );
+          try {
+            normalizeCompletionNumber(phrase);
+            count = size;
+          } catch {
+            /* Bridge words such as point need following digits. */
+          }
+          if (/[.!?。！？]$/.test(last.text)) break;
+        }
+      }
+    }
+    units.push(words.slice(index, index + count));
+    index += count;
+  }
+  for (const unit of units) {
+    const word = unit.at(-1)!;
     if (
       current.length &&
-      (wordsText(evidence, [...current, word]).length > 80 ||
+      (wordsText(evidence, [...current, ...unit]).length > 80 ||
         word.endMs - current[0]!.startMs > 4000)
     ) {
       groups.push(current);
       current = [];
     }
-    current.push(word);
+    current.push(...unit);
     if (/[.!?。！？]$/.test(word.text)) {
       groups.push(current);
       current = [];
