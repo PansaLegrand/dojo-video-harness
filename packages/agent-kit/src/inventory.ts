@@ -7,6 +7,7 @@ import {
   type Skill,
   type CatalogToolName,
   type BuiltinSkillName,
+  usesCompletionPreflight,
 } from "./catalog.js";
 export function buildAgentInventory<T>(input: {
   profile: AgentProfile;
@@ -16,7 +17,9 @@ export function buildAgentInventory<T>(input: {
   const available = new Set(input.tools.map((tool) => tool.name));
   return {
     version: 1 as const,
-    kitVersion: AGENT_KIT_VERSION,
+    kitVersion: usesCompletionPreflight(input.profile)
+      ? AGENT_KIT_VERSION
+      : "0.1.1",
     profile: input.profile,
     tools: input.tools.map(({ name, description, effect, parameters }) => ({
       name,
@@ -28,6 +31,11 @@ export function buildAgentInventory<T>(input: {
         : ("host" as const),
     })),
     unavailable: Object.entries(toolCatalog)
+      .filter(
+        ([name]) =>
+          usesCompletionPreflight(input.profile) ||
+          !["review_edit", "prepare_caption_pair"].includes(name),
+      )
       .filter(([name]) => !available.has(name))
       .map(([name, value]) => ({
         name,

@@ -13,10 +13,24 @@ Conditional `requires-tool` sections appear only when that tool is registered.
 `createEditorToolset` returns executable tools, eligible skills and a serializable
 inventory from the same registered executors. Hosts may add explicit external
 action tools. Portable preparation tools have no permission to spend or commit.
-The commercial profile preserves eight tools/two named skills; the full local host
+The frozen commercial-editing-v2 profile preserves eight tools/two named skills; the full local host
 adds text-overlay preparation and its music/workflow services. Those services
 retain their own approval, job and persistence lifecycles.
 
 `composeToolAgentPrompt` accepts an editing guide already generated in tool mode;
 it does not patch or search/replace host instructions. Run the same conformance
 fixtures in each host before moving command semantics into shared packages.
+
+Kit0.1.2 adds local-editor-v2/commercial-editing-v3 profiles. Their review_edit
+tool freezes a first valid typed checklist, returns pinned failure/success
+observations and permits propose_edit only for exact successfully reviewed
+commands. Trusted host ports supply native compilation and bounded layout checks;
+the kit does not render or commit. Host-generated deterministic completion
+receipts travel with new editing results for independent replay. Existing profile
+inventory versions, tool schemas/guidance and eligible skills remain frozen.
+
+restoreCompletionStateFromMessages reconstructs private executor state only from
+validated checkpoint tool messages. Supply it as initialCompletionState (with
+snapshotHash) when creating a new session. Pure prepare_caption_pair is optional
+and host-owned; its translations bind exact genuine cue IDs/timing without a new
+provider call. A checklist proves declared outcomes, not universal task semantics.

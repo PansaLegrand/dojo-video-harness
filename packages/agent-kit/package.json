@@ -1,6 +1,6 @@
 {
   "name": "@dojo-video/agent-kit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Portable editor tool catalog, trusted skills and prompt composition for Dojo agent hosts.",
   "license": "MIT",
   "type": "module",
