@@ -136,7 +136,7 @@ npm start
   revisions, conflict detection, operation receipts, and history.
 - A framework-independent agent loop using real function calls. Inspect a project,
   read a skill, search transcript evidence, propose an edit, or ask a question.
-- New editor runs use local-editor-v3 with paginated asset/cue readers and the completion-preflight profile: freeze a typed checklist,
+- New editor runs use local-editor-v4 with paginated asset/cue readers and the completion-preflight profile: freeze a typed checklist,
   review the complete in-memory candidate, repair failed checks, then propose
   exactly the reviewed commands. Deterministic receipts bind the snapshot,
   checklist, commands and preview; the host checks outcomes again after rebase.
@@ -246,7 +246,16 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The paginated-reader update uses loop 0.1.2/kit 0.1.3. Focused reader, range and
+The current efficient-reader update uses loop 0.1.2/kit 0.1.4. The full check passes
+565 tests, TypeScript, kit generation/integrity, 85 managed UI hashes and production
+build. New local-editor-v4 runs default to sixteen model steps with existing
+output/tool allowances. Earlier profiles retain their original budgets and exact
+inventory/skill/prompt digests. Provided metadata is authoritative, and discovery
+focuses on missing facts for requested assets and source ranges. Reader hashes can
+be omitted at the model boundary and are bound by the host.
+
+
+The earlier paginated-reader update uses loop 0.1.2/kit 0.1.3. Focused reader, range and
 completion regressions pass with frozen legacy profile digests, and the full unit
 suite passes 554 tests. The production build and all 66 browser checks also pass
 with 85 managed product UI files. Browser model/ASR responses use controlled HTTP

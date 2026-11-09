@@ -1,7 +1,7 @@
 # Editor agent ownership and extensions
 
 The shared model/tool loop is `packages/agent-loop` **0.1.2**. Portable editor definitions
-are `packages/agent-kit` **0.1.3**: tool metadata and schemas, trusted Markdown skill
+are `packages/agent-kit` **0.1.4**: tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
 
@@ -122,8 +122,8 @@ Build/check the kit and qualify actual editor rendering/export before release.
 The loop does not yet autonomously render, inspect and revise its own output.
 
 
-The current default local-editor-v3 profile also exposes `list_assets` and
-`read_caption_cues`. The commercial counterpart is commercial-editing-v4. Cursor
+The current default local-editor-v4 profile also exposes `list_assets` and
+`read_caption_cues`. The commercial counterpart is commercial-editing-v5. Cursor
 pages bind the immutable snapshot, normalized filters, edit scope and (for cues)
 source/evidence/grouping identity. Readers return explicit total/offset/returned
 coverage, byte bounds and nextCursor. Imported unused assets remain readable.
@@ -151,3 +151,15 @@ An asset_sequence-declared edited montage appends its ending after every retaine
 non-ending item and ends at the final composition frame. Original-duration ending
 requests retain their earlier basis. Tests cover a shortened montage and protected
 remaining content, along with the frozen legacy requirement contract.
+
+
+Kit0.1.4 profiles prioritize supplied facts and requested-source discovery. Older
+0.1.3 built-in skill text is retained as a frozen snapshot. The new profiles can
+omit model snapshotHash arguments; the factory binds the immutable host hash and
+rejects a supplied mismatch. New local runs default to sixteen model steps while
+accepted older runs keep their original model/tool/output bindings.
+
+A standalone original-token guard protects anchors, speech cuts and raw binding
+validation from bridging untimed interior tokens. Leading/trailing omitted tokens
+outside a selected phrase preserve its genuine word-range behavior. Source evidence
+with all valid timestamps preserves its previous binding JSON.
