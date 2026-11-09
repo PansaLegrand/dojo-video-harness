@@ -150,3 +150,87 @@ it("restricts grouped-media and phrase-callout declarations to new profile contr
     ),
   ).toContain("speech_callout");
 });
+
+it.each(["local-editor-v3", "commercial-editing-v4"] as const)(
+  "preserves kit13 %s skill text, inventory and prompt bytes",
+  async (profile) => {
+    const fixture = JSON.parse(
+      readFileSync(
+        new URL("./fixtures/agent-kit-v13-profiles.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    const set = toolset(profile),
+      value = {
+        inventory: set.inventory,
+        skills: set.skills,
+        prompt: composeToolAgentPrompt({
+          profile,
+          editingGuide: "Fixture editor guide.",
+          toolNames: set.tools.map((tool) => tool.name),
+          skills: set.skills,
+        }),
+      };
+    expect(set.inventory.kitVersion).toBe("0.1.3");
+    expect(
+      createHash("sha256").update(JSON.stringify(value)).digest("hex"),
+    ).toBe(fixture.hashes[profile]);
+  },
+);
+it.each(["local-editor-v4", "commercial-editing-v5"] as const)(
+  "uses requested-source discovery guidance only for %s",
+  (profile) => {
+    const set = toolset(profile);
+    expect(set.inventory.kitVersion).toBe("0.1.4");
+    const guide = composeToolAgentPrompt({
+      profile,
+      editingGuide: "Fixture editor guide.",
+      toolNames: set.tools.map((tool) => tool.name),
+      skills: set.skills,
+    });
+    expect(guide).toContain(
+      "Begin preparation once the needed facts are available",
+    );
+    expect(guide).toContain("All requested outputs");
+    expect(guide).toContain("Use list_assets name/type filters");
+    expect(
+      set.skills.find((skill) => skill.name === "multi-asset-editing")!
+        .instructions,
+    ).toContain("Unrelated imported assets");
+  },
+);
+
+it("uses the frozen host snapshot for omitted hashes only in efficient reader profiles", async () => {
+  const current = toolset("commercial-editing-v5"),
+    old = toolset("commercial-editing-v4"),
+    signal = new AbortController().signal;
+  const assets = current.tools.find((tool) => tool.name === "list_assets")!,
+    cues = current.tools.find((tool) => tool.name === "read_caption_cues")!;
+  expect(assets.parameters.required).toEqual([]);
+  expect(cues.parameters.required).toEqual(["sourceItemId", "evidenceId"]);
+  await expect(assets.execute({}, signal)).resolves.toMatchObject({
+    kind: "observation",
+  });
+  await expect(
+    cues.execute({ sourceItemId: "clip", evidenceId: "e" }, signal),
+  ).resolves.toMatchObject({ kind: "observation" });
+  await expect(
+    assets.execute({ snapshotHash: "sha256:" + "b".repeat(64) }, signal),
+  ).rejects.toThrow(/frozen host snapshot/);
+  await expect(
+    cues.execute(
+      {
+        snapshotHash: "sha256:" + "b".repeat(64),
+        sourceItemId: "clip",
+        evidenceId: "e",
+      },
+      signal,
+    ),
+  ).rejects.toThrow(/frozen host snapshot/);
+  await expect(
+    old.tools.find((tool) => tool.name === "list_assets")!.execute({}, signal),
+  ).rejects.toThrow(/snapshotHash/);
+  expect(
+    old.tools.find((tool) => tool.name === "list_assets")!.parameters.required,
+  ).toEqual(["snapshotHash"]);
+});

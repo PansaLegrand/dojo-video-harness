@@ -5,6 +5,7 @@ import {
   type AgentProfile,
   usesCompletionPreflight,
   usesPagedReaders,
+  usesEfficientReaders,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -252,6 +253,14 @@ export function createEditorToolset<T>(input: {
     return state;
   };
   let skills: Skill[] = [];
+  const readerSnapshotHash = (value: unknown) => {
+    if (value === undefined && usesEfficientReaders(input.profile))
+      return input.snapshotHash!;
+    const supplied = text(value, "snapshotHash", 1, 80);
+    if (usesEfficientReaders(input.profile) && supplied !== input.snapshotHash)
+      throw new Error("Reader snapshot differs from the frozen host snapshot.");
+    return supplied;
+  };
   const observed = (value: unknown) => ({
     kind: "observation" as const,
     value,
@@ -555,7 +564,7 @@ export function createEditorToolset<T>(input: {
             usage: { enum: ["all", "used", "unused"] },
             cursor: { type: "string", maxLength: 160 },
           },
-          ["snapshotHash"],
+          usesEfficientReaders(input.profile) ? [] : ["snapshotHash"],
         ),
         execute: async (args, signal) => {
           const value = record(args, [
@@ -582,7 +591,7 @@ export function createEditorToolset<T>(input: {
             pinned: true,
             value: await ports.listAssets!(
               {
-                snapshotHash: text(value.snapshotHash, "snapshotHash", 1, 80),
+                snapshotHash: readerSnapshotHash(value.snapshotHash),
                 ...(value.name === undefined
                   ? {}
                   : { name: text(value.name, "name", 0, 128) }),
@@ -611,7 +620,9 @@ export function createEditorToolset<T>(input: {
             sourceRange: sourceRangeParameters,
             cursor: { type: "string", maxLength: 160 },
           },
-          ["snapshotHash", "sourceItemId", "evidenceId"],
+          usesEfficientReaders(input.profile)
+            ? ["sourceItemId", "evidenceId"]
+            : ["snapshotHash", "sourceItemId", "evidenceId"],
         ),
         execute: async (args, signal) => {
           const value = record(args, [
@@ -626,7 +637,7 @@ export function createEditorToolset<T>(input: {
             pinned: true,
             value: await ports.readCaptionCues!(
               {
-                snapshotHash: text(value.snapshotHash, "snapshotHash", 1, 80),
+                snapshotHash: readerSnapshotHash(value.snapshotHash),
                 sourceItemId: text(value.sourceItemId, "sourceItemId", 1, 191),
                 evidenceId: text(value.evidenceId, "evidenceId", 1, 191),
                 ...(value.sourceRange === undefined

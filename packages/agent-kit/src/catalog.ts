@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.1.3" as const;
+export const AGENT_KIT_VERSION = "0.1.4" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -140,22 +140,35 @@ export type AgentProfile =
   | "local-editor-v2"
   | "commercial-editing-v3"
   | "local-editor-v3"
-  | "commercial-editing-v4";
+  | "commercial-editing-v4"
+  | "local-editor-v4"
+  | "commercial-editing-v5";
 export const usesCompletionPreflight = (profile: AgentProfile) =>
   [
     "local-editor-v2",
     "commercial-editing-v3",
     "local-editor-v3",
     "commercial-editing-v4",
+    "local-editor-v4",
+    "commercial-editing-v5",
   ].includes(profile);
 export const usesPagedReaders = (profile: AgentProfile) =>
-  profile === "local-editor-v3" || profile === "commercial-editing-v4";
+  [
+    "local-editor-v3",
+    "commercial-editing-v4",
+    "local-editor-v4",
+    "commercial-editing-v5",
+  ].includes(profile);
+export const usesEfficientReaders = (profile: AgentProfile) =>
+  profile === "local-editor-v4" || profile === "commercial-editing-v5";
 export const profileKitVersion = (profile: AgentProfile) =>
-  usesPagedReaders(profile)
+  usesEfficientReaders(profile)
     ? AGENT_KIT_VERSION
-    : usesCompletionPreflight(profile)
-      ? "0.1.2"
-      : "0.1.1";
+    : usesPagedReaders(profile)
+      ? "0.1.3"
+      : usesCompletionPreflight(profile)
+        ? "0.1.2"
+        : "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
@@ -164,6 +177,14 @@ export const profileSkills: Record<
   "commercial-editing-v2": ["precise-editing", "motion-design"],
   "local-editor-v2": null,
   "local-editor-v3": null,
+  "local-editor-v4": null,
+  "commercial-editing-v5": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+    "multi-asset-editing",
+  ],
   "commercial-editing-v4": [
     "precise-editing",
     "motion-design",

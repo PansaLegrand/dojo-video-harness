@@ -1,4 +1,5 @@
 import { skillIndex } from "./skills.js";
+import { usesEfficientReaders, type AgentProfile } from "./catalog.js";
 import type { Skill } from "./catalog.js";
 const TOOL_GUIDE =
   "Use function calls to inspect, read skills, and propose edits. Do not output edit JSON as ordinary text. ask_user pauses this run. A successful propose_edit hands validated commands to the host, which applies them directly or stages review according to its policy. Tool validation errors are observations: correct them without broadening scope. Never claim a proposal is applied. Preserve all editing, ownership, consent and source-evidence constraints supplied by the host.";
@@ -9,13 +10,16 @@ const CORRECTION_GUIDE =
 
 /** Editing guides are generated in tool mode by the host. Never rewrite their text. */
 export function composeToolAgentPrompt(input: {
+  profile?: AgentProfile;
   editingGuide: string;
   toolNames: readonly string[];
   skills: readonly Skill[];
 }) {
+  const efficient =
+    input.profile !== undefined && usesEfficientReaders(input.profile);
   return [
     input.editingGuide,
-    TOOL_GUIDE,
+    efficient ? EFFICIENT_TOOL_GUIDE : TOOL_GUIDE,
     ...(input.toolNames.includes("prepare_text_overlay")
       ? [OVERLAY_GUIDE]
       : []),
@@ -30,6 +34,11 @@ export function composeToolAgentPrompt(input: {
           "Paged project readers: list_assets discovers every owned imported asset, including unused images/logos. read_caption_cues returns exact phrase-safe cue IDs/text/timing and genuine word IDs. Use the immutable snapshotHash supplied by the host. Follow coverage.nextCursor to complete the required source/query and preserve all returned IDs; incomplete coverage is unfinished work. Prefer these readers to guessing from the initial bounded context. Use asset_sequence requirements with items[{itemId,assetId,from,duration,sourceStartSeconds?}] to cover all exact media placements compactly (up to100 entries). Prepare one source's complete caption translations with prepare_caption_pair when it fits that helper's bound; a larger source requires a narrower or staged task rather than an omitted tail.",
         ]
       : []),
-    "Available skills: " + JSON.stringify(skillIndex(input.skills)),
+    (efficient
+      ? "Optional skill references for a specific missing operation: "
+      : "Available skills: ") + JSON.stringify(skillIndex(input.skills)),
   ].join("\n\n");
 }
+
+const EFFICIENT_TOOL_GUIDE =
+  "Complete the requested editing work using authoritative supplied project metadata, IDs, cue packets and source clocks. Begin preparation once the needed facts are available. Reader calls resolve a specific missing or ambiguous requested fact. Scope all discovery to REQUESTED assets, source ranges and outputs. 'All requested outputs' never requires enumerating an unrelated imported library. The reader snapshotHash argument can be omitted because the host already binds its frozen snapshot; a supplied mismatch is rejected. Use list_assets name/type filters for missing named assets; preserve IDs already supplied instead of looking them up again. Use read_caption_cues only for the requested sourceRange/pages when its needed cues are incomplete. read_skill is optional reference: use at most one relevant skill before beginning preparation, then read another only when a concrete validation gap requires it. Avoid repeated inspection that returns the same facts. Prepare requested caption pairs and exact media placement commands, review_edit the complete candidate, repair failed checks and propose_edit exact successful commands. ask_user is for essential unresolved information. Preserve editing scope, source evidence and paid-operation authorization. Never claim application before the host applies the candidate.";

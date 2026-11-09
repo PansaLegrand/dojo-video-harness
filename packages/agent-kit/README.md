@@ -48,3 +48,15 @@ media placements, `speech_callout` requirements for genuine quoted words, and an
 optional sourceRange on cue reading/caption preparation. Source-range projection
 belongs to the host kernel and returns source trim commands alongside captions.
 Earlier profiles retain their prior schema, inventory version, skills and prompts.
+
+Kit 0.1.4 adds local-editor-v4/commercial-editing-v5. These profiles prioritize
+authoritative supplied metadata and targeted discovery of the requested sources.
+Hosts pass profile to composeToolAgentPrompt to select that guidance. Reader
+snapshotHash is optional at the model boundary and resolves to the host's frozen
+snapshot, while a supplied mismatch fails. Underlying reader ports receive the
+same explicit snapshot binding.
+
+Kit 0.1.3 built-in guidance is retained for its older profiles, with regression
+digests covering inventory, skill text and prompt bytes. Current canonical skills
+continue in skills/*.md. Host-owned new-profile execution defaults can use sixteen
+model steps while retaining existing tool/output allowances and accepted-run budgets.
