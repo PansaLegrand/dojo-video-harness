@@ -1131,3 +1131,115 @@ it("accounts every paid planning request after a post-initialize artifact acknow
   expect(state.plan.limits.modelCalls).toBe(32);
   expect(done.project.revision).toBe(f.project.revision);
 }, 15000);
+
+it("replays a post-plan essential question without translating until its same-funded answer arrives", async () => {
+  const f = await fixture(1, 3, {}),
+    transaction = f.store.transaction.bind(f.store),
+    complete = f.model.complete;
+  let lost = false,
+    asked = false,
+    actual = 0,
+    observedReply = false;
+  vi.spyOn(f.store, "transaction").mockImplementation(async (id, mutate) => {
+    let fail = false;
+    const result = await transaction(id, async (p) => {
+      const before = Object.values(p.editStagePlans ?? {}).reduce(
+          (n, s) => n + Object.keys(s.artifacts).length,
+          0,
+        ),
+        value = await mutate(p),
+        after = Object.values(p.editStagePlans ?? {}).reduce(
+          (n, s) => n + Object.keys(s.artifacts).length,
+          0,
+        );
+      if (!lost && before === 0 && after === 1) {
+        lost = true;
+        fail = true;
+      }
+      return value;
+    });
+    if (fail)
+      throw new Error(
+        "Lost artifact acknowledgement before planning completes",
+      );
+    return result;
+  });
+  f.model.complete = vi.fn(
+    async (...args: Parameters<LanguageModel["complete"]>) => {
+      actual++;
+      const user = JSON.parse(
+        String(args[0].find((message) => message.role === "user")!.content),
+      );
+      if (user.durableStages?.explicitUserReply?.answer === "Keep it")
+        observedReply = true;
+      if (lost && !asked) {
+        asked = true;
+        return {
+          text: "",
+          calls: [
+            {
+              id: "question-after-plan",
+              name: "ask_user",
+              arguments: JSON.stringify({
+                id: "preserve-name",
+                question: "Keep the source name unchanged?",
+                options: [
+                  { id: "keep", label: "Keep", value: "Keep it" },
+                  {
+                    id: "translate",
+                    label: "Translate",
+                    value: "Translate it",
+                  },
+                ],
+                allowText: false,
+              }),
+            },
+          ],
+          usage: { inputTokens: 20, outputTokens: 20 },
+        };
+      }
+      return complete(...args);
+    },
+  );
+  const start = await f.agent.start(f.project.id, requestFor(f)),
+    waiting = await settled(f.store, f.project.id);
+  expect(waiting.run.status).toBe("needs_input");
+  expect(actual).toBe(2);
+  expect(
+    waiting.project
+      .editStagePlans![
+        start.run.id
+      ].plan.stages.filter((s) => s.kind === "caption_batch")
+      .every((s) => s.status === "pending"),
+  ).toBe(true);
+  await f
+    .newAgent()
+    .resume(f.project.id, start.run.id, {
+      operationId: "retry-saved-planning-question",
+      baseRevision: waiting.project.revision,
+      baseHash: waiting.project.documentHash,
+    });
+  const replay = await settled(f.store, f.project.id);
+  expect(replay.run.status).toBe("needs_input");
+  expect(actual).toBe(2);
+  await f
+    .newAgent()
+    .answer(f.project.id, start.run.id, {
+      operationId: "same-funded-post-plan-answer",
+      questionId: "preserve-name",
+      optionId: "keep",
+      baseRevision: replay.project.revision,
+      baseHash: replay.project.documentHash,
+    });
+  const done = await settled(f.store, f.project.id);
+  expect(done.run.status, JSON.stringify(done.run.error)).toBe(
+    "awaiting_review",
+  );
+  expect(done.project.runs).toHaveLength(1);
+  expect(done.project.editStagePlans![start.run.id].plan.usage.modelCalls).toBe(
+    actual,
+  );
+  expect(actual).toBe(6);
+  expect(observedReply).toBe(true);
+  expect(done.project.revision).toBe(f.project.revision);
+}, 15000);

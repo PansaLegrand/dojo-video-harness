@@ -160,6 +160,18 @@ export async function runStagedEditing(input: {
           p.editStagePlans![input.runId].savedCandidateRef = ref;
         });
       },
+      readQuestion: async (attemptId) => {
+        const state = (await input.store.read(input.projectId)).editStagePlans![
+            input.runId
+          ],
+          raw = state.checkpoints[attemptId];
+        if (!raw) return undefined;
+        const cp = parseLoopCheckpoint(raw),
+          result = cp.result as NativeAgentResult;
+        return cp.phase === "completed" && result.outcome === "needs_input"
+          ? result
+          : undefined;
+      },
       checkpoint: async (attemptId) => {
         const state = (await input.store.read(input.projectId)).editStagePlans![
             input.runId

@@ -109,12 +109,15 @@ export type StageCoordinatorState = {
   lastReviews?: Record<string, EditArtifactRef>;
   pendingReplies?: Record<string, { attemptId: string; ref: EditArtifactRef }>;
 };
-export type StageCoordinatorRecords = {
+export type StageCoordinatorRecords<
+  T extends StageNativeResult = StageNativeResult,
+> = {
   read(): Promise<StageCoordinatorState | null>;
   accountPlanning(stageId: string, attemptId: string): Promise<void>;
   saveReview(stageId: string, ref: EditArtifactRef): Promise<void>;
   saveCandidate(ref: EditArtifactRef): Promise<void>;
   checkpoint(attemptId: string): Promise<StageCheckpointFacts | undefined>;
+  readQuestion?(attemptId: string): Promise<T | undefined>;
 };
 export type StageCheckpointFacts = {
   hash: string;
@@ -157,7 +160,7 @@ type ReviewRecord = {
 /** Portable editing workflow. Hosts own persistence, sources, native replay and provider invocation. */
 export async function runEditingStages<T extends StageNativeResult>(input: {
   port: EditStagePort;
-  records: StageCoordinatorRecords;
+  records: StageCoordinatorRecords<T>;
   binding: EditStageBinding;
   modelIdentity: string;
   snapshotHash: string;
@@ -747,7 +750,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       maxOutputTokens: policy.stageOutputTokens,
       eventOffset: 0,
     });
-    if (!(await port.load())) return result;
+    if (!(await port.load()) || result.outcome === "needs_input") return result;
     await notify();
   }
   while (true) {
@@ -781,6 +784,37 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
         "The stage plan has no runnable or complete final output.",
       );
     if (stage.kind === "evidence") {
+      if (stage.attemptId === "planning") {
+        const facts = await input.records.checkpoint(stage.attemptId),
+          reply = (await saved()).pendingReplies?.[stage.id];
+        if (
+          facts?.phase === "completed" &&
+          facts.resultOutcome === "needs_input"
+        ) {
+          if (!reply || reply.attemptId !== stage.attemptId) {
+            const question = await input.records.readQuestion?.(
+              stage.attemptId,
+            );
+            if (question?.outcome === "needs_input") return question;
+            throw new EditStageError(
+              "STAGE_CONFLICT",
+              "The saved essential question requires its explicit reply before editing can continue.",
+            );
+          }
+          const value = (await artifact(reply.ref)) as {
+            kind?: string;
+            questionId?: string;
+          };
+          if (
+            value.kind !== "user-reply" ||
+            value.questionId !== facts.resultQuestionId
+          )
+            throw new EditStageError(
+              "STAGE_CONFLICT",
+              "The explicit reply does not match the original planning question.",
+            );
+        }
+      }
       await ensureEvidence(stage);
       await notify();
       continue;
@@ -839,6 +873,9 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
         sourceItemId: stage.sourceItemId,
         descriptor: stage.descriptor,
       };
+      const initialReply = state.pendingReplies?.[plan.stages[0].id];
+      if (initialReply?.attemptId === "planning")
+        context.explicitUserReply = await artifact(initialReply.ref);
       context.preparedCommands = !!preparedRef;
       if (stage.kind === "caption_batch") {
         const manifest = manifestFor(plan, stage),
