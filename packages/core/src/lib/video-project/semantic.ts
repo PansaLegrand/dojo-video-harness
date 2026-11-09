@@ -253,9 +253,10 @@ export function speechBindingCommand(
     sourceItemId: string;
     evidenceId: string;
     wordIds: string[];
+    holdMs?: number;
   },
 ): VideoProjectCommand {
-  const { id, itemId, sourceItemId, evidenceId, wordIds } = input;
+  const { id, itemId, sourceItemId, evidenceId, wordIds, holdMs } = input;
   return {
     type: "bindSource",
     binding: resolveSpeechAnchor(document, {
@@ -264,6 +265,7 @@ export function speechBindingCommand(
       sourceItemId,
       evidenceId,
       wordIds,
+      ...(holdMs === undefined ? {} : { holdMs }),
     }),
   };
 }

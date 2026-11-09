@@ -45,7 +45,10 @@ import {
   NATIVE_AGENT_CONTEXT_MAX_CHARS,
   planNativeAgentContext,
 } from "./agent-context";
-import { buildNativeAgentSystemPrompt, nativeCaptionSourceContext } from "./agent-prompt";
+import {
+  buildNativeAgentSystemPrompt,
+  nativeCaptionSourceContext,
+} from "./agent-prompt";
 import { assertNativeTextLineLimits } from "./agent-text-layout";
 import {
   NATIVE_AGENT_HOST_ONLY_OPERATIONS,
@@ -93,6 +96,7 @@ export const nativeAgentRequestSchema = z
   .strict();
 export type NativeAgentRequest = z.infer<typeof nativeAgentRequestSchema>;
 export type NativeAgentResult = {
+  completion?: import("../../../../agent-kit/src/index").CompletionContract;
   contract: typeof VIDEO_PROJECT_AGENT_CONTRACT;
   version: 1;
   baseRevision: number;
@@ -606,7 +610,13 @@ export function buildNativeAgentPrompts(input: {
         document: planningDocument,
       }
     : input;
-  const captionSources = nativeCaptionSourceContext({ ...planningInput, context: { ...planningInput.context, selectedItemIds: scopedSources ?? planningInput.context.selectedItemIds } });
+  const captionSources = nativeCaptionSourceContext({
+    ...planningInput,
+    context: {
+      ...planningInput.context,
+      selectedItemIds: scopedSources ?? planningInput.context.selectedItemIds,
+    },
+  });
   const { document: promptDocument, ...contextPlan } = planNativeAgentContext(
     planningInput,
     { maxChars: availableChars - JSON.stringify(captionSources).length },
