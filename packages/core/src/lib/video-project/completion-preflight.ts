@@ -96,6 +96,7 @@ function assertRequirement(
   before: VideoProjectDocument,
   after: VideoProjectDocument,
   requirement: CompletionRequirement,
+  editedSequence = false,
 ) {
   const item = (id: string) => {
     const found = after.items.find((item) => item.id === id);
@@ -321,7 +322,15 @@ function assertRequirement(
   const candidate = item(requirement.itemId),
     end = (candidate.node.from ?? 0) + candidate.node.duration!;
   if (
-    (candidate.node.from ?? 0) < spanEnd(before) ||
+    (candidate.node.from ?? 0) <
+      (editedSequence
+        ? Math.max(
+            0,
+            ...after.items
+              .filter((item) => item.id !== candidate.id)
+              .map((item) => (item.node.from ?? 0) + item.node.duration!),
+          )
+        : spanEnd(before)) ||
     end !== after.format.durationInFrames ||
     (candidate.node.duration! * 1000) / after.format.fps <
       requirement.minDurationMs ||
@@ -519,7 +528,12 @@ export function checkNativeCompletionRequirements(
     });
   const checks = requirements.map((requirement) => {
     try {
-      assertRequirement(before, after, requirement);
+      assertRequirement(
+        before,
+        after,
+        requirement,
+        requirements.some((value) => value.kind === "asset_sequence"),
+      );
       return {
         id: requirement.id,
         passed: true,

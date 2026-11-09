@@ -88,11 +88,15 @@ export async function runAgent(input: {
     profile: input.profile,
   });
   const tools = toolset.tools;
-  const system = composeToolAgentPrompt({
-    editingGuide: prompts.systemPrompt,
-    toolNames: tools.map((tool) => tool.name),
-    skills: toolset.skills,
-  });
+  const system =
+    composeToolAgentPrompt({
+      editingGuide: prompts.systemPrompt,
+      toolNames: tools.map((tool) => tool.name),
+      skills: toolset.skills,
+    }) +
+    (usesPagedReaders(input.profile ?? "local-editor-v1")
+      ? "\n\nFor an explicitly edited montage declared by asset_sequence, an appended ending follows the complete edited non-ending content, including retained unrelated items. Set final composition duration to the ending end. For other ending requests preserve the original full timeline basis."
+      : "");
   const messages: ChatMessage[] = [
     { role: "system", content: system },
     {

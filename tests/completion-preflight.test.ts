@@ -687,3 +687,139 @@ it("grounds quoted phrase callouts while retaining numeric highlight validation"
     ]).find((check) => check.id === "quote")!.passed,
   ).toBe(false);
 });
+
+it("appends after all retained edited content for an exact asset_sequence while preserving the legacy ending basis", async () => {
+  const document = createVideoProjectDocument({
+    width: 640,
+    height: 360,
+    fps: 30,
+    durationInFrames: 360,
+  });
+  document.assets.video = {
+    id: "video",
+    name: "Interview",
+    type: "video",
+    source: "local",
+    durationSeconds: 12,
+  };
+  document.items.push({
+    id: "clip",
+    name: "Interview",
+    trackId: "visual",
+    node: {
+      id: "clip",
+      type: "video",
+      assetId: "video",
+      from: 0,
+      duration: 360,
+    },
+  });
+  const request = {
+    contract: "video-project-commands" as const,
+    version: 1 as const,
+    baseRevision: 1,
+    baseHash: await hashVideoProjectDocument(document),
+    document,
+    context: { selectedItemIds: [], playheadFrame: 0 },
+    authoring: { version: 1 as const, scope: { kind: "project" as const } },
+  };
+  const edit = {
+    summary: "Short montage and ending",
+    commands: [
+      { type: "trimItem", id: "clip", from: 0, duration: 240 },
+      {
+        type: "set",
+        target: { kind: "node", itemId: "clip", nodeId: "clip" },
+        path: ["videoStartTime"],
+        value: 2,
+      },
+      {
+        type: "set",
+        target: { kind: "format" },
+        path: ["durationInFrames"],
+        value: 330,
+      },
+      {
+        type: "insertGraphic",
+        itemId: "ending",
+        trackId: "visual",
+        name: "Ending",
+        node: {
+          type: "text",
+          text: "Made by DojoClip.com",
+          from: 240,
+          duration: 90,
+          style: {
+            position: "absolute",
+            left: 40,
+            top: 100,
+            width: 560,
+            height: 60,
+            fontSize: 32,
+            color: "#ffffff",
+          },
+          animations: [
+            {
+              kind: "keyframes",
+              property: "opacity",
+              frames: [
+                { frame: 0, value: 0 },
+                { frame: 6, value: 1 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const ending = {
+    id: "ending",
+    kind: "appended_ending",
+    itemId: "ending",
+    exactText: "Made by DojoClip.com",
+    minDurationMs: 2000,
+    animated: true,
+  };
+  const sequence = {
+    id: "body",
+    kind: "asset_sequence",
+    items: [
+      {
+        itemId: "clip",
+        assetId: "video",
+        from: 0,
+        duration: 240,
+        sourceStartSeconds: 2,
+      },
+    ],
+  };
+  const checked = await reviewNativeCompletionEdit(request, {
+    requirements: [sequence, ending],
+    edit,
+  });
+  expect(checked.checks.filter((check) => !check.passed)).toEqual([]);
+  expect(checked.receipt).toBeDefined();
+  expect(
+    (
+      await reviewNativeCompletionEdit(request, {
+        requirements: [ending],
+        edit,
+      })
+    ).checks.some((check) => !check.passed),
+  ).toBe(true);
+  const after = executeVideoProjectCommands(
+    document,
+    checked.result.proposal!.commands,
+  ).document;
+  after.items.push({
+    id: "retained",
+    name: "Retained audio",
+    trackId: "visual",
+    node: { id: "retained", type: "div", from: 300, duration: 30 },
+  });
+  expect(
+    checkNativeCompletionRequirements(document, after, [sequence, ending]).find(
+      (check) => check.id === "ending",
+    )!.passed,
+  ).toBe(false);
+});

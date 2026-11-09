@@ -147,7 +147,7 @@ Caption-pair completion requires genuine timing coverage over its effective sour
 window. Narrowing to an explicitly requested range can exclude a cropped untimed
 boundary token without inventing a timestamp.
 
-Appended-ending preflight currently uses the original timeline extent. Explicitly
-shorter montages with an ending need an additional outcome contract/fixture in the
-remaining R04 scope. Record that coverage separately from the bounded mixed-media
-qualification that preserves the original ending basis.
+An asset_sequence-declared edited montage appends its ending after every retained
+non-ending item and ends at the final composition frame. Original-duration ending
+requests retain their earlier basis. Tests cover a shortened montage and protected
+remaining content, along with the frozen legacy requirement contract.
