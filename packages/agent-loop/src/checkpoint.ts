@@ -8,6 +8,7 @@ import type {
   LoopSnapshot,
   ModelReply,
   LoopOutputBudgetOverrun,
+  HostRequestRef,
 } from "./types.js";
 
 /** Suggested profile; hosts must subtract any additional wrapper/history overhead. */
@@ -61,6 +62,34 @@ export class LoopProviderOutputBudgetError extends Error {
     );
     this.name = "LoopProviderOutputBudgetError";
   }
+}
+export class LoopHostInputRequiredError extends Error {
+  readonly code = "LOOP_HOST_INPUT_REQUIRED";
+  constructor(
+    public readonly requestRef: Readonly<HostRequestRef>,
+    public readonly checkpointSaved = true,
+  ) {
+    super(
+      `Waiting for host input: ${requestRef.kind}. No new model request is authorized until the saved request is fulfilled.`,
+    );
+    this.name = "LoopHostInputRequiredError";
+  }
+}
+export function parseHostRequestRef(raw: unknown): HostRequestRef {
+  const v = object(raw, ["kind", "id", "hash"]);
+  if (
+    ![
+      "source-inspection",
+      "project-preview",
+      "project-export",
+      "external-approval",
+    ].includes(String(v.kind))
+  )
+    throw new Error("Invalid host request kind.");
+  text(v.id, 191);
+  if (typeof v.hash !== "string" || !/^(?:sha256:)?[a-f0-9]{64}$/.test(v.hash))
+    throw new Error("Invalid host request hash.");
+  return structuredClone(v) as HostRequestRef;
 }
 
 function object(value: unknown, keys: string[]): Record<string, unknown> {
@@ -218,6 +247,7 @@ export function validateSnapshot(
     "checkpointEncoding",
     "checkpointCapacity",
     "outputBudgetPolicy",
+    "hostInputPolicy",
   ]);
   text(data.runId, 256);
   text(data.snapshotHash, 1024);
@@ -227,6 +257,11 @@ export function validateSnapshot(
     data.outputBudgetPolicy !== "preserve-overrun-v1"
   )
     throw new Error("Invalid output budget policy.");
+  if (
+    data.hostInputPolicy !== undefined &&
+    data.hostInputPolicy !== "durable-host-wait-v1"
+  )
+    throw new Error("Invalid host input policy.");
   validateMessages(data.messages);
   const budgets = object(data.budgets, [
     "maxSteps",
@@ -321,6 +356,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
       "pinnedToolCallIds",
       "pendingTurn",
       "outputBudgetOverrun",
+      "hostWait",
       "result",
     ]);
     validateSnapshot(wire.snapshot);
@@ -371,6 +407,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     "pinnedToolCallIds",
     "pendingTurn",
     "outputBudgetOverrun",
+    "hostWait",
     "result",
   ]);
   if (data.version !== 1)
@@ -423,6 +460,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     "tool-observations",
     "answer-pending",
     "completed",
+    "waiting-for-host",
   ];
   if (!phases.includes(checkpoint.phase))
     throw new Error("Invalid loop checkpoint phase.");
@@ -442,6 +480,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     "model-returned",
     "tool-pending",
     "answer-pending",
+    "waiting-for-host",
   ].includes(checkpoint.phase);
   if (requiresTurn && !checkpoint.pendingTurn)
     throw new Error("Missing returned model turn.");
@@ -467,7 +506,10 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     const completed = reply.calls.slice(0, nextToolIndex);
     if (completed.some((call) => !used.includes(call.id)))
       throw new Error("Missing completed tool identity.");
-    if (checkpoint.phase === "tool-pending") {
+    if (
+      checkpoint.phase === "tool-pending" ||
+      checkpoint.phase === "waiting-for-host"
+    ) {
       if (
         !reply.calls[nextToolIndex] ||
         !used.includes(reply.calls[nextToolIndex].id)
@@ -506,6 +548,24 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
       )
         throw new Error("Observation does not match its returned tool call.");
   }
+  if (checkpoint.phase === "waiting-for-host") {
+    const wait = object(checkpoint.hostWait, ["requestRef", "toolCallId"]);
+    parseHostRequestRef(wait.requestRef);
+    text(wait.toolCallId, 256);
+    const call =
+      checkpoint.pendingTurn!.reply.calls[
+        checkpoint.pendingTurn!.nextToolIndex
+      ];
+    if (
+      snapshot.hostInputPolicy !== "durable-host-wait-v1" ||
+      call?.id !== wait.toolCallId ||
+      snapshot.tools.find((tool) => tool.name === call.name)?.replaySafe !==
+        true ||
+      checkpoint.outputBudgetOverrun
+    )
+      throw new Error("Invalid durable host-wait checkpoint.");
+  } else if (checkpoint.hostWait !== undefined)
+    throw new Error("Unexpected host-wait reference.");
   if (checkpoint.outputBudgetOverrun !== undefined) {
     const overrun = object(checkpoint.outputBudgetOverrun, [
       "kind",
@@ -617,7 +677,10 @@ export function canResumeLoopCheckpoint(
   try {
     const checkpoint = parseLoopCheckpoint(value);
     if (checkpoint.phase === "model-pending") return false;
-    if (checkpoint.phase === "tool-pending") {
+    if (
+      checkpoint.phase === "tool-pending" ||
+      checkpoint.phase === "waiting-for-host"
+    ) {
       const name =
         checkpoint.pendingTurn!.reply.calls[
           checkpoint.pendingTurn!.nextToolIndex

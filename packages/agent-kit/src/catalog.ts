@@ -5,6 +5,15 @@ export type ToolSpec = {
   description: string;
   parameters: Record<string, unknown>;
 };
+export type HostRequestRef = {
+  kind:
+    | "source-inspection"
+    | "project-preview"
+    | "project-export"
+    | "external-approval";
+  id: string;
+  hash: string;
+};
 export type AgentTool<T> = ToolSpec & {
   effect: ToolEffect;
   execute(
@@ -13,6 +22,7 @@ export type AgentTool<T> = ToolSpec & {
   ): Promise<
     | { kind: "observation"; value: unknown; pinned?: boolean }
     | { kind: "terminal"; result: T }
+    | { kind: "waiting"; requestRef: HostRequestRef }
   >;
 };
 export type Skill = { name: string; description: string; instructions: string };

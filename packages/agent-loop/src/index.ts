@@ -6,6 +6,8 @@ export {
   DEFAULT_CHECKPOINT_CAPACITY,
   LoopCheckpointCapacityError,
   LoopProviderOutputBudgetError,
+  LoopHostInputRequiredError,
+  parseHostRequestRef,
   encodeLoopCheckpoint,
   measureLoopCheckpointBytes,
   measureModelReplyBytes,

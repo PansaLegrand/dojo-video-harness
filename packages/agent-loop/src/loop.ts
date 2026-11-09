@@ -4,6 +4,7 @@ import type {
   LoopResult,
   LoopSnapshot,
   ModelReply,
+  HostRequestRef,
   ToolLoopInput,
 } from "./types.js";
 import {
@@ -11,6 +12,8 @@ import {
   LoopRecoveryRequiredError,
   LoopCheckpointCapacityError,
   LoopProviderOutputBudgetError,
+  LoopHostInputRequiredError,
+  parseHostRequestRef,
   measureLoopCheckpointBytes,
   measureModelReplyBytes,
   parseLoopCheckpoint,
@@ -47,6 +50,10 @@ export async function runToolLoop<T>(
     : ("preserve-overrun-v1" as const);
   // Reserve the bounded stop receipt even when the host's extra reserve is zero.
   const outputOverrunHeadroom = outputBudgetPolicy ? 512 : 0;
+  const hostInputPolicy = existing
+    ? existing.snapshot.hostInputPolicy
+    : ("durable-host-wait-v1" as const);
+  const hostWaitHeadroom = hostInputPolicy ? 1024 : 0;
   if (
     (capacity || encoding) &&
     (encoding !== "compact-v2" || !capacity || port?.encoding !== "compact-v2")
@@ -85,6 +92,7 @@ export async function runToolLoop<T>(
         ? { checkpointEncoding: encoding, checkpointCapacity: capacity }
         : {}),
       ...(outputBudgetPolicy ? { outputBudgetPolicy } : {}),
+      ...(hostInputPolicy ? { hostInputPolicy } : {}),
     },
     2_000_000,
   );
@@ -142,7 +150,7 @@ export async function runToolLoop<T>(
           capacity.maxReplyBytes +
           capacity.reserveBytes +
           outputOverrunHeadroom >
-          capacity.maxBytes
+          capacity.maxBytes - hostWaitHeadroom
       )
         throw new LoopCheckpointCapacityError("reply-headroom");
     }
@@ -186,6 +194,7 @@ export async function runToolLoop<T>(
   ): Promise<LoopResult<T> | undefined> => {
     const turn = checkpoint.pendingTurn!;
     const call = turn.reply.calls[turn.nextToolIndex];
+    const previousWait = checkpoint.hostWait;
     const safe = toolMetadata(call.name)?.replaySafe === true;
     if (replay && !safe)
       throw new LoopRecoveryRequiredError("tool-outcome-unknown", call.id);
@@ -202,12 +211,13 @@ export async function runToolLoop<T>(
       callId: call.id,
       ...(replay ? { replay: true } : {}),
     });
-    await persist("tool-pending");
+    await persist(previousWait ? "waiting-for-host" : "tool-pending");
     await emit(started);
     let observation: unknown;
     let pinned = false;
     let enteredExecutor = false;
     let terminal: { result: T } | undefined;
+    let waiting: HostRequestRef | undefined;
     try {
       const tool = registry.get(call.name);
       if (!tool)
@@ -225,9 +235,12 @@ export async function runToolLoop<T>(
       else if (outcome.kind === "observation") {
         observation = copyJson(outcome.value, 120000);
         pinned = outcome.pinned === true;
+      } else if (outcome.kind === "waiting" && hostInputPolicy) {
+        waiting = copyJson(outcome.requestRef);
       } else throw new Error("Invalid trusted tool outcome.");
     } catch (cause) {
       signal.throwIfAborted();
+      if (previousWait) throw cause;
       if (enteredExecutor && port && !safe)
         throw new LoopRecoveryRequiredError("tool-outcome-unknown", call.id);
       observation = {
@@ -236,6 +249,23 @@ export async function runToolLoop<T>(
       };
       pinned = true;
     }
+    if (waiting) {
+      const requestRef = parseHostRequestRef(waiting);
+      if (
+        previousWait &&
+        canonicalJson(previousWait.requestRef) !== canonicalJson(requestRef)
+      )
+        throw new Error("The pending host request identity changed.");
+      if (!port || !safe)
+        throw new Error(
+          "Host input waits require a durable checkpoint and an explicitly replay-safe request tool.",
+        );
+      checkpoint.hostWait = { requestRef, toolCallId: call.id };
+      await persist("waiting-for-host");
+      signal.throwIfAborted();
+      throw new LoopHostInputRequiredError(requestRef);
+    }
+    delete checkpoint.hostWait;
     if (terminal) return complete(terminal.result, call.name, call.id);
     const content = JSON.stringify(observation);
     checkpoint.observationCharacters += content.length;
@@ -279,7 +309,10 @@ export async function runToolLoop<T>(
     if (checkpoint.phase === "model-pending")
       throw new LoopRecoveryRequiredError("model-outcome-unknown");
     if (checkpoint.phase === "answer-pending") return answer(true);
-    if (checkpoint.phase === "tool-pending") {
+    if (
+      checkpoint.phase === "tool-pending" ||
+      checkpoint.phase === "waiting-for-host"
+    ) {
       const terminal = await executeTool(true);
       if (terminal) return terminal;
       continue;
@@ -312,6 +345,7 @@ export async function runToolLoop<T>(
           capacity.maxReplyBytes -
           capacity.reserveBytes -
           outputOverrunHeadroom -
+          hostWaitHeadroom -
           overhead -
           2;
         if (maxUtf8Bytes < 1)
@@ -347,18 +381,34 @@ export async function runToolLoop<T>(
     if (remaining < 1)
       throw new Error("Model output budget reached. Narrow the request.");
     // Validate materialized request data before advancing a paid submission fence.
-    const preparedMessages = capacity
-      ? copyJson(checkpoint.messages)
-      : undefined;
-    const preparedTools = capacity
-      ? copyJson(
-          snapshot.tools.map(({ name, description, parameters }) => ({
-            name,
-            description,
-            parameters,
-          })),
-        )
-      : undefined;
+    const preparedMessages =
+      capacity || input.model.prepare
+        ? copyJson(checkpoint.messages)
+        : undefined;
+    const preparedTools =
+      capacity || input.model.prepare
+        ? copyJson(
+            snapshot.tools.map(({ name, description, parameters }) => ({
+              name,
+              description,
+              parameters,
+            })),
+          )
+        : undefined;
+    const limits = {
+      maxOutputTokens: remaining,
+      ...(outputBudgetPolicy ? { outputBudgetPolicy } : {}),
+      ...(capacity ? { maxReplyBytes: capacity.maxReplyBytes } : {}),
+    };
+    if (input.model.prepare) {
+      await input.model.prepare(
+        preparedMessages!,
+        preparedTools!,
+        signal,
+        limits,
+      );
+      signal.throwIfAborted();
+    }
     checkpoint.modelCalls++;
     const started = event("model.started");
     await persist("model-pending", true); // Includes UTF-8 reply reservation before paid submission.
@@ -374,11 +424,7 @@ export async function runToolLoop<T>(
           })),
         ),
       signal,
-      {
-        maxOutputTokens: remaining,
-        ...(outputBudgetPolicy ? { outputBudgetPolicy } : {}),
-        ...(capacity ? { maxReplyBytes: capacity.maxReplyBytes } : {}),
-      },
+      limits,
     );
     const reply = copyJson(returned);
     validateReply(reply);
