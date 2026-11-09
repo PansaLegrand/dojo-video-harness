@@ -1,9 +1,19 @@
 /** Strict bounded JSON, shared by snapshots and checkpoints; never invokes toJSON. */
-export function copyJson<T>(value: T, maximum = 4_000_000): T {
+export function copyJson<T>(
+  value: T,
+  maximum = 4_000_000,
+  structure?: {
+    maximumNodes: number;
+    maximumDepth: number;
+  },
+): T {
   const ancestors = new Set<object>();
   let nodes = 0;
   const visit = (item: unknown, depth: number): unknown => {
-    if (++nodes > 100_000 || depth > 64)
+    if (
+      ++nodes > (structure?.maximumNodes ?? 100_000) ||
+      depth > (structure?.maximumDepth ?? 64)
+    )
       throw new Error("Checkpoint JSON exceeds structural budget.");
     if (item === null || typeof item === "string" || typeof item === "boolean")
       return item;
@@ -32,6 +42,10 @@ export function copyJson<T>(value: T, maximum = 4_000_000): T {
   if (JSON.stringify(result).length > maximum)
     throw new Error("Checkpoint JSON exceeds context budget.");
   return result as T;
+}
+
+export function utf8JsonBytes(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
 export function canonicalJson(value: unknown): string {

@@ -1,4 +1,4 @@
-import { canonicalJson, copyJson } from "./json.js";
+import { canonicalJson, copyJson, utf8JsonBytes } from "./json.js";
 import type { ChatMessage, LoopCompactionOptions } from "./types.js";
 
 /** Drops only whole, explicitly disposable tool groups. Instructions are immutable. */
@@ -8,6 +8,8 @@ export function compactLoopMessages(input: {
   compactableToolNames: string[];
   pinnedToolCallIds?: string[];
   durablePlanRefs?: string[];
+  /** Derived storage headroom; does not replace the frozen character policy. */
+  maxUtf8Bytes?: number;
   options: LoopCompactionOptions;
 }): { messages: ChatMessage[]; droppedGroups: number; characters: number } {
   const messages = copyJson(input.messages);
@@ -18,6 +20,11 @@ export function compactLoopMessages(input: {
     throw new Error("Compaction cannot rewrite the original instructions.");
   const { maxCharacters } = input.options;
   const keepRecent = input.options.keepRecentGroups ?? 2;
+  if (
+    input.maxUtf8Bytes !== undefined &&
+    (!Number.isSafeInteger(input.maxUtf8Bytes) || input.maxUtf8Bytes < 1)
+  )
+    throw new Error("Invalid message compaction byte budget.");
   if (
     !Number.isInteger(maxCharacters) ||
     maxCharacters < 1 ||
@@ -117,16 +124,20 @@ export function compactLoopMessages(input: {
   for (const group of toolGroups.slice(-keepRecent)) group.removable = false;
   let result = groups.flatMap((group) => group.messages);
   let characters = JSON.stringify(result).length;
+  const exceeds = () =>
+    characters > maxCharacters ||
+    (input.maxUtf8Bytes !== undefined &&
+      utf8JsonBytes(result) > input.maxUtf8Bytes);
   let droppedGroups = 0;
   for (const group of groups) {
-    if (characters <= maxCharacters) break;
+    if (!exceeds()) break;
     if (!group.removable) continue;
     group.messages = [];
     droppedGroups++;
     result = groups.flatMap((item) => item.messages);
     characters = JSON.stringify(result).length;
   }
-  if (characters > maxCharacters)
+  if (exceeds())
     throw new Error("Protected instructions/evidence exceed context budget.");
   return { messages: result, droppedGroups, characters };
 }
