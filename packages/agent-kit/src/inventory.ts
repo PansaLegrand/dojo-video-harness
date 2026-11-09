@@ -9,6 +9,7 @@ import {
   type CatalogToolName,
   type BuiltinSkillName,
   usesCompletionPreflight,
+  usesStagedEditing,
 } from "./catalog.js";
 export function buildAgentInventory<T>(input: {
   profile: AgentProfile;
@@ -25,11 +26,29 @@ export function buildAgentInventory<T>(input: {
       description,
       effect,
       parameters,
-      owner: Object.hasOwn(toolCatalog, name)
-        ? toolCatalog[name as CatalogToolName].owner
-        : ("host" as const),
+      owner:
+        Object.hasOwn(toolCatalog, name) &&
+        (usesStagedEditing(input.profile) ||
+          ![
+            "plan_edit_stages",
+            "save_caption_batch",
+            "read_edit_artifact",
+            "read_caption_track",
+          ].includes(name))
+          ? toolCatalog[name as CatalogToolName].owner
+          : ("host" as const),
     })),
     unavailable: Object.entries(toolCatalog)
+      .filter(
+        ([name]) =>
+          usesStagedEditing(input.profile) ||
+          ![
+            "plan_edit_stages",
+            "save_caption_batch",
+            "read_edit_artifact",
+            "read_caption_track",
+          ].includes(name),
+      )
       .filter(
         ([name]) =>
           usesCompletionPreflight(input.profile) ||

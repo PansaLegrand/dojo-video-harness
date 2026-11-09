@@ -42,6 +42,8 @@ function pointer(root: unknown, reference: string) {
 }
 async function fixture(
   profile:
+    | "local-editor-v6"
+    | "commercial-editing-v7"
     | "local-editor-v5"
     | "commercial-editing-v6"
     | "commercial-editing-v5",
@@ -69,7 +71,23 @@ async function fixture(
     context: { selectedItemIds: [], playheadFrame: 0 },
     authoring: { version: 1, scope: { kind: "project" } },
   };
-  const tools = createVideoToolset(request, builtInSkills(), [], { profile });
+  const noop = async (): Promise<never> => {
+    throw new Error("Schema-only fixture port");
+  };
+  const tools = createVideoToolset(request, builtInSkills(), [], {
+    profile,
+    ...(["local-editor-v6", "commercial-editing-v7"].includes(profile)
+      ? {
+          stages: {
+            planEditStages: noop,
+            saveCaptionBatch: noop,
+            readEditArtifact: noop,
+            resolvePreparedEdit: async (edit: unknown) => edit,
+            preparedCommands: false,
+          },
+        }
+      : {}),
+  });
   const commands: unknown[] = [];
   for (let i = 0; i < 8; i++)
     commands.push({
@@ -282,7 +300,12 @@ async function fixture(
     ],
   };
 }
-it.each(["local-editor-v5", "commercial-editing-v6"] as const)(
+it.each([
+  "local-editor-v5",
+  "commercial-editing-v6",
+  "local-editor-v6",
+  "commercial-editing-v7",
+] as const)(
   "resolves every local reference in every advertised %s tool schema",
   async (profile) => {
     const { tools } = await fixture(profile);
@@ -301,43 +324,46 @@ it.each(["local-editor-v5", "commercial-editing-v6"] as const)(
     expect(total).toBeGreaterThan(100);
   },
 );
-it("validates a full mixed-media command payload against the actual nested review and terminal schemas", async () => {
-  const f = await fixture("commercial-editing-v6"),
-    ajv = new Ajv({ strict: false, allErrors: true });
-  const review = ajv.compile(
-    f.tools.tools.find((tool) => tool.name === "review_edit")!.parameters,
-  );
-  const propose = ajv.compile(
-    f.tools.tools.find((tool) => tool.name === "propose_edit")!.parameters,
-  );
-  expect(
-    review({ requirements: f.requirements, edit: f.edit }),
-    JSON.stringify(review.errors),
-  ).toBe(true);
-  expect(propose(f.edit), JSON.stringify(propose.errors)).toBe(true);
-  for (const edit of [
-    { ...f.edit, commands: [] },
-    { ...f.edit, outcome: "answer" },
-    { ...f.edit, outcome: "retrieve_context" },
-    { ...f.edit, clarification: { id: "q", question: "Why?" } },
-    { ...f.edit, retrieval: { query: "words" } },
-  ]) {
-    expect(review({ requirements: f.requirements, edit })).toBe(false);
-    expect(propose(edit)).toBe(false);
-  }
-  const invalid = {
-    ...f.edit,
-    commands: [
-      {
-        type: "set",
-        target: { kind: "node" },
-        path: ["text"],
-        value: "Missing target IDs",
-      },
-    ],
-  };
-  expect(review({ requirements: f.requirements, edit: invalid })).toBe(false);
-});
+it.each(["commercial-editing-v6", "commercial-editing-v7"] as const)(
+  "validates a full mixed-media command payload against the actual %s nested review and terminal schemas",
+  async (profile) => {
+    const f = await fixture(profile),
+      ajv = new Ajv({ strict: false, allErrors: true });
+    const review = ajv.compile(
+      f.tools.tools.find((tool) => tool.name === "review_edit")!.parameters,
+    );
+    const propose = ajv.compile(
+      f.tools.tools.find((tool) => tool.name === "propose_edit")!.parameters,
+    );
+    expect(
+      review({ requirements: f.requirements, edit: f.edit }),
+      JSON.stringify(review.errors),
+    ).toBe(true);
+    expect(propose(f.edit), JSON.stringify(propose.errors)).toBe(true);
+    for (const edit of [
+      { ...f.edit, commands: [] },
+      { ...f.edit, outcome: "answer" },
+      { ...f.edit, outcome: "retrieve_context" },
+      { ...f.edit, clarification: { id: "q", question: "Why?" } },
+      { ...f.edit, retrieval: { query: "words" } },
+    ]) {
+      expect(review({ requirements: f.requirements, edit })).toBe(false);
+      expect(propose(edit)).toBe(false);
+    }
+    const invalid = {
+      ...f.edit,
+      commands: [
+        {
+          type: "set",
+          target: { kind: "node" },
+          path: ["text"],
+          value: "Missing target IDs",
+        },
+      ],
+    };
+    expect(review({ requirements: f.requirements, edit: invalid })).toBe(false);
+  },
+);
 it("retains the earlier nested-reference failure as a regression while leaving source/proposal schemas intact", async () => {
   const old = await fixture("commercial-editing-v5"),
     schema = old.tools.tools.find(

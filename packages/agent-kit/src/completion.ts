@@ -372,6 +372,7 @@ export async function validateCompletionReceipt(
 export async function restoreCompletionStateFromMessages(
   messages: readonly unknown[],
   snapshotHash: string,
+  options: { resolvePreparedEdit?: (edit: unknown) => Promise<unknown> } = {},
 ): Promise<CompletionState | undefined> {
   let state: CompletionState | undefined;
   const calls = new Map<string, { name: string; arguments: string }>();
@@ -416,10 +417,14 @@ export async function restoreCompletionStateFromMessages(
     if (review.status === "passed") {
       const receipt = await validateCompletionReceipt(review.receipt);
       const args = JSON.parse(calls.get(message.tool_call_id)!.arguments);
+      const edit = options.resolvePreparedEdit
+        ? await options.resolvePreparedEdit(args.edit)
+        : args.edit;
       if (
         receipt.snapshotHash !== snapshotHash ||
         receipt.requirementsHash !== requirementsHash ||
-        receipt.commandsHash !== (await completionHash(args.edit.commands)) ||
+        receipt.commandsHash !==
+          (await completionHash((edit as { commands?: unknown }).commands)) ||
         receipt.checksHash !== (await completionHash(review.checks))
       )
         throw new Error(

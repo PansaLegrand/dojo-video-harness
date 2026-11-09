@@ -11,6 +11,7 @@ const names = [
   "multi-asset-editing",
   "precise-editing",
   "speech-editing",
+  "staged-editing",
 ];
 const skills = await Promise.all(
   names.map(async (name) => {

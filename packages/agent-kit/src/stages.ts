@@ -59,6 +59,7 @@ export type EditStageLimits = {
   outputTokens: number;
   attempts: number;
   expiresAt: string;
+  perStage?: { modelCalls: number; toolCalls: number; outputTokens: number };
 };
 export type EditStageFailure = {
   code:
@@ -88,6 +89,7 @@ export type EditStageAttempt = {
   id: string;
   stageId: string;
   checkpointId: string;
+  inputRef?: EditArtifactRef;
   modelIdentity: string;
   status: "running" | "waiting" | "completed" | "failed" | "cancelled";
   usage: EditStageUsage;
@@ -100,6 +102,7 @@ export type EditStagePlan = {
   revision: number;
   binding: EditStageBinding;
   bindingHash: string;
+  definitionHash: string;
   instruction: string;
   requirements: CompletionRequirement[];
   requirementsHash: string;
@@ -111,7 +114,25 @@ export type EditStagePlan = {
   operations: Record<string, { hash: string; revision: number }>;
 };
 export type EditStageEvent = { operationId: string } & (
-  | { type: "claim"; stageId: string; attemptId: string; checkpointId: string }
+  | {
+      type: "claim";
+      stageId: string;
+      attemptId: string;
+      checkpointId: string;
+      inputRef?: EditArtifactRef;
+    }
+  | {
+      type: "continue";
+      stageId: string;
+      previousAttemptId: string;
+      attemptId: string;
+      checkpointId: string;
+      inputRef?: EditArtifactRef;
+      reason: "stage_budget" | "user_reply";
+      priorCheckpointHash: string;
+      priorUsageHash: string;
+      replyRef?: EditArtifactRef;
+    }
   | { type: "wait" | "resume"; stageId: string; attemptId: string }
   | {
       type: "record_usage";
@@ -185,6 +206,11 @@ function row(v: unknown, keys: string[]): Record<string, unknown> {
 function text(v: unknown, max = 191): string {
   if (typeof v !== "string" || !v.length || v.length > max)
     fail("Invalid stage identity/text.");
+  if (
+    max === 191 &&
+    ["__proto__", "prototype", "constructor"].includes(v as string)
+  )
+    fail("Reserved stage identity.");
   return v as string;
 }
 function integer(v: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number {
@@ -258,6 +284,7 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
     "revision",
     "binding",
     "bindingHash",
+    "definitionHash",
     "instruction",
     "requirements",
     "requirementsHash",
@@ -273,6 +300,7 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
   text(v.id);
   integer(v.revision);
   hash(v.bindingHash);
+  hash(v.definitionHash);
   hash(v.requirementsHash);
   text(v.instruction, 4000);
   const binding = row(v.binding, [
@@ -299,12 +327,23 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
     "outputTokens",
     "attempts",
     "expiresAt",
+    "perStage",
   ]);
   integer(limits.modelCalls, 1, 256);
   integer(limits.toolCalls, 1, 512);
   integer(limits.outputTokens, 1, 1024 * 1024);
   integer(limits.attempts, 1, 128);
   date(limits.expiresAt);
+  if (limits.perStage !== undefined) {
+    const per = row(limits.perStage, [
+      "modelCalls",
+      "toolCalls",
+      "outputTokens",
+    ]);
+    integer(per.modelCalls, 1, 32);
+    integer(per.toolCalls, 1, 64);
+    integer(per.outputTokens, 1, 128000);
+  }
   const usage = parseEditStageUsage(v.usage);
   if (
     !Array.isArray(v.stages) ||
@@ -377,6 +416,7 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
       "id",
       "stageId",
       "checkpointId",
+      "inputRef",
       "modelIdentity",
       "status",
       "usage",
@@ -385,6 +425,7 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
     ]);
     text(a.id);
     text(a.checkpointId);
+    if (a.inputRef !== undefined) parseEditArtifactRef(a.inputRef);
     text(a.modelIdentity, 2048);
     date(a.startedAt);
     date(a.updatedAt);
@@ -442,6 +483,13 @@ export function parseEditStagePlan(raw: unknown): EditStagePlan {
     if (stage.outputs.some((ref) => !allowed[stage.kind].includes(ref.kind)))
       fail("Stage output has the wrong artifact kind.");
   }
+  for (const attempt of attempts)
+    if (
+      attempt.inputRef &&
+      (attempt.inputRef.runId !== plan.binding.runId ||
+        attempt.inputRef.bindingHash !== plan.bindingHash)
+    )
+      fail("Attempt context belongs to another run/source binding.");
   if (
     !v.operations ||
     typeof v.operations !== "object" ||
@@ -494,7 +542,18 @@ export function parseEditStageEvent(raw: unknown): EditStageEvent {
     fail("Invalid stage transition.");
   const type = (raw as { type?: unknown }).type;
   const fields: Record<string, string[]> = {
-    claim: ["stageId", "attemptId", "checkpointId"],
+    claim: ["stageId", "attemptId", "checkpointId", "inputRef"],
+    continue: [
+      "stageId",
+      "previousAttemptId",
+      "attemptId",
+      "checkpointId",
+      "inputRef",
+      "reason",
+      "priorCheckpointHash",
+      "priorUsageHash",
+      "replyRef",
+    ],
     wait: ["stageId", "attemptId"],
     resume: ["stageId", "attemptId"],
     record_usage: ["stageId", "attemptId", "usage"],
@@ -506,11 +565,29 @@ export function parseEditStageEvent(raw: unknown): EditStageEvent {
     fail("Unknown stage transition.");
   const value = row(raw, ["type", "operationId", ...fields[type]]);
   text(value.operationId);
-  for (const key of ["stageId", "attemptId", "checkpointId"])
+  for (const key of [
+    "stageId",
+    "previousAttemptId",
+    "attemptId",
+    "checkpointId",
+  ])
     if (fields[type].includes(key)) text(value[key]);
   if (type === "record_usage") parseEditStageUsage(value.usage);
   if (type === "complete") refs(value.outputs);
   if (type === "fail") parseFailure(value.failure);
+  if (value.inputRef !== undefined) parseEditArtifactRef(value.inputRef);
+  if (type === "continue") {
+    hash(value.priorCheckpointHash);
+    hash(value.priorUsageHash);
+    if (value.reason !== "stage_budget" && value.reason !== "user_reply")
+      fail("Invalid continuation reason.");
+    if (value.reason === "user_reply") {
+      const ref = parseEditArtifactRef(value.replyRef);
+      if (ref.kind !== "creative-decision")
+        fail("An explicit user reply requires its decision artifact.");
+    } else if (value.replyRef !== undefined)
+      fail("A budget continuation cannot invent a user reply.");
+  }
   return structuredClone(value) as EditStageEvent;
 }
 export async function createEditStagePlan(input: {
@@ -523,7 +600,7 @@ export async function createEditStagePlan(input: {
     Omit<EditStage, "status" | "outputs" | "attemptId" | "failure">
   >;
 }): Promise<EditStagePlan> {
-  return parseEditStagePlan({
+  const body = {
     version: 1,
     id: input.id,
     revision: 0,
@@ -548,7 +625,41 @@ export async function createEditStagePlan(input: {
     })),
     attempts: [],
     operations: {},
+  };
+  return parseEditStagePlan({
+    ...body,
+    definitionHash: await completionHash(
+      stageDefinition(body as unknown as EditStagePlan),
+    ),
   });
+}
+function stageDefinition(plan: EditStagePlan) {
+  return {
+    id: plan.id,
+    binding: plan.binding,
+    instruction: plan.instruction,
+    requirements: plan.requirements,
+    limits: plan.limits,
+    stages: plan.stages.map(
+      ({
+        id,
+        kind,
+        execution,
+        dependencies,
+        inputs,
+        sourceItemId,
+        descriptor,
+      }) => ({
+        id,
+        kind,
+        execution,
+        dependencies,
+        inputs,
+        sourceItemId,
+        descriptor,
+      }),
+    ),
+  };
 }
 export async function assertEditStageBinding(
   plan: EditStagePlan,
@@ -558,7 +669,8 @@ export async function assertEditStageBinding(
     (await completionHash(binding)) !== plan.bindingHash ||
     completionCanonical(binding) !== completionCanonical(plan.binding) ||
     (await completionHash(plan.instruction)) !== plan.binding.instructionHash ||
-    (await completionHash(plan.requirements)) !== plan.requirementsHash
+    (await completionHash(plan.requirements)) !== plan.requirementsHash ||
+    (await completionHash(stageDefinition(plan))) !== plan.definitionHash
   )
     throw new EditStageError(
       "STAGE_CONFLICT",
@@ -607,7 +719,10 @@ export async function transitionEditStagePlan(
           "STAGE_CONFLICT",
           "This plan cannot start another stage.",
         );
-      if (Date.parse(options.now) >= Date.parse(plan.limits.expiresAt))
+      if (
+        stage.execution === "model" &&
+        Date.parse(options.now) >= Date.parse(plan.limits.expiresAt)
+      )
         throw new EditStageError("STAGE_CONFLICT", "The stage plan expired.");
       if (stage.execution === "model" && !plan.usage.usageKnown)
         throw new EditStageError(
@@ -654,8 +769,85 @@ export async function transitionEditStagePlan(
       plan.attempts.push({
         id: event.attemptId,
         checkpointId: event.checkpointId,
+        ...(event.inputRef ? { inputRef: event.inputRef } : {}),
         stageId: stage.id,
         modelIdentity: plan.binding.modelIdentity,
+        status: "running",
+        usage: {
+          modelCalls: 0,
+          toolCalls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          usageKnown: true,
+        },
+        startedAt: options.now,
+        updatedAt: options.now,
+      });
+    } else if (event.type === "continue") {
+      const previous = plan.attempts.find(
+        (a) => a.id === event.previousAttemptId && a.stageId === stage.id,
+      );
+      if (
+        !previous ||
+        stage.attemptId !== previous.id ||
+        !["running", "waiting"].includes(stage.status) ||
+        ["cancelled", "failed", "completed"].includes(plan.status)
+      )
+        throw new EditStageError(
+          "STAGE_CONFLICT",
+          "This stage cannot continue from that attempt.",
+        );
+      if (!plan.usage.usageKnown || !previous.usage.usageKnown)
+        throw new EditStageError(
+          "STAGE_UNKNOWN_OUTCOME",
+          "Unknown usage requires reconciliation, not a new model attempt.",
+        );
+      if ((await completionHash(previous.usage)) !== event.priorUsageHash)
+        throw new EditStageError(
+          "STAGE_CONFLICT",
+          "Continuation usage proof changed.",
+        );
+      if (
+        Date.parse(options.now) >= Date.parse(plan.limits.expiresAt) ||
+        plan.usage.modelCalls >= plan.limits.modelCalls ||
+        plan.usage.toolCalls >= plan.limits.toolCalls ||
+        plan.usage.outputTokens >= plan.limits.outputTokens ||
+        plan.attempts.length >= plan.limits.attempts
+      )
+        throw new EditStageError(
+          "STAGE_BUDGET",
+          "The original authorized continuation budget is exhausted or expired.",
+        );
+      if (
+        plan.attempts.some(
+          (a) =>
+            a.id === event.attemptId || a.checkpointId === event.checkpointId,
+        )
+      )
+        throw new EditStageError(
+          "STAGE_CONFLICT",
+          "Continuation attempt identity was already used.",
+        );
+      if (
+        event.replyRef &&
+        (event.replyRef.runId !== plan.binding.runId ||
+          event.replyRef.bindingHash !== plan.bindingHash)
+      )
+        throw new EditStageError(
+          "STAGE_CONFLICT",
+          "The reply artifact belongs to another run/source.",
+        );
+      previous.status = "completed";
+      previous.updatedAt = options.now;
+      stage.attemptId = event.attemptId;
+      stage.status = "running";
+      plan.status = "running";
+      plan.attempts.push({
+        id: event.attemptId,
+        stageId: stage.id,
+        checkpointId: event.checkpointId,
+        ...(event.inputRef ? { inputRef: event.inputRef } : {}),
+        modelIdentity: previous.modelIdentity,
         status: "running",
         usage: {
           modelCalls: 0,

@@ -8,3 +8,6 @@ export * from "./completion.js";
 export * from "./editing-schema.js";
 export * from "./stages.js";
 export * from "./artifacts.js";
+export * from "./staged-tools.js";
+export * from "./staged-coordinator.js";
+export * from "./stage-progress.js";

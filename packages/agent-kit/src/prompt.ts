@@ -2,6 +2,7 @@ import { skillIndex } from "./skills.js";
 import {
   usesEfficientReaders,
   usesResolvedEditSchema,
+  usesStagedEditing,
   type AgentProfile,
 } from "./catalog.js";
 import type { Skill } from "./catalog.js";
@@ -23,13 +24,17 @@ export function composeToolAgentPrompt(input: {
     input.profile !== undefined && usesEfficientReaders(input.profile);
   const resolved =
     input.profile !== undefined && usesResolvedEditSchema(input.profile);
+  const staged =
+    input.profile !== undefined && usesStagedEditing(input.profile);
   return [
     input.editingGuide,
-    resolved
-      ? EDITING_EXECUTION_GUIDE
-      : efficient
-        ? EFFICIENT_TOOL_GUIDE
-        : TOOL_GUIDE,
+    staged
+      ? STAGED_EXECUTION_GUIDE
+      : resolved
+        ? EDITING_EXECUTION_GUIDE
+        : efficient
+          ? EFFICIENT_TOOL_GUIDE
+          : TOOL_GUIDE,
     ...(input.toolNames.includes("prepare_text_overlay")
       ? [OVERLAY_GUIDE]
       : []),
@@ -49,6 +54,8 @@ export function composeToolAgentPrompt(input: {
       : "Available skills: ") + JSON.stringify(skillIndex(input.skills)),
   ].join("\n\n");
 }
+const STAGED_EXECUTION_GUIDE =
+  "Complete the original request using frozen project facts, declared outcomes and the active durable stage. For large or multi-source caption work, call plan_edit_stages with every requested outcome and exact source/range caption settings. The host persists the ordered plan and original overall budget, then continues each stage. In a caption_batch stage read only that exact batch's ranged genuine cue IDs; save_caption_batch persists all of its translations and yields to the host. Completed siblings are immutable reusable artifacts. Do not claim the overall task complete after one batch. read_edit_artifact resolves a specific missing owned artifact; financial/provider/binary data stays in dedicated host ports. During assembly the host includes its prepared command artifacts automatically. Supply only additional or repair commands; commands:[] is valid only when preparedCommands is explicitly present in durableStages. Requirements remain frozen while commands remain repairable. Review the complete expanded candidate and propose the exact successful edit. Current project edits and the original instruction govern earlier decisions. Host-input waits pause this same attempt until its authorized receipt exists; never spend model calls polling. All stages share the original overall allowance; no stage, narration or skill authorizes additional provider work or fallback. For existing manually edited caption text, use read_caption_track and preserve its current-display-v1 IDs/times/pair links; these display values never replace genuine ASR words. Read at most one needed skill before starting preparation and retain explicit incomplete coverage.";
 
 const EFFICIENT_TOOL_GUIDE =
   "Complete the requested editing work using authoritative supplied project metadata, IDs, cue packets and source clocks. Begin preparation once the needed facts are available. Reader calls resolve a specific missing or ambiguous requested fact. Scope all discovery to REQUESTED assets, source ranges and outputs. 'All requested outputs' never requires enumerating an unrelated imported library. The reader snapshotHash argument can be omitted because the host already binds its frozen snapshot; a supplied mismatch is rejected. Use list_assets name/type filters for missing named assets; preserve IDs already supplied instead of looking them up again. Use read_caption_cues only for the requested sourceRange/pages when its needed cues are incomplete. read_skill is optional reference: use at most one relevant skill before beginning preparation, then read another only when a concrete validation gap requires it. Avoid repeated inspection that returns the same facts. Prepare requested caption pairs and exact media placement commands, review_edit the complete candidate, repair failed checks and propose_edit exact successful commands. ask_user is for essential unresolved information. Preserve editing scope, source evidence and paid-operation authorization. Never claim application before the host applies the candidate.";
