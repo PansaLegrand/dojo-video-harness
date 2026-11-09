@@ -137,3 +137,17 @@ stays source-bound. New grouped `asset_sequence` requirements cover exact media
 placements, and `speech_callout` verifies quoted words. Numeric highlights retain
 their numeric checks. Previous profiles retain exact inventory/skill/prompt bytes,
 covered by digests produced from the retained 0.1.2 build.
+
+
+ASR receipts can retain nonpositive-duration tokens in `timingOmissions` while
+keeping full transcript text, raw hash and original token-index word IDs. New
+reader profiles report in-window omissions with bounded diagnostics. A fully
+read cue list may have cuesComplete:true while overall coverage remains incomplete.
+Caption-pair completion requires genuine timing coverage over its effective source
+window. Narrowing to an explicitly requested range can exclude a cropped untimed
+boundary token without inventing a timestamp.
+
+Appended-ending preflight currently uses the original timeline extent. Explicitly
+shorter montages with an ending need an additional outcome contract/fixture in the
+remaining R04 scope. Record that coverage separately from the bounded mixed-media
+qualification that preserves the original ending basis.
