@@ -49,6 +49,8 @@ import {
 } from "./agent-speech";
 import { parseVideoProjectDocument } from "../../../packages/core/src/lib/video-project/document";
 import { nativeChangedItemIds } from "../../../packages/core/src/lib/video-project/agent-review";
+import { LoopCheckpointCapacityError } from "../../../packages/agent-loop/src/index";
+import { ProviderReplyByteBudgetError } from "../../../packages/adapters/src/gpt-responses";
 import {
   agentCheckpointHistory,
   createAgentCheckpointPort,
@@ -188,7 +190,9 @@ export class AgentService {
             run.phase = "failed";
             run.error = {
               code:
-                cause instanceof AgentCheckpointConflict
+                cause instanceof AgentCheckpointConflict ||
+                cause instanceof LoopCheckpointCapacityError ||
+                cause instanceof ProviderReplyByteBudgetError
                   ? cause.code
                   : "AGENT_FAILED",
               message: cause instanceof Error ? cause.message : "Agent failed",

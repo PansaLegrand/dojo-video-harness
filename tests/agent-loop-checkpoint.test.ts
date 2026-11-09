@@ -18,6 +18,11 @@ import type {
   LanguageModel,
   ModelReply,
 } from "../packages/agent/src/index";
+import {
+  parseLoopCheckpoint,
+  measureLoopCheckpointBytes,
+  type LoopCheckpointCapacity,
+} from "../packages/agent-loop/src/index";
 import { GptResponsesModel } from "../packages/adapters/src/gpt-responses";
 import {
   createVideoProjectDocument,
@@ -37,6 +42,7 @@ import type {
 
 const directories: string[] = [];
 afterEach(async () => {
+  vi.unstubAllGlobals();
   await Promise.all(
     directories
       .splice(0)
@@ -212,6 +218,9 @@ async function runUntilCrash(
     extraTools?: AgentTool[];
     skills?: Skill[];
     request?: NativeAgentRequest;
+    legacy?: boolean;
+    capacity?: LoopCheckpointCapacity;
+    history?: Array<{ role: "user" | "assistant"; text: string }>;
   } = {},
 ) {
   let port: LoopCheckpointPort | undefined;
@@ -222,14 +231,14 @@ async function runUntilCrash(
     skills: options.skills ?? [],
     extraTools: options.extraTools,
     signal: new AbortController().signal,
-    messages: [],
+    messages: options.history ?? [],
     checkpoint: async ({ inventory, skills }) => {
       port = await createAgentCheckpointPort({
         store: f.store,
         projectId: f.projectId,
         runId: f.runId,
         request: options.request ?? f.request,
-        history: [],
+        history: options.history ?? [],
         inventory,
         skills,
         modelIdentity: model.identity,
@@ -237,6 +246,11 @@ async function runUntilCrash(
       });
       return {
         ...port,
+        ...(options.legacy
+          ? { encoding: undefined, capacity: undefined }
+          : options.capacity
+            ? { capacity: options.capacity }
+            : {}),
         save: async (next, previous) => {
           await port!.save(next, previous);
           if (!crashed && next.phase === phase) {
@@ -566,8 +580,9 @@ it("claims checkpoint revisions atomically through the project transaction", asy
     { identity: "fixture", complete: async () => reply() },
     "model-returned",
   );
-  const saved = (await f.store.read(f.projectId)).runs[0]!.loopCheckpoint!
-    .checkpoint;
+  const saved = parseLoopCheckpoint(
+    (await f.store.read(f.projectId)).runs[0]!.loopCheckpoint!.checkpoint,
+  );
   const next = { ...saved, revision: saved.revision + 1 };
   const attempts = await Promise.allSettled([
     port.save(next, saved.revision),
@@ -789,4 +804,187 @@ it("persists a model-factory configuration failure without stranding or restarti
   expect((await host.start(f.projectId, f.input)).run.id).toBe(started.run.id);
   await host.recover();
   expect(factory).toHaveBeenCalledTimes(1);
+});
+
+it("stores the compact byte profile within the complete UTF-8 host envelope", async () => {
+  const f = await seed();
+  const complete = vi.fn<LanguageModel["complete"]>(
+    async (_messages, _tools, _signal, limits) => {
+      expect(limits?.maxReplyBytes).toBe(256 * 1024);
+      return reply();
+    },
+  );
+  await runUntilCrash(f, { identity: "fixture", complete }, "model-returned", {
+    history: [{ role: "assistant", text: "界".repeat(4000) }],
+  });
+  const saved = (await f.store.read(f.projectId)).runs[0]!.loopCheckpoint!;
+  expect(saved.checkpoint.version).toBe(2);
+  const logical = parseLoopCheckpoint(saved.checkpoint);
+  const wrapperBytes = new TextEncoder().encode(
+    JSON.stringify({ ...saved, checkpoint: null }),
+  ).byteLength;
+  expect(wrapperBytes).toBeGreaterThan(
+    JSON.stringify({ ...saved, checkpoint: null }).length,
+  );
+  expect(logical.snapshot.checkpointCapacity).toEqual({
+    maxBytes: 2 * 1024 * 1024 - Math.max(1024, wrapperBytes),
+    maxReplyBytes: 256 * 1024,
+    reserveBytes: 64 * 1024,
+  });
+  expect(logical.snapshot.checkpointEncoding).toBe("compact-v2");
+  expect(
+    new TextEncoder().encode(JSON.stringify(saved)).byteLength,
+  ).toBeLessThanOrEqual(2 * 1024 * 1024);
+});
+
+it("keeps an accepted 0.1.1 checkpoint identity, usage and profile unchanged on upgrade", async () => {
+  const f = await seed();
+  const calls = [inspect, edit];
+  const opaque = {
+    type: "reasoning",
+    id: "reasoning",
+    encrypted_content: "界".repeat(100000),
+    summary: [],
+  };
+  const response = {
+    ...reply(calls),
+    providerOutput: [
+      opaque,
+      ...calls.map((call) => ({
+        type: "function_call",
+        call_id: call.id,
+        name: call.name,
+        arguments: call.arguments,
+        status: "completed",
+      })),
+    ],
+  };
+  await runUntilCrash(
+    f,
+    { identity: "fixture", complete: async () => response },
+    "model-returned",
+    { legacy: true },
+  );
+  const before = (await f.store.read(f.projectId)).runs[0]!.loopCheckpoint!;
+  expect(before.checkpoint.version).toBe(1);
+  const original = parseLoopCheckpoint(before.checkpoint);
+  expect(original.snapshot).not.toHaveProperty("checkpointCapacity");
+  expect(original.snapshot).not.toHaveProperty("checkpointEncoding");
+  const complete = vi.fn(async () => reply());
+  const recovered = await restart(f, { identity: "fixture", complete });
+  const after = recovered.project.runs[0]!.loopCheckpoint!;
+  expect(recovered.project.runs[0]!.status).toBe("awaiting_review");
+  expect(complete).not.toHaveBeenCalled();
+  expect(after.contextHash).toBe(before.contextHash);
+  expect(after.checkpoint.version).toBe(1);
+  const restored = parseLoopCheckpoint(after.checkpoint);
+  expect(restored.bindingHash).toBe(original.bindingHash);
+  expect(restored.snapshot).toEqual(original.snapshot);
+  expect(restored.usage).toEqual(original.usage);
+  expect(restored.modelCalls).toBe(1);
+});
+
+it("rejects UTF-8 reply headroom before a paid call and retains the accepted capacity on restart", async () => {
+  async function unicodeFixture() {
+    const f = await seed();
+    const instruction = "界".repeat(4000);
+    f.request.instruction = instruction;
+    f.input.instruction = instruction;
+    await f.store.transaction(f.projectId, (p) => {
+      p.runs[0]!.instruction = instruction;
+      p.runs[0]!.request.instruction = instruction;
+      p.runs[0]!.requestHash = canonicalSerialize(f.input);
+    });
+    return f;
+  }
+  const calibration = await unicodeFixture();
+  const complete = vi.fn(async () => reply());
+  await runUntilCrash(
+    calibration,
+    { identity: "capacity-fixture", complete },
+    "ready-for-model",
+  );
+  const initial = parseLoopCheckpoint(
+    (await calibration.store.read(calibration.projectId)).runs[0]!
+      .loopCheckpoint!.checkpoint,
+  );
+  const bytes = measureLoopCheckpointBytes(initial);
+  const f = await unicodeFixture();
+  const capacity = {
+    maxBytes: bytes + 32768 + 16384 - 1024,
+    maxReplyBytes: 32768,
+    reserveBytes: 16384,
+  };
+  await runUntilCrash(
+    f,
+    { identity: "capacity-fixture", complete },
+    undefined,
+    { capacity },
+  );
+  expect(complete).not.toHaveBeenCalled();
+  const saved = parseLoopCheckpoint(
+    (await f.store.read(f.projectId)).runs[0]!.loopCheckpoint!.checkpoint,
+  );
+  expect(saved.phase).toBe("ready-for-model");
+  expect(saved.modelCalls).toBe(0);
+  expect(saved.snapshot.checkpointCapacity).toEqual(capacity);
+  const recovered = await restart(f, {
+    identity: "capacity-fixture",
+    complete,
+  });
+  expect(complete).not.toHaveBeenCalled();
+  expect(recovered.project.runs[0]!.error?.code).toBe(
+    "LOOP_CHECKPOINT_CAPACITY",
+  );
+  const after = parseLoopCheckpoint(
+    recovered.project.runs[0]!.loopCheckpoint!.checkpoint,
+  );
+  expect(after.modelCalls).toBe(0);
+  expect(after.snapshot.checkpointCapacity).toEqual(capacity);
+});
+
+it("records an oversize opaque provider reply as a breach without automatically repeating the request", async () => {
+  const f = await seed();
+  await f.store.transaction(f.projectId, (p) => {
+    p.runs = [];
+  });
+  const marker = "opaque-fixture-not-for-logs";
+  const fetch = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          status: "completed",
+          output: [
+            {
+              type: "reasoning",
+              id: "rs",
+              encrypted_content: marker + "界".repeat(100000),
+              summary: [],
+            },
+          ],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }),
+      ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const model = new GptResponsesModel({
+    baseUrl: "https://provider.example/v1",
+    model: "gpt-test",
+    apiKey: "synthetic-key",
+  });
+  const host = new AgentService(f.store, model, []);
+  await host.start(f.projectId, f.input);
+  await expect
+    .poll(async () => (await f.store.read(f.projectId)).runs[0]!.status)
+    .toBe("failed");
+  const run = (await f.store.read(f.projectId)).runs[0]!;
+  expect(run.error?.code).toBe("PROVIDER_REPLY_CAPACITY_EXCEEDED");
+  expect(run.error?.message).not.toContain(marker);
+  expect(run.events.some((event) => event.type === "tool.started")).toBe(false);
+  expect(parseLoopCheckpoint(run.loopCheckpoint!.checkpoint)).toMatchObject({
+    phase: "model-pending",
+    modelCalls: 1,
+  });
+  await host.recover();
+  expect(fetch).toHaveBeenCalledTimes(1);
 });
