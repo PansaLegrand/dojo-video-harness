@@ -301,3 +301,98 @@ it("composes explicit timestamp trim, original/translated captions and grouped m
   ).document;
   expect(after.evidence).toEqual(document.evidence);
 });
+
+it("reports untimed tokens in the effective source window and prevents a false full-caption receipt", async () => {
+  const { document, request } = await fixture();
+  document.evidence.asr!.text = "So " + document.evidence.asr!.text;
+  document.evidence.asr!.timingOmissions = [
+    {
+      tokenIndex: 0,
+      text: "So",
+      startMs: 0,
+      endMs: 0,
+      reason: "nonpositive-duration",
+    },
+  ];
+  request.baseHash = await hashVideoProjectDocument(document);
+  const original = await readNativeCaptionCues(request, {
+    snapshotHash: request.baseHash,
+    sourceItemId: "speech",
+    evidenceId: "asr",
+  });
+  expect(original.coverage).toMatchObject({
+    complete: false,
+    cuesComplete: true,
+    reason: "untimed_source_tokens",
+    nextCursor: null,
+  });
+  const { prepareCompletionCaptionCuePacket } = await import(
+    "../packages/core/src/lib/video-project/completion-caption-context"
+  );
+  expect(
+    prepareCompletionCaptionCuePacket(document, undefined, {
+      pagedReaders: true,
+    }),
+  ).toMatchObject({
+    complete: false,
+    sources: [
+      { complete: false, cuesComplete: true, timingOmissions: { count: 1 } },
+    ],
+  });
+  expect(
+    prepareCompletionCaptionCuePacket(document).sources[0],
+  ).not.toHaveProperty("timingOmissions");
+  expect(original.source).toMatchObject({
+    timingOmissions: { count: 1, examples: [{ text: "So", tokenIndex: 0 }] },
+  });
+  const input = {
+    sourceItemId: "speech",
+    evidenceId: "asr",
+    originalItemId: "en",
+    translatedItemId: "zh",
+    trackId: "visual",
+    originalLanguage: "en",
+    translatedLanguage: "zh",
+    originalColor: "#ff0000",
+    translatedColor: "#ffffff",
+    translations: original.cues.map((cue, index) => ({
+      cueId: cue.cueId,
+      text: `中文${index}`,
+    })),
+  };
+  const commands = prepareCaptionPair(document, input, {
+    sourceRange: true,
+  }).commands;
+  const after = executeVideoProjectCommands(document, commands).document;
+  const requirements = [
+    {
+      id: "pair",
+      kind: "caption_pair",
+      sourceItemId: "speech",
+      evidenceId: "asr",
+      originalItemId: "en",
+      translatedItemId: "zh",
+      originalLanguage: "en",
+      translatedLanguage: "zh",
+      originalColor: "#ff0000",
+      translatedColor: "#ffffff",
+    },
+  ];
+  expect(
+    checkNativeCompletionRequirements(document, after, requirements).find(
+      (check) => check.id === "pair",
+    ),
+  ).toMatchObject({
+    passed: false,
+    message: expect.stringMatching(/positive-duration/),
+  });
+  const clipped = await readNativeCaptionCues(request, {
+    snapshotHash: request.baseHash,
+    sourceItemId: "speech",
+    evidenceId: "asr",
+    sourceRange: { startMs: 1000, endMs: 9000 },
+  });
+  expect(clipped.coverage.complete).toBe(true);
+  expect(clipped.source.timingOmissions).toBeUndefined();
+  expect(document.evidence.asr!.timingOmissions[0]!.startMs).toBe(0);
+});

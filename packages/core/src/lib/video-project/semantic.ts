@@ -84,20 +84,40 @@ export async function transcriptEvidenceFromAsr(
     asrTaskId: asrTaskId ?? null,
   });
   let cursor = 0;
-  const words = transcript.words.map((word, index) => {
-    const at = transcript.text
-      .toLocaleLowerCase()
-      .indexOf(word.text.toLocaleLowerCase(), cursor);
-    const text =
-      at < 0 ? word.text : transcript.text.slice(at, at + word.text.length);
-    if (at >= 0) cursor = at + word.text.length;
-    return {
-      id: `w:${hash.slice(7, 23)}:${index}`,
-      text,
-      startMs: word.startMs,
-      endMs: word.endMs,
-    };
-  });
+  const words = transcript.words
+    .map((word, index) => {
+      const at = transcript.text
+        .toLocaleLowerCase()
+        .indexOf(word.text.toLocaleLowerCase(), cursor);
+      const text =
+        at < 0 ? word.text : transcript.text.slice(at, at + word.text.length);
+      if (at >= 0) cursor = at + word.text.length;
+      return {
+        id: `w:${hash.slice(7, 23)}:${index}`,
+        text,
+        startMs: word.startMs,
+        endMs: word.endMs,
+      };
+    })
+    .filter((word) => word.endMs > word.startMs);
+  const timingOmissions = transcript.words.flatMap((word, tokenIndex) =>
+    word.endMs > word.startMs
+      ? []
+      : [
+          {
+            tokenIndex,
+            text: word.text,
+            startMs: word.startMs,
+            endMs: word.endMs,
+            reason: "nonpositive-duration" as const,
+          },
+        ],
+  );
+  if (!words.length)
+    throw new Error(
+      "No positive-duration source words were provided. The ASR receipt is retained for review.",
+    );
+
   return {
     id: `transcript:${identityHash.slice(7, 39)}`,
     sourceAssetId: assetId,
@@ -106,6 +126,7 @@ export async function transcriptEvidenceFromAsr(
     language: transcript.language ?? undefined,
     text: transcript.text,
     words,
+    ...(timingOmissions.length ? { timingOmissions } : {}),
     ...(asrTaskId ? { asrTaskId } : {}),
   };
 }

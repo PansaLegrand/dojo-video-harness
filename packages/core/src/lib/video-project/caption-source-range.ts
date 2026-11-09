@@ -6,6 +6,7 @@ import {
 import {
   parseVideoProjectDocument,
   type VideoProjectDocument,
+  type VideoTranscriptEvidence,
 } from "./document";
 import { sourceWindow } from "./source-clock";
 
@@ -78,5 +79,28 @@ export function prepareCaptionSourceRange(
       effectiveEndMs:
         range.startMs + ((duration * 1000) / document.format.fps) * window.rate,
     },
+  };
+}
+
+/** Invalid-duration tokens retain their raw observed start point. This diagnostic
+ * selects that point within the effective source window and never repairs timing. */
+export function captionTimingDiagnostics(
+  document: VideoProjectDocument,
+  sourceItemId: string,
+  evidence: VideoTranscriptEvidence,
+) {
+  const source = document.items.find((item) => item.id === sourceItemId);
+  if (!source) throw new Error("Caption source is missing.");
+  const window = sourceWindow(source, document.format.fps);
+  const omissions = (evidence.timingOmissions ?? []).filter(
+    (token) => token.startMs >= window.startMs && token.startMs < window.endMs,
+  );
+  if (!omissions.length) return undefined;
+  return {
+    count: omissions.length,
+    examples: omissions
+      .slice(0, 3)
+      .map((token) => ({ ...token, text: token.text.slice(0, 160) })),
+    omittedExamples: Math.max(0, omissions.length - 3),
   };
 }

@@ -9,6 +9,7 @@ import { nativeTranscriptScopedSourceItemIds } from "./agent-transcript-search";
 import { captionSourceCommands } from "./semantic";
 import { sourceWindow } from "./source-clock";
 import {
+  captionTimingDiagnostics,
   captionSourceRangeSchema,
   prepareCaptionSourceRange,
 } from "./caption-source-range";
@@ -308,6 +309,11 @@ export async function readNativeCaptionCues(
       wordIds,
     };
   });
+  const timingOmissions = captionTimingDiagnostics(
+    document,
+    source.id,
+    evidence,
+  );
   const identity = {
     sourceItemId: source.id,
     evidenceId: evidence.id,
@@ -319,6 +325,7 @@ export async function readNativeCaptionCues(
     duration: source.node.duration!,
     fps: document.format.fps,
     ...(narrowed ? { sourceRange: narrowed.sourceRange } : {}),
+    ...(timingOmissions ? { timingOmissions } : {}),
   };
   const binding = {
     kind: "cues-v1",
@@ -328,7 +335,7 @@ export async function readNativeCaptionCues(
     source: identity,
   };
   const offset = await offsetOf(input.cursor, "cues", binding, values.length);
-  return boundedPage(
+  const page = await boundedPage(
     values,
     offset,
     "cues",
@@ -351,4 +358,11 @@ export async function readNativeCaptionCues(
       },
     }),
   );
+  if (timingOmissions) {
+    const cuesComplete = page.coverage.complete;
+    page.coverage.complete = false;
+    page.coverage.reason = "untimed_source_tokens";
+    return { ...page, coverage: { ...page.coverage, cuesComplete } };
+  }
+  return page;
 }

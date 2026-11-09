@@ -36,6 +36,7 @@ import { captionSourceCommands } from "./semantic";
 import { resolveSpeechAnchor, projectSourceRange } from "./source-clock";
 import { compileVideoProjectDocument } from "./compilation";
 import { normalizeCompletionNumber } from "./completion-number";
+import { captionTimingDiagnostics } from "./caption-source-range";
 import { normalizeCaptionLanguage } from "./caption-pair";
 
 const spanEnd = (document: VideoProjectDocument) =>
@@ -171,6 +172,14 @@ function assertRequirement(
     return;
   }
   if (requirement.kind === "caption_pair") {
+    const evidence = after.evidence[requirement.evidenceId];
+    if (
+      evidence &&
+      captionTimingDiagnostics(after, requirement.sourceItemId, evidence)
+    )
+      throw new Error(
+        "Some source tokens lack genuine positive-duration timing. Review that source or choose a range with complete timing coverage.",
+      );
     const original = item(requirement.originalItemId),
       translated = item(requirement.translatedItemId);
     const expected = captionSourceCommands(after, {

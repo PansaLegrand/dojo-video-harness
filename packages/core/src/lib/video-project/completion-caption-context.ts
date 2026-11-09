@@ -1,4 +1,5 @@
 import type { VideoProjectDocument } from "./document";
+import { captionTimingDiagnostics } from "./caption-source-range";
 import { captionSourceCommands } from "./semantic";
 import { normalizeCaptionLanguage } from "./caption-pair";
 /** Exact, bounded new-profile cue manifest. Legacy grouping/prompt stays intact. */
@@ -21,6 +22,8 @@ export function prepareCompletionCaptionCuePacket(
     cueCount: number;
     complete: boolean;
     issue?: string;
+    timingOmissions?: ReturnType<typeof captionTimingDiagnostics>;
+    cuesComplete?: boolean;
     cues: Array<{
       cueId: string;
       text: string;
@@ -53,6 +56,9 @@ export function prepareCompletionCaptionCuePacket(
       omittedSources++;
       continue;
     }
+    const timingOmissions = options.pagedReaders
+      ? captionTimingDiagnostics(document, source.id, evidence)
+      : undefined;
     const entry: (typeof sources)[number] = {
       sourceItemId: source.id,
       evidenceId: evidence.id,
@@ -62,6 +68,7 @@ export function prepareCompletionCaptionCuePacket(
       cueCount: 0,
       complete: false,
       cues: [],
+      ...(timingOmissions ? { timingOmissions } : {}),
     };
     sources.push(entry);
     // Reserve room for final complete/omitted flags. Metadata itself is bounded.
@@ -98,7 +105,9 @@ export function prepareCompletionCaptionCuePacket(
         }
         totalCues++;
       }
-      entry.complete = entry.cues.length === all.length;
+      entry.complete = entry.cues.length === all.length && !timingOmissions;
+      if (timingOmissions)
+        entry.cuesComplete = entry.cues.length === all.length;
     } catch (error) {
       entry.issue = (
         error instanceof Error ? error.message : "Source cue preparation failed"

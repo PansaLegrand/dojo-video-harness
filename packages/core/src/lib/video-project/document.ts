@@ -51,6 +51,20 @@ export const videoTranscriptEvidenceSchema = z
     language: z.string().max(64).optional(),
     text: z.string().max(500_000),
     words: z.array(transcriptWordSchema).max(50_000),
+    timingOmissions: z
+      .array(
+        z
+          .object({
+            tokenIndex: z.number().int().nonnegative(),
+            text: z.string().max(1000),
+            startMs: z.number().finite().nonnegative(),
+            endMs: z.number().finite().nonnegative(),
+            reason: z.literal("nonpositive-duration"),
+          })
+          .strict(),
+      )
+      .max(50_000)
+      .optional(),
   })
   .strict();
 export const videoSourceBindingSchema = z
