@@ -190,9 +190,9 @@ export async function listNativeAssets(
             asset.source === "static"
               ? "static"
               : source
-                ? asset.source === "local"
-                  ? "local_required"
-                  : "cloud_registered"
+                ? asset.source === "project" || asset.assetId
+                  ? "cloud_registered"
+                  : "local_required"
                 : "unregistered",
           ...(source ? { revision: source.revision } : {}),
         },

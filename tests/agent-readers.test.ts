@@ -459,3 +459,14 @@ it("runs both readers through the actual registered new-profile tool path and pr
     ),
   ).rejects.toThrow(/Unknown tool field/);
 });
+
+it("reports host-bound cloud registration while retaining local origin metadata", async () => {
+  const r = await assets(1),
+    document = parseVideoProjectDocument(r.document);
+  document.assets["asset-0000"]!.assetId = "owned-cloud-asset";
+  const bound = await request(document);
+  expect(
+    (await listNativeAssets(bound, { snapshotHash: bound.baseHash })).assets[0]!
+      .source,
+  ).toMatchObject({ kind: "local", status: "cloud_registered" });
+});
