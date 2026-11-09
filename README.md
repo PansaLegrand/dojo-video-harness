@@ -246,7 +246,7 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The current loop 0.1.2/kit 0.1.2 candidate passed **506 tests**. Its host
+The current loop 0.1.2/kit 0.1.2 candidate passed **511 tests**. Its host
 regressions cover saved-response/tool/terminal recovery, uncertain paid outcomes,
 cumulative and unknown usage, request/source/provider/tool drift, cancellation,
 ASR receipt reuse and fresh clarification-child budgets. The host retains original

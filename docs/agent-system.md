@@ -43,6 +43,15 @@ without altering genuine word start/end evidence. The default absent hold keeps
 legacy timing. This is a small typed checklist, not a planner/DAG or proof of
 every possible interpretation of the user's instruction.
 
+New-profile initial context and inspection expose `completionCaptionSources`, an
+exact phrase-safe cue manifest with coverage flags. Recognized spoken numeric
+phrases stay atomic across ordinary80-character/4-second cue boundaries (bounded
+at16words/160characters/8seconds), so translations do not split a decimal from
+its percentage unit. Genuine evidence text, word IDs and times stay unchanged.
+Legacy grouping remains the default outside this explicit new-profile path.
+Packets preserve empty/scoped source filters and bound the complete UTF-8 payload
+to32KB/12sources/200cues; incomplete coverage requires narrowing rather than guessing.
+
 Frozen local-editor-v1/commercial-editing-v2 profiles retain their original kit
 contract version, inventory/schema/guidance and checkpoint bindings. The local
 application opts new runs into v2; older stored runs/clarification children retain
