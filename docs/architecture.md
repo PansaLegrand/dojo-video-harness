@@ -37,13 +37,27 @@ The host retains 50 undo states and 100 revision bases. Older bases fail closed;
 operation receipts are retained for replay. Model calls do not hold a project lock.
 
 Runs persist requests, scope, proposals, questions, tool events and private loop
-checkpoints. `agent-loop` 0.1.1 stores a returned model response, the next tool
+checkpoints. `agent-loop` 0.1.2 stores a returned model response, the next tool
 cursor, call identities and cumulative model/tool/token counters. The local
 `agent-loop-checkpoint.ts` adapter saves these through ProjectStore's atomic
 transactions with a revision compare-and-swap. It binds the original request,
 source identities, frozen conversation, tool/skill inventory and non-secret
 provider endpoint/model identity. Checkpoint conversations and provider output
 are not included in public run responses.
+
+New local checkpoints use compact storage encoding v2 within a **2 MiB** private
+envelope budget, including frozen host history and metadata. The core's available
+bytes deduct that envelope overhead and reserve **256 KiB** for a complete
+normalized model reply plus **64 KiB** of control headroom before submission.
+Measurements use serialized UTF-8 JSON, including opaque provider output. The
+GPT adapter enforces that declared reply bound and records a provider-capacity
+breach without retrying the request. The captured request endpoint/configuration
+is immutable, and its validated endpoint/model identity remains compatible with
+valid older identities; credentials are excluded from that identity.
+
+Storage encoding is independent of the logical checkpoint contract. Existing
+0.1.1 snapshots remain readable and retain their original binding, counters and
+capacity/profile absence. New defaults do not reset or silently upgrade them.
 
 Startup explicitly calls `AgentService.recover()` after providers, ASR receipts
 and host services are initialized. A saved model response, tool observation or

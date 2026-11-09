@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { z } from "zod/v3";
 import {
   canResumeLoopCheckpoint,
+  DEFAULT_CHECKPOINT_CAPACITY,
+  encodeLoopCheckpoint,
+  LoopCheckpointCapacityError,
   parseLoopCheckpoint,
+  type CompactLoopCheckpoint,
   type LoopCheckpoint,
   type LoopCheckpointPort,
 } from "../../../packages/agent-loop/src/index";
@@ -23,8 +27,13 @@ export type StoredAgentLoopCheckpoint = {
   modelIdentity?: string;
   history: History;
   contextHash: string;
-  checkpoint: LoopCheckpoint;
+  checkpoint: LoopCheckpoint | CompactLoopCheckpoint;
 };
+type ParsedAgentLoopCheckpoint = Omit<
+  StoredAgentLoopCheckpoint,
+  "checkpoint"
+> & { checkpoint: LoopCheckpoint };
+const MAX_LOCAL_CHECKPOINT_BYTES = 2 * 1024 * 1024;
 const digest = (value: unknown) =>
   "sha256:" +
   createHash("sha256").update(canonicalSerialize(value)).digest("hex");
@@ -93,7 +102,7 @@ function sourceBinding(p: Project, run: StoredRun) {
     speechEvidence: run.speechContinuation?.evidenceCommands,
   });
 }
-function parseEnvelope(p: Project, run: StoredRun): StoredAgentLoopCheckpoint {
+function parseEnvelope(p: Project, run: StoredRun): ParsedAgentLoopCheckpoint {
   const parsed = envelopeSchema.parse(run.loopCheckpoint);
   const checkpoint = parseLoopCheckpoint(parsed.checkpoint);
   const { checkpoint: _checkpoint, contextHash, ...binding } = parsed;
@@ -180,6 +189,13 @@ export async function createAgentCheckpointPort(input: {
     history: structuredClone(input.history),
   };
   const contextHash = digest(binding);
+  const envelopeBytes = new TextEncoder().encode(
+    JSON.stringify({ ...binding, contextHash, checkpoint: null }),
+  ).byteLength;
+  const capacity = {
+    ...DEFAULT_CHECKPOINT_CAPACITY,
+    maxBytes: MAX_LOCAL_CHECKPOINT_BYTES - Math.max(1024, envelopeBytes),
+  };
   const assertCurrent = (p: Project) => {
     input.signal.throwIfAborted();
     const current = p.runs.find((candidate) => candidate.id === input.runId);
@@ -204,6 +220,8 @@ export async function createAgentCheckpointPort(input: {
   return {
     runId: input.runId,
     snapshotHash: contextHash,
+    encoding: "compact-v2",
+    capacity,
     load: () =>
       input.store.transaction(input.projectId, (p) => {
         const { saved } = assertCurrent(p);
@@ -226,7 +244,20 @@ export async function createAgentCheckpointPort(input: {
           throw new AgentCheckpointConflict(
             "The agent checkpoint revision or snapshot is invalid.",
           );
-        current.loopCheckpoint = { ...binding, contextHash, checkpoint };
+        const stored = {
+          ...binding,
+          contextHash,
+          checkpoint: encodeLoopCheckpoint(checkpoint),
+        };
+        // Legacy accepted profiles keep their original format/budget. New byte-
+        // bounded profiles also fit the complete private host envelope.
+        if (
+          checkpoint.snapshot.checkpointCapacity &&
+          new TextEncoder().encode(JSON.stringify(stored)).byteLength >
+            MAX_LOCAL_CHECKPOINT_BYTES
+        )
+          throw new LoopCheckpointCapacityError("checkpoint-too-large");
+        current.loopCheckpoint = stored;
         current.updatedAt = new Date().toISOString();
       }),
   };

@@ -28,7 +28,7 @@ export interface LanguageModel {
     messages: ChatMessage[],
     tools: ToolSpec[],
     signal: AbortSignal,
-    limits?: { maxOutputTokens: number },
+    limits?: { maxOutputTokens: number; maxReplyBytes?: number },
   ): Promise<ModelReply>;
 }
 export type LoopEvent = {
@@ -69,6 +69,12 @@ export type LoopBudgets = {
   maxOutputTokens: number;
   requireUsage: boolean;
 };
+/** Byte budgets cover serialized UTF-8 JSON, including opaque provider output. */
+export type LoopCheckpointCapacity = {
+  maxBytes: number;
+  maxReplyBytes: number;
+  reserveBytes: number;
+};
 export type LoopSnapshot = {
   runId: string;
   snapshotHash: string;
@@ -79,6 +85,8 @@ export type LoopSnapshot = {
   answerReplaySafe: boolean;
   durablePlanRefs: string[];
   compaction?: LoopCompactionOptions;
+  checkpointEncoding?: "compact-v2";
+  checkpointCapacity?: LoopCheckpointCapacity;
 };
 export type LoopCheckpointPhase =
   | "ready-for-model"
@@ -109,9 +117,20 @@ export type LoopCheckpoint = {
 export type LoopCheckpointPort = {
   runId: string;
   snapshotHash: string;
+  /** New-snapshot defaults; existing snapshots retain their original profile. */
+  encoding?: "compact-v2";
+  capacity?: LoopCheckpointCapacity;
   load(): Promise<unknown | null>;
-  /** Must atomically initialize (null) or compare the previous revision. */
+  /** Atomic CAS. With compact-v2, persist encodeLoopCheckpoint(next), not expanded JSON. */
   save(next: LoopCheckpoint, expectedRevision: number | null): Promise<void>;
+};
+/** Storage-only v2 representation; parseLoopCheckpoint restores the logical v1 shape. */
+export type CompactLoopCheckpoint = Omit<
+  LoopCheckpoint,
+  "version" | "messages"
+> & {
+  version: 2;
+  messageTail: ChatMessage[];
 };
 export type LoopResult<T> = {
   result: T;

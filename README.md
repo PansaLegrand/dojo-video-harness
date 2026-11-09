@@ -10,7 +10,7 @@ or through chat, see changes directly, and export through [Dojo Video Engine](ht
 The agent is intentionally understandable: a model adapter, typed function calls,
 a tool registry, Markdown skills, bounded execution, and explicit user decisions.
 The difficult video-specific rules live in the tested document and command kernel.
-The shared loop **0.1.1** supports durable checkpoints and deterministic context
+The shared loop **0.1.2** supports durable checkpoints and deterministic context
 pruning; the local host owns which interrupted boundaries can safely resume.
 
 ![The local editor with a structured pending question](docs/assets/editor-question.png)
@@ -140,6 +140,9 @@ npm start
   source, tool/skill and provider bindings. A restart can continue a saved model
   response or completed tool boundary without requesting that response again.
   Uncertain model or external-tool submissions stop for manual reconciliation.
+- New runs reserve serialized UTF-8 space for the complete model reply before
+  submission. Compact checkpoint storage retains original instructions and a
+  pending reply once; accepted 0.1.1 runs retain their original profile and budget.
 - Desktop chat resizes from its left edge, up to half the window width; the left
   panel toggle stays at the bottom of the tool rail. Narrow screens retain the chat drawer.
 - Instruct and edit: ordinary local chat edits apply automatically, with selective
@@ -239,13 +242,15 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The current loop 0.1.1/local-checkpoint candidate passed **464 tests**. Its host
+The current loop 0.1.2/local-checkpoint candidate passed **490 tests**. Its host
 regressions cover saved-response/tool/terminal recovery, uncertain paid outcomes,
 cumulative and unknown usage, request/source/provider/tool drift, cancellation,
 ASR receipt reuse and fresh clarification-child budgets. The host retains original
 instructions and source evidence while pruning only eligible older read context;
 it does not call an LLM to summarize the conversation. See
 [the agent system map](docs/agent-system.md) for the recovery limits.
+The byte-bound regressions cover multibyte context, host-envelope overhead,
+opaque provider output, frozen request configuration and legacy checkpoint replay.
 
 The [earlier release checks](https://github.com/PansaLegrand/dojo-video-harness/actions/runs/41330893940)
 passed on **2026-11-02**: 228 tests, production build, 25 browser editing/export

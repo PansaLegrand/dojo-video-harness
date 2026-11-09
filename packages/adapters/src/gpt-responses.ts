@@ -1,5 +1,6 @@
 import { z } from "zod/v3";
 import { isGptModelId } from "./gpt-model";
+import { measureModelReplyBytes } from "../../agent-loop/src/index";
 import type {
   LanguageModel,
   ChatMessage,
@@ -58,6 +59,16 @@ const responseSchema = z.object({
     .optional(),
 });
 
+export class ProviderReplyByteBudgetError extends Error {
+  readonly code = "PROVIDER_REPLY_CAPACITY_EXCEEDED";
+  constructor() {
+    super(
+      "GPT provider exceeded the normalized reply UTF-8 byte budget. The request was not retried.",
+    );
+    this.name = "ProviderReplyByteBudgetError";
+  }
+}
+
 /** Replay the complete model output so tool results retain their reasoning context. */
 function responseInput(
   messages: ChatMessage[],
@@ -110,57 +121,64 @@ function responseInput(
 
 /** GPT-only Responses transport. No SDK, retries, tool execution, or project writes. */
 export class GptResponsesModel implements LanguageModel {
-  readonly identity: string;
-  constructor(private config: ProviderConfig) {
-    this.config = { ...config };
-    const endpoint = new URL(config.baseUrl);
-    endpoint.username = "";
-    endpoint.password = "";
-    endpoint.search = "";
-    endpoint.hash = "";
-    this.identity = JSON.stringify({
+  readonly #config: Readonly<ProviderConfig>;
+  readonly #endpoint: string;
+  readonly #identity: string;
+  constructor(config: ProviderConfig) {
+    this.#config = Object.freeze({ ...config });
+    this.#endpoint = providerUrl(this.#config.baseUrl, "responses").href;
+    this.#identity = JSON.stringify({
       adapter: "gpt-responses",
-      endpoint: endpoint.href.replace(/\/$/, ""),
-      model: config.model,
+      // Preserve valid 0.1.1 identity bytes. The adapter kind supplies the fixed
+      // suffix, so this representation binds the validated concrete endpoint.
+      endpoint: this.#endpoint.slice(0, -"/responses".length),
+      model: this.#config.model,
     });
+  }
+  get identity() {
+    return this.#identity;
   }
   async complete(
     messages: ChatMessage[],
     tools: ToolSpec[],
     signal: AbortSignal,
-    limits?: { maxOutputTokens: number },
+    limits?: { maxOutputTokens: number; maxReplyBytes?: number },
   ) {
     signal.throwIfAborted();
-    if (!isGptModelId(this.config.model))
+    if (
+      limits?.maxReplyBytes !== undefined &&
+      (!Number.isSafeInteger(limits.maxReplyBytes) || limits.maxReplyBytes < 1)
+    )
+      throw new Error(
+        "The normalized reply byte budget must be a positive integer.",
+      );
+    if (!isGptModelId(this.#config.model))
       throw new Error(
         "Set LLM_MODEL to a GPT model such as gpt-6-sol or openai/gpt-6-sol. Only GPT models are supported.",
       );
-    const response = await fetch(
-      providerUrl(this.config.baseUrl, "responses"),
-      {
-        method: "POST",
-        redirect: "error",
-        signal,
-        headers: {
-          "Content-Type": "application/json",
-          ...(this.config.apiKey
-            ? { Authorization: `Bearer ${this.config.apiKey}` }
-            : {}),
-        },
-        body: JSON.stringify({
-          model: this.config.model,
-          input: responseInput(messages),
-          tools: tools.map((t) => ({ type: "function", ...t, strict: false })),
-          ...(tools.length
-            ? { tool_choice: "auto", parallel_tool_calls: false }
-            : {}),
-          max_output_tokens: Math.min(8192, limits?.maxOutputTokens ?? 8192),
-          stream: false,
-          store: false,
-          include: ["reasoning.encrypted_content"],
-        }),
+    const response = await fetch(new URL(this.#endpoint), {
+      method: "POST",
+      redirect: "error",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(this.#config.apiKey
+          ? { Authorization: `Bearer ${this.#config.apiKey}` }
+          : {}),
       },
-    );
+      body: JSON.stringify({
+        model: this.#config.model,
+        input: responseInput(messages),
+        tools: tools.map((t) => ({ type: "function", ...t, strict: false })),
+        ...(tools.length
+          ? { tool_choice: "auto", parallel_tool_calls: false }
+          : {}),
+        max_output_tokens: Math.min(8192, limits?.maxOutputTokens ?? 8192),
+        stream: false,
+        store: false,
+        include: ["reasoning.encrypted_content"],
+      }),
+    });
     const raw = await providerJson(response);
     // Kie can return an error envelope with HTTP 200. Never echo provider messages.
     if (raw && typeof raw === "object") {
@@ -183,7 +201,7 @@ export class GptResponsesModel implements LanguageModel {
     const calls = result.output.filter((item) => item.type === "function_call");
     if (calls.length > 24)
       throw new Error("GPT provider exceeded the tool-call limit.");
-    return {
+    const reply = {
       text: result.output
         .flatMap((item) =>
           item.type === "message"
@@ -208,5 +226,16 @@ export class GptResponsesModel implements LanguageModel {
           }
         : {}),
     };
+    if (limits?.maxReplyBytes !== undefined) {
+      let bytes: number;
+      try {
+        bytes = measureModelReplyBytes(reply);
+      } catch {
+        throw new ProviderReplyByteBudgetError();
+      }
+      if (bytes > limits.maxReplyBytes)
+        throw new ProviderReplyByteBudgetError();
+    }
+    return reply;
   }
 }

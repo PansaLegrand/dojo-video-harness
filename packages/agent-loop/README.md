@@ -85,3 +85,73 @@ message, all system/user instructions, validation errors, `pinned` memory, expli
 `protectedToolCallIds`, recent complete groups, pending call/observation pairs and
 groups containing any `durablePlanRefs`. It never removes individual tool messages.
 If protected context alone exceeds the budget, it stops before provider submission.
+
+## UTF-8 checkpoint headroom (0.1.2)
+
+New runs can opt into an explicit storage/reply contract on the host port:
+
+```ts
+const checkpoint = {
+  runId,
+  snapshotHash,
+  encoding: "compact-v2" as const,
+  capacity: {
+    maxBytes: 2 * 1024 * 1024 - 1024,
+    maxReplyBytes: 256 * 1024,
+    reserveBytes: 64 * 1024,
+  },
+  load,
+  save,
+};
+```
+
+`DEFAULT_CHECKPOINT_CAPACITY` exports those suggested values. `maxBytes` covers
+only the encoded checkpoint object. The host must subtract its complete wrapper,
+history and other envelope overhead from the physical storage limit before
+offering a new capacity. `maxReplyBytes` bounds the complete normalized
+`ModelReply`, including calls, usage and every opaque provider-output field.
+`reserveBytes` reserves additional bookkeeping space. These are UTF-8 JSON bytes,
+not JavaScript string lengths or token estimates.
+
+The loop loads exactly once before choosing the profile. New capacity/encoding
+defaults are frozen as `snapshot.checkpointCapacity` and
+`snapshot.checkpointEncoding`. An existing snapshot retains its saved capacity,
+or its original absence: new deployment defaults cannot reset an accepted budget
+or silently upgrade a 0.1.1 binding. Hosts must keep the promised storage capacity
+available for accepted runs. Commercial hosts may also retain the exact old
+package under a version-selected alias.
+
+For the new profile, `save` must persist `encodeLoopCheckpoint(next)` as a JSON
+object, with the same atomic revision comparison. Its `CompactLoopCheckpoint`
+wire format uses `version: 2`, keeps the original messages once and a pending
+returned reply once. It omits their expanded conversation copies from storage.
+`parseLoopCheckpoint` accepts either storage format and returns the existing
+logical version-1 shape, restoring the full original/pending conversation before
+validation. Legacy snapshots still encode as version 1. Encoding is not a license
+to remove pinned data or tool/observation pairs.
+
+Before a model submission fence is persisted, the loop requires:
+
+```text
+encoded pending-checkpoint bytes + maxReplyBytes + reserveBytes <= maxBytes
+```
+
+The compactor also uses derived byte headroom while retaining its frozen character
+policy and all instruction/evidence protections. If protected context cannot fit,
+the loop stops before the paid call and does not consume another model-call budget.
+All later checkpoint writes are checked against their actual encoded UTF-8 size.
+`measureLoopCheckpointBytes` exposes that encoded size for host diagnostics;
+`measureModelReplyBytes` exposes the normalized reply size.
+
+New-profile model calls receive both `limits.maxOutputTokens` and
+`limits.maxReplyBytes`. Adapters must enforce both contracts. SSE framing/raw HTTP
+bytes and normalized reply bytes are different; output-token limits do not imply
+a bound on opaque provider data. This package does not guarantee that every vendor
+will return a conforming response. An oversized returned reply is a contract
+breach: the loop keeps the ambiguous `model-pending` fence and never automatically
+repeats the paid request. It does not claim that such a provider response was free.
+
+Permanent same-policy failures use `LoopCheckpointCapacityError`, code
+`LOOP_CHECKPOINT_CAPACITY`, with reason `checkpoint-too-large`, `reply-headroom`,
+`protected-context` or `reply-too-large`. Messages contain no raw model/source data.
+A host should fail these fast rather than repeatedly queueing the unchanged input.

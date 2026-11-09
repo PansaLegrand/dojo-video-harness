@@ -9,12 +9,15 @@ import type {
 import {
   integer,
   LoopRecoveryRequiredError,
+  LoopCheckpointCapacityError,
+  measureLoopCheckpointBytes,
+  measureModelReplyBytes,
   parseLoopCheckpoint,
   replyMessage,
   validateReply,
   validateSnapshot,
 } from "./checkpoint.js";
-import { canonicalJson, copyJson, hashJson } from "./json.js";
+import { canonicalJson, copyJson, hashJson, utf8JsonBytes } from "./json.js";
 import { compactLoopMessages } from "./compaction.js";
 import { runVolatileToolLoop } from "./volatile.js";
 
@@ -26,6 +29,23 @@ export async function runToolLoop<T>(
   if (!port && !input.compaction) return runVolatileToolLoop(input);
   const { signal } = input;
   signal.throwIfAborted();
+  // One load: a stored profile is authoritative; deployment defaults cannot
+  // silently add capacity requirements or reset an accepted legacy binding.
+  const stored = port ? await port.load() : null;
+  signal.throwIfAborted();
+  const existing = stored === null ? null : parseLoopCheckpoint(stored);
+  const offeredCapacity = existing
+    ? existing.snapshot.checkpointCapacity
+    : port?.capacity;
+  const capacity = offeredCapacity ? copyJson(offeredCapacity) : undefined;
+  const encoding = existing
+    ? existing.snapshot.checkpointEncoding
+    : port?.encoding;
+  if (
+    (capacity || encoding) &&
+    (encoding !== "compact-v2" || !capacity || port?.encoding !== "compact-v2")
+  )
+    throw new Error("Checkpoint capacity requires a compact-v2 host port.");
   const registry = new Map(input.tools.map((tool) => [tool.name, tool]));
   if (registry.size !== input.tools.length)
     throw new Error("Tool names must be unique.");
@@ -55,17 +75,18 @@ export async function runToolLoop<T>(
       answerReplaySafe: input.answerReplaySafe === true,
       durablePlanRefs: input.durablePlanRefs ?? [],
       ...(input.compaction ? { compaction: input.compaction } : {}),
+      ...(capacity
+        ? { checkpointEncoding: encoding, checkpointCapacity: capacity }
+        : {}),
     },
     2_000_000,
   );
   validateSnapshot(snapshot);
   const bindingHash = await hashJson({ version: 1, snapshot });
   signal.throwIfAborted();
-  const stored = port ? await port.load() : null;
-  signal.throwIfAborted();
   let checkpoint: LoopCheckpoint;
-  if (stored !== null) {
-    checkpoint = parseLoopCheckpoint(stored);
+  if (existing) {
+    checkpoint = existing;
     if (
       checkpoint.bindingHash !== bindingHash ||
       canonicalJson(checkpoint.snapshot) !== canonicalJson(snapshot)
@@ -90,16 +111,32 @@ export async function runToolLoop<T>(
       usedToolCallIds: [],
       pinnedToolCallIds: [],
     });
-    await port?.save(copyJson(checkpoint), null);
+    if (capacity && measureLoopCheckpointBytes(checkpoint) > capacity.maxBytes)
+      throw new LoopCheckpointCapacityError("checkpoint-too-large");
+    await port?.save(parseLoopCheckpoint(checkpoint), null);
   }
-  const persist = async (phase: LoopCheckpoint["phase"]) => {
+  const persist = async (
+    phase: LoopCheckpoint["phase"],
+    reserveReply = false,
+  ) => {
     const previousRevision = checkpoint.revision;
     const next = parseLoopCheckpoint({
       ...checkpoint,
       phase,
       revision: previousRevision + 1,
     });
-    await port?.save(copyJson(next), previousRevision);
+    if (capacity) {
+      const bytes = measureLoopCheckpointBytes(next);
+      if (bytes > capacity.maxBytes)
+        throw new LoopCheckpointCapacityError("checkpoint-too-large");
+      if (
+        reserveReply &&
+        bytes + capacity.maxReplyBytes + capacity.reserveBytes >
+          capacity.maxBytes
+      )
+        throw new LoopCheckpointCapacityError("reply-headroom");
+    }
+    await port?.save(parseLoopCheckpoint(next), previousRevision);
     checkpoint = next;
   };
   const event = (
@@ -241,41 +278,98 @@ export async function runToolLoop<T>(
       if (terminal) return terminal;
       continue;
     }
-    if (snapshot.compaction)
-      checkpoint.messages = compactLoopMessages({
-        messages: checkpoint.messages,
-        initialMessages: snapshot.messages,
-        compactableToolNames: snapshot.tools
-          .filter((tool) => tool.compactionSafe)
-          .map((tool) => tool.name),
-        pinnedToolCallIds: checkpoint.pinnedToolCallIds,
-        durablePlanRefs: snapshot.durablePlanRefs,
-        options: snapshot.compaction,
-      }).messages;
+    if (snapshot.compaction) {
+      let maxUtf8Bytes: number | undefined;
+      if (
+        capacity &&
+        checkpoint.modelCalls < snapshot.budgets.maxSteps &&
+        checkpoint.usage.outputTokens < snapshot.budgets.maxOutputTokens
+      ) {
+        const candidate = {
+          ...checkpoint,
+          phase: "model-pending" as const,
+          revision: checkpoint.revision + 1,
+          modelCalls: checkpoint.modelCalls + 1,
+          sequence: checkpoint.sequence + 1,
+        };
+        const overhead =
+          measureLoopCheckpointBytes(candidate) -
+          utf8JsonBytes(checkpoint.messages);
+        maxUtf8Bytes =
+          capacity.maxBytes -
+          capacity.maxReplyBytes -
+          capacity.reserveBytes -
+          overhead -
+          2;
+        if (maxUtf8Bytes < 1)
+          throw new LoopCheckpointCapacityError("reply-headroom");
+      }
+      try {
+        checkpoint.messages = compactLoopMessages({
+          messages: checkpoint.messages,
+          initialMessages: snapshot.messages,
+          compactableToolNames: snapshot.tools
+            .filter((tool) => tool.compactionSafe)
+            .map((tool) => tool.name),
+          pinnedToolCallIds: checkpoint.pinnedToolCallIds,
+          durablePlanRefs: snapshot.durablePlanRefs,
+          options: snapshot.compaction,
+          ...(maxUtf8Bytes === undefined ? {} : { maxUtf8Bytes }),
+        }).messages;
+      } catch (cause) {
+        if (
+          capacity &&
+          cause instanceof Error &&
+          cause.message ===
+            "Protected instructions/evidence exceed context budget."
+        )
+          throw new LoopCheckpointCapacityError("protected-context");
+        throw cause;
+      }
+    }
     if (checkpoint.modelCalls >= snapshot.budgets.maxSteps)
       throw new Error("Model-step budget reached. Narrow the request.");
     const remaining =
       snapshot.budgets.maxOutputTokens - checkpoint.usage.outputTokens;
     if (remaining < 1)
       throw new Error("Model output budget reached. Narrow the request.");
+    // Validate materialized request data before advancing a paid submission fence.
+    const preparedMessages = capacity
+      ? copyJson(checkpoint.messages)
+      : undefined;
+    const preparedTools = capacity
+      ? copyJson(
+          snapshot.tools.map(({ name, description, parameters }) => ({
+            name,
+            description,
+            parameters,
+          })),
+        )
+      : undefined;
     checkpoint.modelCalls++;
     const started = event("model.started");
-    await persist("model-pending"); // Submission fence: never automatically repeat this state.
+    await persist("model-pending", true); // Includes UTF-8 reply reservation before paid submission.
     await emit(started);
     const returned = await input.model.complete(
-      copyJson(checkpoint.messages),
-      copyJson(
-        snapshot.tools.map(({ name, description, parameters }) => ({
-          name,
-          description,
-          parameters,
-        })),
-      ),
+      preparedMessages ?? copyJson(checkpoint.messages),
+      preparedTools ??
+        copyJson(
+          snapshot.tools.map(({ name, description, parameters }) => ({
+            name,
+            description,
+            parameters,
+          })),
+        ),
       signal,
-      { maxOutputTokens: remaining },
+      {
+        maxOutputTokens: remaining,
+        ...(capacity ? { maxReplyBytes: capacity.maxReplyBytes } : {}),
+      },
     );
     const reply = copyJson(returned);
     validateReply(reply);
+    if (capacity && measureModelReplyBytes(reply) > capacity.maxReplyBytes)
+      throw new LoopCheckpointCapacityError("reply-too-large");
     const callIds = reply.calls.map((call) => call.id);
     if (
       new Set(callIds).size !== callIds.length ||

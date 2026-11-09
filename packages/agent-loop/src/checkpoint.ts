@@ -1,11 +1,43 @@
-import { canonicalJson, copyJson } from "./json.js";
+import { canonicalJson, copyJson, utf8JsonBytes } from "./json.js";
 import type {
   ChatMessage,
+  CompactLoopCheckpoint,
   LoopCheckpoint,
+  LoopCheckpointCapacity,
   LoopCompactionOptions,
   LoopSnapshot,
   ModelReply,
 } from "./types.js";
+
+/** Suggested profile; hosts must subtract any additional wrapper/history overhead. */
+export const DEFAULT_CHECKPOINT_CAPACITY: Readonly<LoopCheckpointCapacity> =
+  Object.freeze({
+    maxBytes: 2 * 1024 * 1024 - 1024,
+    maxReplyBytes: 256 * 1024,
+    reserveBytes: 64 * 1024,
+  });
+
+export class LoopCheckpointCapacityError extends Error {
+  readonly code = "LOOP_CHECKPOINT_CAPACITY";
+  constructor(
+    public readonly reason:
+      | "checkpoint-too-large"
+      | "reply-headroom"
+      | "reply-too-large"
+      | "protected-context",
+  ) {
+    super(
+      reason === "reply-headroom"
+        ? "Checkpoint headroom is insufficient before model submission."
+        : reason === "protected-context"
+          ? "Protected instructions/evidence do not fit the frozen checkpoint context budget."
+          : reason === "reply-too-large"
+            ? "Model reply exceeded its reserved UTF-8 byte budget."
+            : "Checkpoint exceeds its UTF-8 byte capacity.",
+    );
+    this.name = "LoopCheckpointCapacityError";
+  }
+}
 
 export class LoopRecoveryRequiredError extends Error {
   constructor(
@@ -138,6 +170,19 @@ export function validateCompaction(
   if (data.protectedToolCallIds !== undefined)
     strings(data.protectedToolCallIds, 128, 256);
 }
+export function validateCheckpointCapacity(
+  value: unknown,
+): asserts value is LoopCheckpointCapacity {
+  const data = object(value, ["maxBytes", "maxReplyBytes", "reserveBytes"]);
+  integer(data.maxBytes, 16_384, 16 * 1024 * 1024);
+  integer(data.maxReplyBytes, 1024, 4 * 1024 * 1024);
+  integer(data.reserveBytes, 1024, 1024 * 1024);
+  if (
+    Number(data.maxReplyBytes) + Number(data.reserveBytes) >=
+    Number(data.maxBytes)
+  )
+    throw new LoopCheckpointCapacityError("reply-headroom");
+}
 export function validateSnapshot(
   value: unknown,
 ): asserts value is LoopSnapshot {
@@ -151,6 +196,8 @@ export function validateSnapshot(
     "answerReplaySafe",
     "durablePlanRefs",
     "compaction",
+    "checkpointEncoding",
+    "checkpointCapacity",
   ]);
   text(data.runId, 256);
   text(data.snapshotHash, 1024);
@@ -172,6 +219,17 @@ export function validateSnapshot(
     throw new Error("Invalid loop snapshot flags.");
   strings(data.durablePlanRefs, 64);
   if (data.compaction !== undefined) validateCompaction(data.compaction);
+  if (
+    data.checkpointCapacity !== undefined ||
+    data.checkpointEncoding !== undefined
+  ) {
+    if (
+      data.checkpointEncoding !== "compact-v2" ||
+      data.checkpointCapacity === undefined
+    )
+      throw new Error("Checkpoint capacity requires compact-v2 encoding.");
+    validateCheckpointCapacity(data.checkpointCapacity);
+  }
   if (!Array.isArray(data.tools) || data.tools.length > 128)
     throw new Error("Invalid loop tool inventory.");
   const names: string[] = [];
@@ -201,7 +259,75 @@ export function validateSnapshot(
 
 /** Structural parsing only. Execution also verifies the hash against current inputs. */
 export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
-  const json = copyJson(value);
+  const raw = value as Partial<LoopCheckpoint> | null;
+  const compact =
+    raw &&
+    typeof raw === "object" &&
+    ((raw as { version?: number }).version === 2 ||
+      raw.snapshot?.checkpointEncoding === "compact-v2");
+  const json = compact
+    ? copyJson(value, 32_000_000, { maximumNodes: 500_000, maximumDepth: 80 })
+    : copyJson(value);
+  if (
+    json &&
+    typeof json === "object" &&
+    (json as { version?: number }).version === 2
+  ) {
+    if (
+      !Object.hasOwn(json, "messageTail") ||
+      (json as { snapshot?: LoopSnapshot }).snapshot?.checkpointEncoding !==
+        "compact-v2"
+    )
+      throw new Error("Unsupported loop checkpoint version/encoding.");
+    const wire = object(json, [
+      "version",
+      "revision",
+      "bindingHash",
+      "snapshot",
+      "phase",
+      "messageTail",
+      "usage",
+      "usageKnown",
+      "modelCalls",
+      "toolCalls",
+      "observationCharacters",
+      "sequence",
+      "usedToolCallIds",
+      "pinnedToolCallIds",
+      "pendingTurn",
+      "result",
+    ]);
+    validateSnapshot(wire.snapshot);
+    if (
+      wire.snapshot.checkpointEncoding !== "compact-v2" ||
+      !wire.snapshot.checkpointCapacity
+    )
+      throw new Error(
+        "Compact checkpoint is missing its frozen capacity profile.",
+      );
+    if (utf8JsonBytes(wire) > wire.snapshot.checkpointCapacity.maxBytes)
+      throw new LoopCheckpointCapacityError("checkpoint-too-large");
+    validateMessages(wire.messageTail);
+    const tail = wire.messageTail.slice();
+    if (wire.pendingTurn !== undefined) {
+      const pending = object(wire.pendingTurn, ["reply", "nextToolIndex"]);
+      validateReply(pending.reply);
+      const cursor = integer(
+        pending.nextToolIndex,
+        0,
+        pending.reply.calls.length,
+      );
+      const index = tail.length - cursor;
+      if (index < 0) throw new Error("Invalid compact checkpoint cursor.");
+      tail.splice(index, 0, replyMessage(pending.reply));
+    }
+    const { messageTail: _tail, ...fields } = wire;
+    return parseLoopCheckpoint({
+      ...fields,
+      version: 1,
+      messages: [...wire.snapshot.messages, ...tail],
+    });
+  }
   const data = object(json, [
     "version",
     "revision",
@@ -353,6 +479,31 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
   )
     throw new Error("Invalid terminal loop checkpoint.");
   return checkpoint;
+}
+
+/** Preserve initial instructions once, and a returned pending reply once, in storage. */
+export function encodeLoopCheckpoint(
+  value: LoopCheckpoint,
+): LoopCheckpoint | CompactLoopCheckpoint {
+  const checkpoint = parseLoopCheckpoint(value);
+  if (checkpoint.snapshot.checkpointEncoding !== "compact-v2")
+    return checkpoint;
+  const tail = checkpoint.messages.slice(checkpoint.snapshot.messages.length);
+  if (checkpoint.pendingTurn)
+    tail.splice(tail.length - checkpoint.pendingTurn.nextToolIndex - 1, 1);
+  const { version: _version, messages: _messages, ...fields } = checkpoint;
+  return { version: 2, ...fields, messageTail: tail };
+}
+
+export function measureLoopCheckpointBytes(value: LoopCheckpoint): number {
+  return utf8JsonBytes(encodeLoopCheckpoint(value));
+}
+
+/** Counts the complete normalized reply, not SSE framing or token estimates. */
+export function measureModelReplyBytes(value: ModelReply): number {
+  const reply = copyJson(value);
+  validateReply(reply);
+  return utf8JsonBytes(reply);
 }
 
 export function replyMessage(reply: ModelReply): ChatMessage {
