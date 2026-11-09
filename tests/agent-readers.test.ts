@@ -411,6 +411,16 @@ it("runs both readers through the actual registered new-profile tool path and pr
     kitVersion: "0.1.4",
     profile: "local-editor-v4",
   });
+  const listed = await tools.tools
+    .find((tool) => tool.name === "list_assets")!
+    .execute({ type: "video" }, new AbortController().signal);
+  expect(listed).toMatchObject({
+    kind: "observation",
+    value: {
+      assets: [{ id: "speech-0" }],
+      coverage: { total: 1, complete: true },
+    },
+  });
   const read = tools.tools.find((t) => t.name === "read_caption_cues")!;
   const first = await read.execute(
     {

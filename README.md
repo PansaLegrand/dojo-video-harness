@@ -248,7 +248,8 @@ embeddable SDK distributions are a subsequent release step.
 
 The current efficient-reader update uses loop 0.1.2/kit 0.1.4. The full check passes
 565 tests, TypeScript, kit generation/integrity, 85 managed UI hashes and production
-build. New local-editor-v4 runs default to sixteen model steps with existing
+build. All 66 browser checks also pass under the new default profile. New
+local-editor-v4 runs default to sixteen model steps with existing
 output/tool allowances. Earlier profiles retain their original budgets and exact
 inventory/skill/prompt digests. Provided metadata is authoritative, and discovery
 focuses on missing facts for requested assets and source ranges. Reader hashes can
