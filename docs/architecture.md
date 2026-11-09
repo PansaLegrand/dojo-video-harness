@@ -122,3 +122,18 @@ translation languages use separate lanes. Document tracks retain paint order,
 while timeline presentation reverses visual rows above audio. Selection and group
 moves use that same presentation order. Undo comparisons disable lane organization
 so the acknowledged original arrangement is restored rather than reorganized.
+
+Completion profiles add a pure candidate preflight before terminal proposal.
+`completion-preflight.ts` compiles/arranges once and produces a receipt binding
+the exact snapshot, declared checklist, raw/compiled commands and preview hash.
+The checklist is frozen on its first valid declaration, including when candidate
+compilation fails, and persists as pinned observations. The local adapter restores
+that state from one validated checkpoint load before continuing tool execution.
+It stores completion metadata privately and checks actual outcomes/layout again
+after rebase; the model never grants itself a receipt or document commit.
+
+`caption-pair.ts` prepares exact host-cue coverage and ordered reciprocal caption
+links without another model/provider request. Source-number display holds remain
+separate from immutable word ranges. Bounded layout preflight uses engine display
+lists, fitted fonts/world transforms and cumulative opacity/color alpha; browser
+export and real-media acceptance remain separate evidence.

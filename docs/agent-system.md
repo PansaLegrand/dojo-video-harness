@@ -1,7 +1,7 @@
 # Editor agent ownership and extensions
 
 The shared model/tool loop is `packages/agent-loop` **0.1.2**. Portable editor definitions
-are `packages/agent-kit`: tool metadata and schemas, trusted Markdown skill
+are `packages/agent-kit` **0.1.2**: tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
 
@@ -24,6 +24,30 @@ Ordinary local editing still applies through the guarded host path with Compare
 and Undo available. Paid/cloud job approvals and review-mode integrations keep
 separate host policies.
 
+New local-editor-v2/commercial-editing-v3 profiles add completion preflight.
+`review_edit` freezes the first valid list of at most twelve typed outcomes,
+compiles and arranges a candidate in memory, and checks the declared properties,
+caption languages/colors/pairing/cue coverage, genuine word-bound numbers,
+readable display duration and exact appended animated ending. Bounded frame
+checks use fitted font size/world scale, cumulative visibility, canvas bounds
+and text overlap. Only a successful review permits `propose_edit` with exactly
+the reviewed commands; the host injects the deterministic receipt.
+
+Both failed and successful reviews are pinned checkpoint observations. Restoring
+validated messages reconstructs the same hidden checklist/review state without
+another provider call. The host reruns outcome/layout checks after guarded rebase
+before applying. `prepare_caption_pair` preserves every genuine cue ID/time while
+accepting translated display text, separate explicit bounds and requested colors.
+An optional anchor holdMs extends display (maximum3000ms, clipped at source end)
+without altering genuine word start/end evidence. The default absent hold keeps
+legacy timing. This is a small typed checklist, not a planner/DAG or proof of
+every possible interpretation of the user's instruction.
+
+Frozen local-editor-v1/commercial-editing-v2 profiles retain their original kit
+contract version, inventory/schema/guidance and checkpoint bindings. The local
+application opts new runs into v2; older stored runs/clarification children retain
+their own profile. Standalone AgentService integrations retain v1 unless opted in.
+
 The local checkpoint adapter is `apps/server/src/agent-loop-checkpoint.ts`.
 ProjectStore atomically persists private checkpoint records with a revision CAS;
 the loop has no filesystem or database dependency. `AgentService.recover()` is
@@ -35,7 +59,7 @@ entire normalized reply and 64 KiB of additional control headroom before a model
 submission. Opaque provider output counts toward the reply budget. A provider
 breach stops the run without automatically repeating the paid call. The actual
 captured GPT endpoint, model and configuration are immutable; credentials remain
-outside the endpoint/model identity and the existing BYOK key-rotation policy.
+outside the endpoint/model identity. The existing BYOK key-rotation policy is unchanged.
 
 The core loads a saved checkpoint once before applying defaults. A saved 0.1.1
 profile (including no byte-capacity profile) remains unchanged; its binding and
