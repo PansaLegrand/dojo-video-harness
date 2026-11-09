@@ -4,6 +4,7 @@ import {
   usesCompletionPreflight,
   usesPagedReaders,
   usesEfficientReaders,
+  usesResolvedEditSchema,
   type AgentProfile,
 } from "../../agent-kit/src/index";
 import {
@@ -22,7 +23,10 @@ import { parseVideoProjectDocument } from "../../core/src/lib/video-project/docu
 import { type Skill } from "./skills";
 import { createVideoToolset, type AgentTool } from "./tools";
 import type { LanguageModel, ChatMessage, AgentEvent } from "./types";
-import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
+import {
+  prepareCompletionCaptionCuePacket,
+  prepareCaptionSourceOverview,
+} from "../../core/src/lib/video-project/completion-caption-context";
 import { nativeTranscriptScopedSourceItemIds } from "../../core/src/lib/video-project/agent-transcript-search";
 
 export type AgentCheckpointContext = {
@@ -67,12 +71,14 @@ export async function runAgent(input: {
     responseMode: "tools",
   });
   if (usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
-    const packet = prepareCompletionCaptionCuePacket(
-      document,
+    const sourceIds =
       nativeTranscriptScopedSourceItemIds({ ...request, document }) ??
-        undefined,
-      { pagedReaders: usesPagedReaders(input.profile ?? "local-editor-v1") },
-    );
+      undefined;
+    const packet = usesResolvedEditSchema(input.profile ?? "local-editor-v1")
+      ? prepareCaptionSourceOverview(document, sourceIds)
+      : prepareCompletionCaptionCuePacket(document, sourceIds, {
+          pagedReaders: usesPagedReaders(input.profile ?? "local-editor-v1"),
+        });
     try {
       const initial = JSON.parse(prompts.userPrompt);
       if (initial.contextPlan) delete initial.contextPlan.captionSources;

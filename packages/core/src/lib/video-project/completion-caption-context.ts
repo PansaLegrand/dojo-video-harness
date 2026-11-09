@@ -120,3 +120,30 @@ export function prepareCompletionCaptionCuePacket(
     throw new Error("Caption cue packet exceeds its byte budget.");
   return result;
 }
+
+/** Discovery-only initial context. Exact target-window cue text comes from the
+ * range-bound reader before translation and preparation in the new profiles. */
+export function prepareCaptionSourceOverview(
+  document: VideoProjectDocument,
+  sourceItemIds?: readonly string[],
+) {
+  const packet = prepareCompletionCaptionCuePacket(document, sourceItemIds, {
+    pagedReaders: true,
+  });
+  return {
+    version: packet.version,
+    grouping: packet.grouping,
+    overviewOnly: true,
+    instruction:
+      "SOURCE OVERVIEW only. Original cue counts/identities are discovery metadata. For caption work, call read_caption_cues for each exact requested sourceRange before translating or preparing the pair, and follow its needed pages. Use only those returned ranged cue IDs/text/times. Reader snapshots are bound by the host.",
+    complete: packet.sources.length === 0 && packet.complete,
+    omittedSources: packet.omittedSources,
+    sources: packet.sources.map(
+      ({ cues: _cues, cuesComplete: _cuesComplete, ...source }) => ({
+        ...source,
+        complete: false,
+        rangeReaderRequired: true,
+      }),
+    ),
+  };
+}
