@@ -1050,3 +1050,84 @@ it("carries a planning clarification into the same outer run and aggregate stage
     done.project.editStagePlans![start.run.id].plan.limits.modelCalls,
   ).toBe(32);
 }, 15000);
+
+it("keeps paid initial replies after a concurrent source change or cancellation without executing their tools", async () => {
+  for (const change of ["source", "cancel"] as const) {
+    const f = await fixture(1, 3, {}),
+      complete = f.model.complete;
+    f.model.complete = vi.fn(
+      async (...args: Parameters<LanguageModel["complete"]>) => {
+        const reply = await complete(...args);
+        if (change === "source")
+          await f.store.transaction(f.project.id, (p) => {
+            p.document.sources.a0.revision = "changed-during-paid-http";
+          });
+        else {
+          const p = await f.store.read(f.project.id);
+          await f.agent.cancel(f.project.id, p.runs[0].id);
+        }
+        return reply;
+      },
+    );
+    const start = await f.agent.start(f.project.id, requestFor(f));
+    await vi.waitFor(() =>
+      expect(
+        (f.agent as unknown as { active: Map<string, unknown> }).active.has(
+          start.run.id,
+        ),
+      ).toBe(false),
+    );
+    const p = await f.store.read(f.project.id),
+      run = p.runs[0],
+      cp = parseLoopCheckpoint(run.loopCheckpoint!.checkpoint);
+    expect(cp.phase).toBe("model-returned");
+    expect(cp.modelCalls).toBe(1);
+    expect(cp.pendingTurn!.reply.calls[0].name).toBe("plan_edit_stages");
+    expect(cp.usage.outputTokens).toBeGreaterThan(0);
+    expect(f.calls()).toBe(1);
+    expect(p.editStagePlans?.[start.run.id]).toBeUndefined();
+    expect(run.status).toBe(change === "cancel" ? "cancelled" : "failed");
+    expect(p.revision).toBe(f.project.revision);
+  }
+}, 15000);
+
+it("accounts every paid planning request after a post-initialize artifact acknowledgement fails", async () => {
+  const f = await fixture(1, 3, {}),
+    transaction = f.store.transaction.bind(f.store);
+  let interrupted = false;
+  vi.spyOn(f.store, "transaction").mockImplementation(async (id, mutate) => {
+    let lostAck = false;
+    const result = await transaction(id, async (p) => {
+      const before = Object.values(p.editStagePlans ?? {}).reduce(
+        (count, state) => count + Object.keys(state.artifacts).length,
+        0,
+      );
+      const value = await mutate(p);
+      const after = Object.values(p.editStagePlans ?? {}).reduce(
+        (count, state) => count + Object.keys(state.artifacts).length,
+        0,
+      );
+      if (!interrupted && before === 0 && after === 1) {
+        interrupted = true;
+        lostAck = true;
+      }
+      return value;
+    });
+    if (lostAck)
+      throw new Error(
+        "Lost first artifact acknowledgement after plan initialization",
+      );
+    return result;
+  });
+  const start = await f.agent.start(f.project.id, requestFor(f)),
+    done = await settled(f.store, f.project.id);
+  expect(done.run.status).toBe("failed");
+  expect(f.calls()).toBe(16);
+  const state = done.project.editStagePlans![start.run.id];
+  expect(state.plan.usage.modelCalls).toBe(16);
+  expect(state.plan.usage.modelCalls).toBe(
+    parseLoopCheckpoint(done.run.loopCheckpoint!.checkpoint).modelCalls,
+  );
+  expect(state.plan.limits.modelCalls).toBe(32);
+  expect(done.project.revision).toBe(f.project.revision);
+}, 15000);
