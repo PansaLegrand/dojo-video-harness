@@ -1,6 +1,6 @@
 # Editor agent ownership and extensions
 
-The shared model/tool loop is `packages/agent-loop` **0.1.1**. Portable editor definitions
+The shared model/tool loop is `packages/agent-loop` **0.1.2**. Portable editor definitions
 are `packages/agent-kit`: tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
@@ -28,6 +28,19 @@ The local checkpoint adapter is `apps/server/src/agent-loop-checkpoint.ts`.
 ProjectStore atomically persists private checkpoint records with a revision CAS;
 the loop has no filesystem or database dependency. `AgentService.recover()` is
 an explicit startup operation after host task receipts are loaded.
+
+New runs use compact storage v2 and a UTF-8 byte-capacity profile. The local host
+accounts for its complete private envelope within 2 MiB, reserving 256 KiB for the
+entire normalized reply and 64 KiB of additional control headroom before a model
+submission. Opaque provider output counts toward the reply budget. A provider
+breach stops the run without automatically repeating the paid call. The actual
+captured GPT endpoint, model and configuration are immutable; credentials remain
+outside the endpoint/model identity and the existing BYOK key-rotation policy.
+
+The core loads a saved checkpoint once before applying defaults. A saved 0.1.1
+profile (including no byte-capacity profile) remains unchanged; its binding and
+budgets are not reset during upgrade. Both storage versions decode to the same
+logical checkpoint shape used by the host.
 
 | Persisted boundary                                         | Local restart policy                                                                             |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
