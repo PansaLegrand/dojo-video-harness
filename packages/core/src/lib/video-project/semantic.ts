@@ -71,7 +71,9 @@ export async function transcriptEvidenceFromAsr(
 ): Promise<VideoTranscriptEvidence> {
   const source = document.sources[assetId];
   if (!source) throw new Error("This media source has no immutable revision.");
-  const transcript = normalizeAsrResult(assetId, raw);
+  const transcript = normalizeAsrResult(assetId, raw, {
+    requireSpeechTiming: true,
+  });
   if (!transcript?.words.length)
     throw new Error(
       "No timestamped speech was found. Speech edits need real word timestamps.",
