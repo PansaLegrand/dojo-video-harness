@@ -54,6 +54,10 @@ export const captionPairSchema = z
 export const captionPairWithSourceRangeSchema = captionPairSchema
   .extend({ sourceRange: captionSourceRangeSchema.optional() })
   .strict();
+export const captionPairSettingsSchema = captionPairWithSourceRangeSchema.omit({
+  translations: true,
+});
+export type CaptionPairSettings = z.infer<typeof captionPairSettingsSchema>;
 /** Translation changes display text only. Cue IDs and timing come from the
  * source-bound host caption builder, never model-authored timestamps. */
 export function prepareCaptionPair(
@@ -64,6 +68,13 @@ export function prepareCaptionPair(
   const input = (
     options.sourceRange ? captionPairWithSourceRangeSchema : captionPairSchema
   ).parse(raw);
+  return prepareValidatedCaptionPair(inputDocument, input);
+}
+/** Source preparation is shared with staged batches; no translated text is accepted here. */
+export function prepareCaptionPairSource(
+  inputDocument: VideoProjectDocument,
+  input: CaptionPairSettings,
+) {
   const range = "sourceRange" in input ? input.sourceRange : undefined;
   const narrowed = range
     ? prepareCaptionSourceRange(inputDocument, input.sourceItemId, range)
@@ -104,6 +115,14 @@ export function prepareCaptionPair(
       command.type === "addItem",
   )!.item;
   const cues = original.caption!.cues;
+  return { narrowed, document, commands, original, cues };
+}
+function prepareValidatedCaptionPair(
+  inputDocument: VideoProjectDocument,
+  input: z.infer<typeof captionPairWithSourceRangeSchema>,
+) {
+  const { narrowed, document, commands, original, cues } =
+    prepareCaptionPairSource(inputDocument, input);
   const translations = new Map(
     input.translations.map((cue) => [cue.cueId, cue.text]),
   );
@@ -187,4 +206,17 @@ export function prepareCaptionPair(
     })),
     next: "Include all prepared commands unchanged in review_edit, together with the remaining requested outputs. Original evidence is unchanged.",
   };
+}
+
+/** @internal Only the staged assembler calls this after validating every batch.
+ * The model-visible prepare_caption_pair schema retains its 500-translation cap. */
+export function prepareCaptionPairForBatchAssembly(
+  document: VideoProjectDocument,
+  raw: unknown,
+) {
+  const input = captionPairWithSourceRangeSchema
+    .extend({ translations: captionPairSchema.shape.translations.max(5000) })
+    .strict()
+    .parse(raw);
+  return prepareValidatedCaptionPair(document, input);
 }
