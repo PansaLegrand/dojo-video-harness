@@ -95,6 +95,7 @@ export type Project = {
   exports?: Record<string, ExportReceipt>;
   musicJobs?: Record<string, MusicJob>;
   editingWorkflows?: Record<string, EditingWorkflow>;
+  editStagePlans?: Record<string, import("./edit-stage-store").StoredEditStageState>;
 };
 export function snapshot(p: Project): VideoProjectSnapshot {
   return {

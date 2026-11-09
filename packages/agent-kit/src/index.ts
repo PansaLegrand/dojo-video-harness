@@ -6,3 +6,4 @@ export * from "./prompt.js";
 export * from "./completion.js";
 
 export * from "./editing-schema.js";
+export * from "./stages.js";
