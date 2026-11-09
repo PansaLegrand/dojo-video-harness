@@ -1,10 +1,12 @@
 import type { VideoProjectDocument } from "./document";
+import { captionTimingDiagnostics } from "./caption-source-range";
 import { captionSourceCommands } from "./semantic";
 import { normalizeCaptionLanguage } from "./caption-pair";
 /** Exact, bounded new-profile cue manifest. Legacy grouping/prompt stays intact. */
 export function prepareCompletionCaptionCuePacket(
   document: VideoProjectDocument,
   sourceItemIds?: readonly string[],
+  options: { pagedReaders?: boolean } = {},
 ) {
   const selected =
     sourceItemIds === undefined ? undefined : new Set(sourceItemIds);
@@ -20,6 +22,8 @@ export function prepareCompletionCaptionCuePacket(
     cueCount: number;
     complete: boolean;
     issue?: string;
+    timingOmissions?: ReturnType<typeof captionTimingDiagnostics>;
+    cuesComplete?: boolean;
     cues: Array<{
       cueId: string;
       text: string;
@@ -32,8 +36,9 @@ export function prepareCompletionCaptionCuePacket(
   const packet = () => ({
     version: 1 as const,
     grouping: "phrase-safe-v1",
-    instruction:
-      "Use THESE exact cue IDs/text/times with prepare_caption_pair; this new-profile manifest supersedes legacy contextPlan.captionSources grouping. If incomplete, inspect a specific source or ask to narrow; never invent/omit cues.",
+    instruction: options.pagedReaders
+      ? "Use these exact initial cue IDs/text/times. For complete source coverage beyond this packet, use read_caption_cues and follow coverage.nextCursor. list_assets discovers all owned imported assets. Preserve every retrieved cue and genuine word ID."
+      : "Use THESE exact cue IDs/text/times with prepare_caption_pair; this new-profile manifest supersedes legacy contextPlan.captionSources grouping. If incomplete, inspect a specific source or ask to narrow; never invent/omit cues.",
     complete:
       omittedSources === 0 && sources.every((source) => source.complete),
     omittedSources,
@@ -51,6 +56,9 @@ export function prepareCompletionCaptionCuePacket(
       omittedSources++;
       continue;
     }
+    const timingOmissions = options.pagedReaders
+      ? captionTimingDiagnostics(document, source.id, evidence)
+      : undefined;
     const entry: (typeof sources)[number] = {
       sourceItemId: source.id,
       evidenceId: evidence.id,
@@ -60,6 +68,7 @@ export function prepareCompletionCaptionCuePacket(
       cueCount: 0,
       complete: false,
       cues: [],
+      ...(timingOmissions ? { timingOmissions } : {}),
     };
     sources.push(entry);
     // Reserve room for final complete/omitted flags. Metadata itself is bounded.
@@ -96,7 +105,9 @@ export function prepareCompletionCaptionCuePacket(
         }
         totalCues++;
       }
-      entry.complete = entry.cues.length === all.length;
+      entry.complete = entry.cues.length === all.length && !timingOmissions;
+      if (timingOmissions)
+        entry.cuesComplete = entry.cues.length === all.length;
     } catch (error) {
       entry.issue = (
         error instanceof Error ? error.message : "Source cue preparation failed"
@@ -108,4 +119,31 @@ export function prepareCompletionCaptionCuePacket(
   if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 32000)
     throw new Error("Caption cue packet exceeds its byte budget.");
   return result;
+}
+
+/** Discovery-only initial context. Exact target-window cue text comes from the
+ * range-bound reader before translation and preparation in the new profiles. */
+export function prepareCaptionSourceOverview(
+  document: VideoProjectDocument,
+  sourceItemIds?: readonly string[],
+) {
+  const packet = prepareCompletionCaptionCuePacket(document, sourceItemIds, {
+    pagedReaders: true,
+  });
+  return {
+    version: packet.version,
+    grouping: packet.grouping,
+    overviewOnly: true,
+    instruction:
+      "SOURCE OVERVIEW only. Original cue counts/identities are discovery metadata. For caption work, call read_caption_cues for each exact requested sourceRange before translating or preparing the pair, and follow its needed pages. Use only those returned ranged cue IDs/text/times. Reader snapshots are bound by the host.",
+    complete: packet.sources.length === 0 && packet.complete,
+    omittedSources: packet.omittedSources,
+    sources: packet.sources.map(
+      ({ cues: _cues, cuesComplete: _cuesComplete, ...source }) => ({
+        ...source,
+        complete: false,
+        rangeReaderRequired: true,
+      }),
+    ),
+  };
 }

@@ -20,6 +20,8 @@ export type ModelReply = {
   calls: ToolCall[];
   providerOutput?: Array<Record<string, unknown>>;
   usage?: { inputTokens: number; outputTokens: number };
+  /** Exact maximum sent by the adapter; present only for preserve-overrun-v1. */
+  outputTokenLimit?: number;
 };
 export interface LanguageModel {
   /** Stable, non-secret provider endpoint/model identity for durable bindings. */
@@ -28,7 +30,11 @@ export interface LanguageModel {
     messages: ChatMessage[],
     tools: ToolSpec[],
     signal: AbortSignal,
-    limits?: { maxOutputTokens: number; maxReplyBytes?: number },
+    limits?: {
+      maxOutputTokens: number;
+      maxReplyBytes?: number;
+      outputBudgetPolicy?: "preserve-overrun-v1";
+    },
   ): Promise<ModelReply>;
 }
 export type LoopEvent = {
@@ -87,6 +93,14 @@ export type LoopSnapshot = {
   compaction?: LoopCompactionOptions;
   checkpointEncoding?: "compact-v2";
   checkpointCapacity?: LoopCheckpointCapacity;
+  outputBudgetPolicy?: "preserve-overrun-v1";
+};
+export type LoopOutputBudgetOverrun = {
+  kind: "provider-output-budget";
+  modelCall: number;
+  priorOutputTokens: number;
+  requestedMaxOutputTokens: number;
+  returnedOutputTokens: number;
 };
 export type LoopCheckpointPhase =
   | "ready-for-model"
@@ -112,6 +126,7 @@ export type LoopCheckpoint = {
   usedToolCallIds: string[];
   pinnedToolCallIds: string[];
   pendingTurn?: { reply: ModelReply; nextToolIndex: number };
+  outputBudgetOverrun?: LoopOutputBudgetOverrun;
   result?: unknown;
 };
 export type LoopCheckpointPort = {

@@ -1,5 +1,6 @@
 import {
-  AGENT_KIT_VERSION,
+  profileKitVersion,
+  usesPagedReaders,
   toolCatalog,
   skillRequirements,
   type AgentProfile,
@@ -17,9 +18,7 @@ export function buildAgentInventory<T>(input: {
   const available = new Set(input.tools.map((tool) => tool.name));
   return {
     version: 1 as const,
-    kitVersion: usesCompletionPreflight(input.profile)
-      ? AGENT_KIT_VERSION
-      : "0.1.1",
+    kitVersion: profileKitVersion(input.profile),
     profile: input.profile,
     tools: input.tools.map(({ name, description, effect, parameters }) => ({
       name,
@@ -35,6 +34,11 @@ export function buildAgentInventory<T>(input: {
         ([name]) =>
           usesCompletionPreflight(input.profile) ||
           !["review_edit", "prepare_caption_pair"].includes(name),
+      )
+      .filter(
+        ([name]) =>
+          usesPagedReaders(input.profile) ||
+          !["list_assets", "read_caption_cues"].includes(name),
       )
       .filter(([name]) => !available.has(name))
       .map(([name, value]) => ({

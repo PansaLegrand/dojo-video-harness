@@ -1,3 +1,4 @@
+import { assertNoUntimedWordGap } from "./speech-word-range";
 import type { EditorItem } from "@/lib/editor/document";
 import {
   toEditorDocument,
@@ -67,6 +68,7 @@ export function resolveSpeechAnchor(
     throw new Error(
       "A speech range must select contiguous source words in order.",
     );
+  assertNoUntimedWordGap(evidence, input.wordIds);
   return {
     ...input,
     sourceAssetId: evidence.sourceAssetId,

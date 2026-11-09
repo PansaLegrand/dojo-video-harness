@@ -2,6 +2,9 @@ import {
   composeToolAgentPrompt,
   restoreCompletionStateFromMessages,
   usesCompletionPreflight,
+  usesPagedReaders,
+  usesEfficientReaders,
+  usesResolvedEditSchema,
   type AgentProfile,
 } from "../../agent-kit/src/index";
 import {
@@ -20,7 +23,10 @@ import { parseVideoProjectDocument } from "../../core/src/lib/video-project/docu
 import { type Skill } from "./skills";
 import { createVideoToolset, type AgentTool } from "./tools";
 import type { LanguageModel, ChatMessage, AgentEvent } from "./types";
-import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
+import {
+  prepareCompletionCaptionCuePacket,
+  prepareCaptionSourceOverview,
+} from "../../core/src/lib/video-project/completion-caption-context";
 import { nativeTranscriptScopedSourceItemIds } from "../../core/src/lib/video-project/agent-transcript-search";
 
 export type AgentCheckpointContext = {
@@ -65,11 +71,14 @@ export async function runAgent(input: {
     responseMode: "tools",
   });
   if (usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
-    const packet = prepareCompletionCaptionCuePacket(
-      document,
+    const sourceIds =
       nativeTranscriptScopedSourceItemIds({ ...request, document }) ??
-        undefined,
-    );
+      undefined;
+    const packet = usesResolvedEditSchema(input.profile ?? "local-editor-v1")
+      ? prepareCaptionSourceOverview(document, sourceIds)
+      : prepareCompletionCaptionCuePacket(document, sourceIds, {
+          pagedReaders: usesPagedReaders(input.profile ?? "local-editor-v1"),
+        });
     try {
       const initial = JSON.parse(prompts.userPrompt);
       if (initial.contextPlan) delete initial.contextPlan.captionSources;
@@ -86,11 +95,16 @@ export async function runAgent(input: {
     profile: input.profile,
   });
   const tools = toolset.tools;
-  const system = composeToolAgentPrompt({
-    editingGuide: prompts.systemPrompt,
-    toolNames: tools.map((tool) => tool.name),
-    skills: toolset.skills,
-  });
+  const system =
+    composeToolAgentPrompt({
+      profile: input.profile,
+      editingGuide: prompts.systemPrompt,
+      toolNames: tools.map((tool) => tool.name),
+      skills: toolset.skills,
+    }) +
+    (usesPagedReaders(input.profile ?? "local-editor-v1")
+      ? "\n\nFor an explicitly edited montage declared by asset_sequence, an appended ending follows the complete edited non-ending content, including retained unrelated items. Set final composition duration to the ending end. For other ending requests preserve the original full timeline basis."
+      : "");
   const messages: ChatMessage[] = [
     { role: "system", content: system },
     {
@@ -143,7 +157,9 @@ export async function runAgent(input: {
     messages,
     tools,
     signal,
-    maxSteps: input.maxSteps,
+    maxSteps:
+      input.maxSteps ??
+      (usesEfficientReaders(input.profile ?? "local-editor-v1") ? 16 : 8),
     maxToolCalls: input.maxToolCalls,
     maxOutputTokens: input.maxOutputTokens,
     checkpoint,

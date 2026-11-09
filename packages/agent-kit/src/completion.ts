@@ -6,7 +6,15 @@ export type CompletionTarget =
   | { kind: "item" | "caption"; itemId: string }
   | { kind: "node"; itemId: string; nodeId: string }
   | { kind: "cue"; itemId: string; cueId: string };
+export type AssetSequenceEntry = {
+  itemId: string;
+  assetId: string;
+  from: number;
+  duration: number;
+  sourceStartSeconds?: number;
+};
 export type CompletionRequirement =
+  | { id: string; kind: "asset_sequence"; items: AssetSequenceEntry[] }
   | {
       id: string;
       kind: "caption_pair";
@@ -21,7 +29,7 @@ export type CompletionRequirement =
     }
   | {
       id: string;
-      kind: "speech_highlight";
+      kind: "speech_highlight" | "speech_callout";
       itemId: string;
       bindingId: string;
       sourceItemId: string;
@@ -155,6 +163,7 @@ export async function completionHash(value: unknown): Promise<string> {
 }
 export function parseCompletionRequirements(
   raw: unknown,
+  options: { assetSequence?: boolean; speechCallout?: boolean } = {},
 ): CompletionRequirement[] {
   if (
     !Array.isArray(raw) ||
@@ -167,41 +176,83 @@ export function parseCompletionRequirements(
       throw new Error("Completion requirement must be an object.");
     const kind = value.kind;
     const fields =
-      kind === "caption_pair"
-        ? [
-            "sourceItemId",
-            "evidenceId",
-            "originalItemId",
-            "translatedItemId",
-            "originalLanguage",
-            "translatedLanguage",
-            "originalColor",
-            "translatedColor",
-          ]
-        : kind === "speech_highlight"
+      kind === "asset_sequence" && options.assetSequence
+        ? ["items"]
+        : kind === "caption_pair"
           ? [
-              "itemId",
-              "bindingId",
               "sourceItemId",
               "evidenceId",
-              "wordIds",
-              "exactText",
-              "minReadableMs",
+              "originalItemId",
+              "translatedItemId",
+              "originalLanguage",
+              "translatedLanguage",
+              "originalColor",
+              "translatedColor",
             ]
-          : kind === "appended_ending"
-            ? ["itemId", "exactText", "minDurationMs", "animated"]
-            : kind === "property"
-              ? ["target", "path", "equals"]
-              : kind === "property_absent"
-                ? ["target", "path"]
-                : kind === "item_present" || kind === "item_absent"
-                  ? ["itemId"]
-                  : undefined;
+          : kind === "speech_highlight" ||
+              (kind === "speech_callout" && options.speechCallout)
+            ? [
+                "itemId",
+                "bindingId",
+                "sourceItemId",
+                "evidenceId",
+                "wordIds",
+                "exactText",
+                "minReadableMs",
+              ]
+            : kind === "appended_ending"
+              ? ["itemId", "exactText", "minDurationMs", "animated"]
+              : kind === "property"
+                ? ["target", "path", "equals"]
+                : kind === "property_absent"
+                  ? ["target", "path"]
+                  : kind === "item_present" || kind === "item_absent"
+                    ? ["itemId"]
+                    : undefined;
     if (!fields) throw new Error("Unknown completion requirement kind.");
     object(value, ["id", "kind", ...fields]);
     safe(value.id);
     for (const field of fields.filter((field) => /Id$/.test(field)))
       safe(value[field]);
+    if (kind === "asset_sequence") {
+      if (
+        !Array.isArray(value.items) ||
+        !value.items.length ||
+        value.items.length > 100
+      )
+        throw new Error("Declare 1–100 exact asset placements.");
+      const ids = new Set<string>();
+      for (const rawItem of value.items) {
+        const item = object(rawItem, [
+          "itemId",
+          "assetId",
+          "from",
+          "duration",
+          "sourceStartSeconds",
+        ]);
+        const itemId = safe(item.itemId);
+        safe(item.assetId);
+        if (ids.has(itemId))
+          throw new Error("Asset sequence item IDs must be unique.");
+        ids.add(itemId);
+        if (
+          !Number.isInteger(item.from) ||
+          Number(item.from) < 0 ||
+          Number(item.from) > 2592000 ||
+          !Number.isInteger(item.duration) ||
+          Number(item.duration) < 1 ||
+          Number(item.duration) > 2592000
+        )
+          throw new Error("Asset placement uses bounded composition frames.");
+        if (
+          item.sourceStartSeconds !== undefined &&
+          (typeof item.sourceStartSeconds !== "number" ||
+            !Number.isFinite(item.sourceStartSeconds) ||
+            item.sourceStartSeconds < 0)
+        )
+          throw new Error("Source offset requires finite nonnegative seconds.");
+      }
+    }
     if (kind === "caption_pair") {
       for (const key of ["originalLanguage", "translatedLanguage"])
         if (!/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(safe(value[key], 64)))
@@ -215,7 +266,7 @@ export function parseCompletionRequirements(
       )
         throw new Error("Caption pair requires distinct items and languages.");
     }
-    if (kind === "speech_highlight") {
+    if (kind === "speech_highlight" || kind === "speech_callout") {
       if (
         !Array.isArray(value.wordIds) ||
         !value.wordIds.length ||
@@ -351,7 +402,10 @@ export async function restoreCompletionStateFromMessages(
     const review = value.completionPreflight;
     if (review.version !== 1 || review.snapshotHash !== snapshotHash)
       throw new Error("Completion restore snapshot changed.");
-    const requirements = parseCompletionRequirements(review.requirements);
+    const requirements = parseCompletionRequirements(review.requirements, {
+      assetSequence: true,
+      speechCallout: true,
+    });
     const requirementsHash = await completionHash(requirements);
     if (
       review.requirementsHash !== requirementsHash ||
@@ -439,6 +493,48 @@ export const completionRequirementsSchema = {
         kind: { const: "property_absent" },
         target: { type: "object" },
         path: { type: "array", minItems: 1, maxItems: 8, items: str },
+      }),
+    ],
+  },
+};
+
+/** Additive schema used only by paged-reader profiles; legacy schemas remain frozen. */
+export const pagedCompletionRequirementsSchema = {
+  ...completionRequirementsSchema,
+  items: {
+    oneOf: [
+      ...completionRequirementsSchema.items.oneOf,
+      obj({
+        id: str,
+        kind: { const: "speech_callout" },
+        itemId: str,
+        bindingId: str,
+        sourceItemId: str,
+        evidenceId: str,
+        wordIds: { type: "array", minItems: 1, maxItems: 100, items: str },
+        exactText: { type: "string", maxLength: 240 },
+        minReadableMs: { type: "integer", minimum: 500, maximum: 3000 },
+      }),
+      obj({
+        id: str,
+        kind: { const: "asset_sequence" },
+        items: {
+          type: "array",
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: "object",
+            properties: {
+              itemId: str,
+              assetId: str,
+              from: { type: "integer", minimum: 0, maximum: 2592000 },
+              duration: { type: "integer", minimum: 1, maximum: 2592000 },
+              sourceStartSeconds: { type: "number", minimum: 0 },
+            },
+            required: ["itemId", "assetId", "from", "duration"],
+            additionalProperties: false,
+          },
+        },
       }),
     ],
   },

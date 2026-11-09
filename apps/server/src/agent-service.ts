@@ -73,7 +73,10 @@ export class AgentService {
     private speech?: AgentSpeechPort,
     private agentProfile:
       | "local-editor-v1"
-      | "local-editor-v2" = "local-editor-v1",
+      | "local-editor-v2"
+      | "local-editor-v3"
+      | "local-editor-v4"
+      | "local-editor-v5" = "local-editor-v1",
   ) {}
   /** Explicit startup recovery: only durable, checked boundaries are launched.
    * In-flight provider/unsafe-tool outcomes remain failed for manual recovery. */
@@ -257,8 +260,19 @@ export class AgentService {
       skills: this.skills,
       extraTools: this.extraTools?.(projectId, id, request),
       signal,
-      maxOutputTokens:
-        run.agentProfile === "local-editor-v2" ? 16384 : undefined,
+      maxSteps: ["local-editor-v4", "local-editor-v5"].includes(
+        run.agentProfile ?? "",
+      )
+        ? 16
+        : undefined,
+      maxOutputTokens: [
+        "local-editor-v2",
+        "local-editor-v3",
+        "local-editor-v4",
+        "local-editor-v5",
+      ].includes(run.agentProfile ?? "")
+        ? 16384
+        : undefined,
       messages:
         history ??
         project.messages.slice(-12).map(({ role, text }) => ({ role, text })),

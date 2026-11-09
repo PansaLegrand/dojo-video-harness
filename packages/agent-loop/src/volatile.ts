@@ -1,4 +1,5 @@
 import type { ToolLoopInput, LoopResult, LoopEvent } from "./types.js";
+import { LoopProviderOutputBudgetError } from "./checkpoint.js";
 
 /** The host supplies tools and commits. This package has no project, provider or billing dependencies. */
 export async function runVolatileToolLoop<T>(
@@ -52,9 +53,17 @@ export async function runVolatileToolLoop<T>(
     await emit("model.started");
     const response = await input.model.complete(messages, specs, signal, {
       maxOutputTokens: remaining,
+      outputBudgetPolicy: "preserve-overrun-v1",
     });
     signal.throwIfAborted();
     if (response.usage) {
+      if (
+        response.outputTokenLimit !== undefined &&
+        (!Number.isSafeInteger(response.outputTokenLimit) ||
+          response.outputTokenLimit < 1 ||
+          response.outputTokenLimit > 128000)
+      )
+        throw new Error("Invalid provider output limit.");
       for (const count of [
         response.usage.inputTokens,
         response.usage.outputTokens,
@@ -62,10 +71,26 @@ export async function runVolatileToolLoop<T>(
         if (!Number.isSafeInteger(count) || count < 0)
           throw new Error("Invalid provider usage.");
       }
+      const priorOutputTokens = usage.outputTokens;
       usage.inputTokens += response.usage.inputTokens;
       usage.outputTokens += response.usage.outputTokens;
-      if (usage.outputTokens > maxOutputTokens)
-        throw new Error("Model output budget exceeded.");
+      if (
+        !Number.isSafeInteger(usage.inputTokens) ||
+        !Number.isSafeInteger(usage.outputTokens)
+      )
+        throw new Error("Invalid provider usage.");
+      const requestedMaxOutputTokens = Math.min(
+        remaining,
+        response.outputTokenLimit ?? remaining,
+      );
+      if (response.usage.outputTokens > requestedMaxOutputTokens)
+        throw new LoopProviderOutputBudgetError({
+          kind: "provider-output-budget",
+          modelCall: step + 1,
+          priorOutputTokens,
+          requestedMaxOutputTokens,
+          returnedOutputTokens: response.usage.outputTokens,
+        });
     } else if (input.maxOutputTokens !== undefined) {
       // Unknown usage cannot authorize another paid turn under a total-token budget.
       usage.outputTokens = maxOutputTokens;

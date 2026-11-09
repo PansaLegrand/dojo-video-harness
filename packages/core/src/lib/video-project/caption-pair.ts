@@ -1,6 +1,10 @@
 import { z } from "zod/v3";
 import { captionSourceCommands } from "./semantic";
 import {
+  captionSourceRangeSchema,
+  prepareCaptionSourceRange,
+} from "./caption-source-range";
+import {
   parseVideoProjectDocument,
   type VideoProjectDocument,
 } from "./document";
@@ -47,14 +51,25 @@ export const captionPairSchema = z
       .max(500),
   })
   .strict();
+export const captionPairWithSourceRangeSchema = captionPairSchema
+  .extend({ sourceRange: captionSourceRangeSchema.optional() })
+  .strict();
 /** Translation changes display text only. Cue IDs and timing come from the
  * source-bound host caption builder, never model-authored timestamps. */
 export function prepareCaptionPair(
   inputDocument: VideoProjectDocument,
   raw: unknown,
+  options: { sourceRange?: boolean } = {},
 ) {
-  const document = parseVideoProjectDocument(inputDocument),
-    input = captionPairSchema.parse(raw);
+  const input = (
+    options.sourceRange ? captionPairWithSourceRangeSchema : captionPairSchema
+  ).parse(raw);
+  const range = "sourceRange" in input ? input.sourceRange : undefined;
+  const narrowed = range
+    ? prepareCaptionSourceRange(inputDocument, input.sourceItemId, range)
+    : undefined;
+  const document =
+    narrowed?.document ?? parseVideoProjectDocument(inputDocument);
   if (
     input.originalItemId === input.translatedItemId ||
     document.items.some((item) =>
@@ -154,6 +169,7 @@ export function prepareCaptionPair(
   };
   return {
     commands: [
+      ...(narrowed?.commands ?? []),
       ...commands,
       { type: "addItem" as const, item: translated },
       {

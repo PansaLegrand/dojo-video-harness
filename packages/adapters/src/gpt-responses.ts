@@ -142,7 +142,7 @@ export class GptResponsesModel implements LanguageModel {
     messages: ChatMessage[],
     tools: ToolSpec[],
     signal: AbortSignal,
-    limits?: { maxOutputTokens: number; maxReplyBytes?: number },
+    limits?: Parameters<LanguageModel["complete"]>[3],
   ) {
     signal.throwIfAborted();
     if (
@@ -156,6 +156,7 @@ export class GptResponsesModel implements LanguageModel {
       throw new Error(
         "Set LLM_MODEL to a GPT model such as gpt-6-sol or openai/gpt-6-sol. Only GPT models are supported.",
       );
+    const outputTokenLimit = Math.min(8192, limits?.maxOutputTokens ?? 8192);
     const response = await fetch(new URL(this.#endpoint), {
       method: "POST",
       redirect: "error",
@@ -173,7 +174,7 @@ export class GptResponsesModel implements LanguageModel {
         ...(tools.length
           ? { tool_choice: "auto", parallel_tool_calls: false }
           : {}),
-        max_output_tokens: Math.min(8192, limits?.maxOutputTokens ?? 8192),
+        max_output_tokens: outputTokenLimit,
         stream: false,
         store: false,
         include: ["reasoning.encrypted_content"],
@@ -217,6 +218,9 @@ export class GptResponsesModel implements LanguageModel {
         arguments: call.arguments,
       })),
       providerOutput: result.output,
+      ...(limits?.outputBudgetPolicy === "preserve-overrun-v1"
+        ? { outputTokenLimit }
+        : {}),
       ...(result.usage
         ? {
             usage: {

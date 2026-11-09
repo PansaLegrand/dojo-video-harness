@@ -36,6 +36,7 @@ import { captionSourceCommands } from "./semantic";
 import { resolveSpeechAnchor, projectSourceRange } from "./source-clock";
 import { compileVideoProjectDocument } from "./compilation";
 import { normalizeCompletionNumber } from "./completion-number";
+import { captionTimingDiagnostics } from "./caption-source-range";
 import { normalizeCaptionLanguage } from "./caption-pair";
 
 const spanEnd = (document: VideoProjectDocument) =>
@@ -76,16 +77,18 @@ function propertyPath(target: VideoProjectTarget, path: string[]) {
 function declaredItems(requirements: CompletionRequirement[]) {
   return new Set(
     requirements.flatMap((requirement) =>
-      requirement.kind === "caption_pair"
-        ? [requirement.originalItemId, requirement.translatedItemId]
-        : requirement.kind === "property" ||
-            requirement.kind === "property_absent"
-          ? "itemId" in requirement.target
-            ? [requirement.target.itemId]
-            : []
-          : requirement.kind === "item_absent"
-            ? []
-            : [requirement.itemId],
+      requirement.kind === "asset_sequence"
+        ? requirement.items.map((item) => item.itemId)
+        : requirement.kind === "caption_pair"
+          ? [requirement.originalItemId, requirement.translatedItemId]
+          : requirement.kind === "property" ||
+              requirement.kind === "property_absent"
+            ? "itemId" in requirement.target
+              ? [requirement.target.itemId]
+              : []
+            : requirement.kind === "item_absent"
+              ? []
+              : [requirement.itemId],
     ),
   );
 }
@@ -93,12 +96,40 @@ function assertRequirement(
   before: VideoProjectDocument,
   after: VideoProjectDocument,
   requirement: CompletionRequirement,
+  editedSequence = false,
 ) {
   const item = (id: string) => {
     const found = after.items.find((item) => item.id === id);
     if (!found) throw new Error(`Required item ${id} is missing.`);
     return found;
   };
+  if (requirement.kind === "asset_sequence") {
+    for (const expected of requirement.items) {
+      const candidate = item(expected.itemId);
+      if (
+        !["video", "audio", "img"].includes(candidate.node.type) ||
+        candidate.node.assetId !== expected.assetId ||
+        (candidate.node.from ?? 0) !== expected.from ||
+        candidate.node.duration !== expected.duration
+      )
+        throw new Error(
+          `Asset placement ${expected.itemId} needs its declared media identity and composition timing.`,
+        );
+      if (expected.sourceStartSeconds !== undefined) {
+        if (!["video", "audio"].includes(candidate.node.type))
+          throw new Error("Source offsets apply to video/audio assets.");
+        const actual =
+          candidate.node.type === "video"
+            ? (candidate.node.videoStartTime ?? 0)
+            : (candidate.node.audioStartTime ?? 0);
+        if (Math.abs(actual - expected.sourceStartSeconds) > 1e-9)
+          throw new Error(
+            `Asset placement ${expected.itemId} has the wrong source offset.`,
+          );
+      }
+    }
+    return;
+  }
   if (requirement.kind === "item_present") {
     item(requirement.itemId);
     return;
@@ -142,6 +173,14 @@ function assertRequirement(
     return;
   }
   if (requirement.kind === "caption_pair") {
+    const evidence = after.evidence[requirement.evidenceId];
+    if (
+      evidence &&
+      captionTimingDiagnostics(after, requirement.sourceItemId, evidence)
+    )
+      throw new Error(
+        "Some source tokens lack genuine positive-duration timing. Review that source or choose a range with complete timing coverage.",
+      );
     const original = item(requirement.originalItemId),
       translated = item(requirement.translatedItemId);
     const expected = captionSourceCommands(after, {
@@ -202,7 +241,10 @@ function assertRequirement(
     }
     return;
   }
-  if (requirement.kind === "speech_highlight") {
+  if (
+    requirement.kind === "speech_highlight" ||
+    requirement.kind === "speech_callout"
+  ) {
     const candidate = item(requirement.itemId),
       binding = after.bindings[requirement.bindingId];
     const expected = resolveSpeechAnchor(after, {
@@ -250,6 +292,22 @@ function assertRequirement(
     )
       .map((word) => word.text)
       .join(" ");
+    const normalizedWords = (value: string) =>
+      value
+        .normalize("NFKC")
+        .toLowerCase()
+        .match(/[\p{L}\p{N}]+/gu)
+        ?.join(" ") ?? "";
+    if (requirement.kind === "speech_callout") {
+      if (
+        !normalizedWords(sourceWords) ||
+        normalizedWords(sourceWords) !== normalizedWords(requirement.exactText)
+      )
+        throw new Error(
+          "Callout text does not match its selected genuine source words.",
+        );
+      return;
+    }
     if (
       normalizeCompletionNumber(sourceWords) !==
       normalizeCompletionNumber(requirement.exactText)
@@ -264,7 +322,15 @@ function assertRequirement(
   const candidate = item(requirement.itemId),
     end = (candidate.node.from ?? 0) + candidate.node.duration!;
   if (
-    (candidate.node.from ?? 0) < spanEnd(before) ||
+    (candidate.node.from ?? 0) <
+      (editedSequence
+        ? Math.max(
+            0,
+            ...after.items
+              .filter((item) => item.id !== candidate.id)
+              .map((item) => (item.node.from ?? 0) + item.node.duration!),
+          )
+        : spanEnd(before)) ||
     end !== after.format.durationInFrames ||
     (candidate.node.duration! * 1000) / after.format.fps <
       requirement.minDurationMs ||
@@ -456,10 +522,18 @@ export function checkNativeCompletionRequirements(
 ): CompletionCheck[] {
   const before = parseVideoProjectDocument(beforeInput),
     after = parseVideoProjectDocument(afterInput),
-    requirements = parseCompletionRequirements(raw);
+    requirements = parseCompletionRequirements(raw, {
+      assetSequence: true,
+      speechCallout: true,
+    });
   const checks = requirements.map((requirement) => {
     try {
-      assertRequirement(before, after, requirement);
+      assertRequirement(
+        before,
+        after,
+        requirement,
+        requirements.some((value) => value.kind === "asset_sequence"),
+      );
       return {
         id: requirement.id,
         passed: true,
@@ -498,7 +572,10 @@ export async function reviewNativeCompletionEdit(
   request: NativeAgentRequest,
   input: { requirements: unknown; edit: unknown },
 ) {
-  const requirements = parseCompletionRequirements(input.requirements),
+  const requirements = parseCompletionRequirements(input.requirements, {
+      assetSequence: true,
+      speechCallout: true,
+    }),
     base = parseVideoProjectDocument(request.document);
   const compiled = await compileNativeAgentResult(request, input.edit);
   if (!compiled.proposal)
@@ -587,7 +664,10 @@ export async function compileNativeCompletionResponse(
   return {
     ...reviewed.result,
     completion: {
-      requirements: parseCompletionRequirements(contract.requirements),
+      requirements: parseCompletionRequirements(contract.requirements, {
+        assetSequence: true,
+        speechCallout: true,
+      }),
       receipt,
     },
   };

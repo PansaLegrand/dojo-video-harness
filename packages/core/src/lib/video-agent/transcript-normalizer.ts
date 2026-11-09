@@ -14,6 +14,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function normalizeAsrResult(
   assetId: string,
   raw: unknown,
+  options: { requireSpeechTiming?: boolean } = {},
 ): VideoAgentTranscript | null {
   if (!isRecord(raw) || !Array.isArray(raw.utterances)) return null;
 
@@ -38,7 +39,9 @@ export function normalizeAsrResult(
         endMs: Math.max(0, Math.round(utterance.end_time_ms)),
       });
     }
-    words.push(...normalizeAsrUtteranceWords(utterance.words, segmentText));
+    words.push(
+      ...normalizeAsrUtteranceWords(utterance.words, segmentText, options),
+    );
   }
   if (words.length === 0 && segments.length === 0) return null;
   return {

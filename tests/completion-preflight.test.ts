@@ -535,3 +535,291 @@ it("rejects tiny/fitted/scaled required fonts and cumulatively transparent requi
     );
   }
 });
+
+it("checks eight exact media placements through a compact asset_sequence requirement", async () => {
+  const document = createVideoProjectDocument({
+    width: 640,
+    height: 360,
+    fps: 30,
+    durationInFrames: 300,
+  });
+  for (let index = 0; index < 8; index++) {
+    const id = `asset-${index}`;
+    document.assets[id] = {
+      id,
+      name: `Media ${index}`,
+      source: "local",
+      type: index < 3 ? "video" : "image",
+      ...(index < 3 ? { durationSeconds: 10 } : {}),
+    };
+    document.items.push({
+      id: `item-${index}`,
+      name: "Media",
+      trackId: "visual",
+      node: {
+        id: `item-${index}`,
+        type: index < 3 ? "video" : "img",
+        assetId: id,
+        from: index * 30,
+        duration: 30,
+        ...(index < 3 ? { videoStartTime: index } : {}),
+      },
+    });
+  }
+  const requirements = [
+    {
+      id: "placements",
+      kind: "asset_sequence",
+      items: document.items.map((item, index) => ({
+        itemId: item.id,
+        assetId: item.node.assetId!,
+        from: index * 30,
+        duration: 30,
+        ...(index < 3 ? { sourceStartSeconds: index } : {}),
+      })),
+    },
+  ];
+  expect(
+    checkNativeCompletionRequirements(document, document, requirements).every(
+      (check) => check.passed,
+    ),
+  ).toBe(true);
+  for (const change of ["missing", "asset", "time", "source"] as const) {
+    const after = structuredClone(document);
+    if (change === "missing") after.items.pop();
+    if (change === "asset") after.items[0]!.node.assetId = "asset-1";
+    if (change === "time") after.items[0]!.node.from = 1;
+    if (change === "source") after.items[0]!.node.videoStartTime = 0.5;
+    expect(
+      checkNativeCompletionRequirements(document, after, requirements).find(
+        (check) => check.id === "placements",
+      )!.passed,
+    ).toBe(false);
+  }
+});
+it("grounds quoted phrase callouts while retaining numeric highlight validation", async () => {
+  const f = await fixture();
+  const doc = structuredClone(f.document);
+  const words = ["year", "over", "year"];
+  doc.evidence.asr!.words = words.map((text, index) => ({
+    id: `quote-${index}`,
+    text,
+    startMs: 1000 + index * 200,
+    endMs: 1200 + index * 200,
+  }));
+  doc.evidence.asr!.text = "year over year";
+  const request = {
+    ...f.request,
+    document: doc,
+    baseHash: await hashVideoProjectDocument(doc),
+  };
+  const edit = {
+    summary: "Quote",
+    commands: [
+      {
+        type: "insertGraphic",
+        itemId: "quote",
+        trackId: "visual",
+        name: "Quote",
+        node: {
+          type: "text",
+          text: "Year-over-year",
+          from: 30,
+          duration: 36,
+          style: {
+            position: "absolute",
+            left: 40,
+            top: 40,
+            width: 560,
+            height: 60,
+            fontSize: 32,
+            color: "#ffffff",
+          },
+        },
+      },
+      {
+        type: "anchorSpeech",
+        id: "quote-binding",
+        itemId: "quote",
+        sourceItemId: "speech",
+        evidenceId: "asr",
+        wordIds: ["quote-0", "quote-1", "quote-2"],
+        holdMs: 1200,
+      },
+    ],
+  };
+  const requirement = {
+    id: "quote",
+    kind: "speech_callout",
+    itemId: "quote",
+    bindingId: "quote-binding",
+    sourceItemId: "speech",
+    evidenceId: "asr",
+    wordIds: ["quote-0", "quote-1", "quote-2"],
+    exactText: "Year-over-year",
+    minReadableMs: 1200,
+  };
+  const checked = await reviewNativeCompletionEdit(request, {
+    requirements: [requirement],
+    edit,
+  });
+  expect(checked.checks.filter((check) => !check.passed)).toEqual([]);
+  const replay = await compileNativeCompletionResponse(request, {
+    ...edit,
+    completion: { requirements: [requirement], receipt: checked.receipt },
+  });
+  expect(replay.completion!.requirements).toEqual([requirement]);
+  const after = executeVideoProjectCommands(
+    doc,
+    replay.proposal!.commands,
+  ).document;
+  expect(
+    checkNativeCompletionRequirements(doc, after, [
+      { ...requirement, kind: "speech_highlight" },
+    ]).find((check) => check.id === "quote")!.passed,
+  ).toBe(false);
+  const changed = structuredClone(after);
+  changed.items.find((item) => item.id === "quote")!.node.text =
+    "year over year growth";
+  expect(
+    checkNativeCompletionRequirements(doc, changed, [
+      { ...requirement, exactText: "year over year growth" },
+    ]).find((check) => check.id === "quote")!.passed,
+  ).toBe(false);
+});
+
+it("appends after all retained edited content for an exact asset_sequence while preserving the legacy ending basis", async () => {
+  const document = createVideoProjectDocument({
+    width: 640,
+    height: 360,
+    fps: 30,
+    durationInFrames: 360,
+  });
+  document.assets.video = {
+    id: "video",
+    name: "Interview",
+    type: "video",
+    source: "local",
+    durationSeconds: 12,
+  };
+  document.items.push({
+    id: "clip",
+    name: "Interview",
+    trackId: "visual",
+    node: {
+      id: "clip",
+      type: "video",
+      assetId: "video",
+      from: 0,
+      duration: 360,
+    },
+  });
+  const request = {
+    contract: "video-project-commands" as const,
+    version: 1 as const,
+    baseRevision: 1,
+    baseHash: await hashVideoProjectDocument(document),
+    document,
+    context: { selectedItemIds: [], playheadFrame: 0 },
+    authoring: { version: 1 as const, scope: { kind: "project" as const } },
+  };
+  const edit = {
+    summary: "Short montage and ending",
+    commands: [
+      { type: "trimItem", id: "clip", from: 0, duration: 240 },
+      {
+        type: "set",
+        target: { kind: "node", itemId: "clip", nodeId: "clip" },
+        path: ["videoStartTime"],
+        value: 2,
+      },
+      {
+        type: "set",
+        target: { kind: "format" },
+        path: ["durationInFrames"],
+        value: 330,
+      },
+      {
+        type: "insertGraphic",
+        itemId: "ending",
+        trackId: "visual",
+        name: "Ending",
+        node: {
+          type: "text",
+          text: "Made by DojoClip.com",
+          from: 240,
+          duration: 90,
+          style: {
+            position: "absolute",
+            left: 40,
+            top: 100,
+            width: 560,
+            height: 60,
+            fontSize: 32,
+            color: "#ffffff",
+          },
+          animations: [
+            {
+              kind: "keyframes",
+              property: "opacity",
+              frames: [
+                { frame: 0, value: 0 },
+                { frame: 6, value: 1 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const ending = {
+    id: "ending",
+    kind: "appended_ending",
+    itemId: "ending",
+    exactText: "Made by DojoClip.com",
+    minDurationMs: 2000,
+    animated: true,
+  };
+  const sequence = {
+    id: "body",
+    kind: "asset_sequence",
+    items: [
+      {
+        itemId: "clip",
+        assetId: "video",
+        from: 0,
+        duration: 240,
+        sourceStartSeconds: 2,
+      },
+    ],
+  };
+  const checked = await reviewNativeCompletionEdit(request, {
+    requirements: [sequence, ending],
+    edit,
+  });
+  expect(checked.checks.filter((check) => !check.passed)).toEqual([]);
+  expect(checked.receipt).toBeDefined();
+  expect(
+    (
+      await reviewNativeCompletionEdit(request, {
+        requirements: [ending],
+        edit,
+      })
+    ).checks.some((check) => !check.passed),
+  ).toBe(true);
+  const after = executeVideoProjectCommands(
+    document,
+    checked.result.proposal!.commands,
+  ).document;
+  after.items.push({
+    id: "retained",
+    name: "Retained audio",
+    trackId: "visual",
+    node: { id: "retained", type: "div", from: 300, duration: 30 },
+  });
+  expect(
+    checkNativeCompletionRequirements(document, after, [sequence, ending]).find(
+      (check) => check.id === "ending",
+    )!.passed,
+  ).toBe(false);
+});

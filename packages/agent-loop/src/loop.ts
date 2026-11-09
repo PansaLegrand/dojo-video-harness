@@ -10,6 +10,7 @@ import {
   integer,
   LoopRecoveryRequiredError,
   LoopCheckpointCapacityError,
+  LoopProviderOutputBudgetError,
   measureLoopCheckpointBytes,
   measureModelReplyBytes,
   parseLoopCheckpoint,
@@ -41,6 +42,11 @@ export async function runToolLoop<T>(
   const encoding = existing
     ? existing.snapshot.checkpointEncoding
     : port?.encoding;
+  const outputBudgetPolicy = existing
+    ? existing.snapshot.outputBudgetPolicy
+    : ("preserve-overrun-v1" as const);
+  // Reserve the bounded stop receipt even when the host's extra reserve is zero.
+  const outputOverrunHeadroom = outputBudgetPolicy ? 512 : 0;
   if (
     (capacity || encoding) &&
     (encoding !== "compact-v2" || !capacity || port?.encoding !== "compact-v2")
@@ -78,6 +84,7 @@ export async function runToolLoop<T>(
       ...(capacity
         ? { checkpointEncoding: encoding, checkpointCapacity: capacity }
         : {}),
+      ...(outputBudgetPolicy ? { outputBudgetPolicy } : {}),
     },
     2_000_000,
   );
@@ -131,7 +138,10 @@ export async function runToolLoop<T>(
         throw new LoopCheckpointCapacityError("checkpoint-too-large");
       if (
         reserveReply &&
-        bytes + capacity.maxReplyBytes + capacity.reserveBytes >
+        bytes +
+          capacity.maxReplyBytes +
+          capacity.reserveBytes +
+          outputOverrunHeadroom >
           capacity.maxBytes
       )
         throw new LoopCheckpointCapacityError("reply-headroom");
@@ -262,6 +272,8 @@ export async function runToolLoop<T>(
   };
 
   while (true) {
+    if (checkpoint.outputBudgetOverrun)
+      throw new LoopProviderOutputBudgetError(checkpoint.outputBudgetOverrun);
     signal.throwIfAborted();
     if (checkpoint.phase === "completed") return result();
     if (checkpoint.phase === "model-pending")
@@ -299,6 +311,7 @@ export async function runToolLoop<T>(
           capacity.maxBytes -
           capacity.maxReplyBytes -
           capacity.reserveBytes -
+          outputOverrunHeadroom -
           overhead -
           2;
         if (maxUtf8Bytes < 1)
@@ -363,6 +376,7 @@ export async function runToolLoop<T>(
       signal,
       {
         maxOutputTokens: remaining,
+        ...(outputBudgetPolicy ? { outputBudgetPolicy } : {}),
         ...(capacity ? { maxReplyBytes: capacity.maxReplyBytes } : {}),
       },
     );
@@ -377,6 +391,7 @@ export async function runToolLoop<T>(
     )
       throw new Error("The model reused a tool-call identity.");
     if (reply.usage) {
+      const priorOutputTokens = checkpoint.usage.outputTokens;
       checkpoint.usage.inputTokens = integer(
         checkpoint.usage.inputTokens + reply.usage.inputTokens,
         0,
@@ -385,8 +400,25 @@ export async function runToolLoop<T>(
       checkpoint.usage.outputTokens = integer(
         checkpoint.usage.outputTokens + reply.usage.outputTokens,
         0,
-        snapshot.budgets.maxOutputTokens,
+        outputBudgetPolicy
+          ? Number.MAX_SAFE_INTEGER
+          : snapshot.budgets.maxOutputTokens,
       );
+      const requestedMaxOutputTokens = Math.min(
+        remaining,
+        reply.outputTokenLimit ?? remaining,
+      );
+      if (
+        outputBudgetPolicy &&
+        reply.usage.outputTokens > requestedMaxOutputTokens
+      )
+        checkpoint.outputBudgetOverrun = {
+          kind: "provider-output-budget",
+          modelCall: checkpoint.modelCalls,
+          priorOutputTokens,
+          requestedMaxOutputTokens,
+          returnedOutputTokens: reply.usage.outputTokens,
+        };
     } else {
       checkpoint.usageKnown = false;
       if (snapshot.budgets.requireUsage)
@@ -395,6 +427,8 @@ export async function runToolLoop<T>(
     checkpoint.messages.push(replyMessage(reply));
     checkpoint.pendingTurn = { reply, nextToolIndex: 0 };
     await persist("model-returned"); // Preserve paid output before tools or cancellation.
+    if (checkpoint.outputBudgetOverrun)
+      throw new LoopProviderOutputBudgetError(checkpoint.outputBudgetOverrun);
     signal.throwIfAborted();
   }
 }

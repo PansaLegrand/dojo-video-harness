@@ -12,6 +12,7 @@ import {
   type AgentProfile,
   type CompletionState,
   usesCompletionPreflight,
+  usesPagedReaders,
 } from "../../agent-kit/src/index";
 import {
   compileNativeAgentResult,
@@ -32,6 +33,10 @@ import {
 } from "../../core/src/lib/video-project/completion-preflight";
 import { prepareCaptionPair } from "../../core/src/lib/video-project/caption-pair";
 import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
+import {
+  listNativeAssets,
+  readNativeCaptionCues,
+} from "../../core/src/lib/video-project/agent-readers";
 import type { LoopTool } from "../../agent-loop/src/index";
 export type AgentTool = Omit<KitTool<NativeAgentResult>, "execute"> &
   Pick<
@@ -50,6 +55,8 @@ export const replaySafeNativeToolNames = [
   "ask_user",
   "review_edit",
   "prepare_caption_pair",
+  "list_assets",
+  "read_caption_cues",
 ] as const;
 export type ToolOutcome = Awaited<ReturnType<AgentTool["execute"]>>;
 
@@ -77,11 +84,16 @@ export function createVideoToolset(
     proposalSchema: nativeAgentResponseSchema({
       clarification: true,
       composition: true,
-      anchorHold:
-        options.profile === "local-editor-v2" ||
-        options.profile === "commercial-editing-v3",
+      anchorHold: usesCompletionPreflight(options.profile ?? "local-editor-v1"),
     }),
     ports: {
+      ...(usesPagedReaders(options.profile ?? "local-editor-v1")
+        ? {
+            listAssets: (args: unknown) => listNativeAssets(request, args),
+            readCaptionCues: (args: unknown) =>
+              readNativeCaptionCues(request, args),
+          }
+        : {}),
       inspectGraphicsSchema: () => ({
         three: zodToJsonSchema(threeSceneSchema, { $refStrategy: "none" }),
         extension: THREE_EXTENSION,
@@ -96,6 +108,11 @@ export function createVideoToolset(
                   : query.itemIds === undefined
                     ? scopedSources
                     : query.itemIds.filter((id) => scopedSources.includes(id)),
+                {
+                  pagedReaders: usesPagedReaders(
+                    options.profile ?? "local-editor-v1",
+                  ),
+                },
               ),
             }
           : {}),
@@ -176,7 +193,10 @@ export function createVideoToolset(
         next: "Include this command in propose_edit. The host handles application; preparation has not applied an edit.",
       }),
       reviewEdit: (input) => reviewNativeCompletionEdit(request, input),
-      prepareCaptionPair: (input) => prepareCaptionPair(document, input),
+      prepareCaptionPair: (input) =>
+        prepareCaptionPair(document, input, {
+          sourceRange: usesPagedReaders(options.profile ?? "local-editor-v1"),
+        }),
       proposeEdit: (args, _signal, completion) => {
         if (
           !usesCompletionPreflight(options.profile ?? "local-editor-v1") &&

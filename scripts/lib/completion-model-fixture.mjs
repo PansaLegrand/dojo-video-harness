@@ -7,6 +7,11 @@ export function withCompletionReview(context, body, response) {
     !body.tools.some((tool) => tool.name === "review_edit")
   )
     return response;
+  if (
+    body.tools.find((tool) => tool.name === "propose_edit")?.parameters
+      ?.properties?.outcome?.const === "proposal"
+  )
+    response = { ...response, args: { ...response.args, outcome: "proposal" } };
   const edit = response.args,
     commands = edit.commands;
   for (const call of body.input

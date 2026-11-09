@@ -14,9 +14,24 @@ type RawAsrWord = {
 export function normalizeAsrUtteranceWords(
   rawWords: unknown,
   utteranceText = "",
+  options: { requireSpeechTiming?: boolean } = {},
 ): NormalizedAsrWord[] {
   if (!Array.isArray(rawWords)) {
+    if (options.requireSpeechTiming && /[\p{L}\p{N}]/u.test(utteranceText)) {
+      throw new Error(
+        "Speech evidence has no word timestamps. The ASR receipt is retained for review.",
+      );
+    }
     return [];
+  }
+  if (
+    options.requireSpeechTiming &&
+    rawWords.length === 0 &&
+    /[\p{L}\p{N}]/u.test(utteranceText)
+  ) {
+    throw new Error(
+      "Speech evidence has no word timestamps. The ASR receipt is retained for review.",
+    );
   }
 
   const words: NormalizedAsrWord[] = [];
@@ -24,6 +39,22 @@ export function normalizeAsrUtteranceWords(
   let sourceCursor = 0;
 
   for (const rawWord of rawWords) {
+    if (
+      options.requireSpeechTiming &&
+      isRecord(rawWord) &&
+      typeof rawWord.text === "string" &&
+      rawWord.text.trim() &&
+      !["noise", "spacing", "punctuation"].includes(String(rawWord.type)) &&
+      !isPunctuationText(rawWord.text.trim()) &&
+      (typeof rawWord.start_time_ms !== "number" ||
+        !Number.isFinite(rawWord.start_time_ms) ||
+        typeof rawWord.end_time_ms !== "number" ||
+        !Number.isFinite(rawWord.end_time_ms))
+    ) {
+      throw new Error(
+        "Speech evidence contains a word without finite timestamps. The ASR receipt is retained for review.",
+      );
+    }
     const parsed = parseRawAsrWord(rawWord);
     if (!parsed || parsed.type === "noise" || parsed.type === "spacing") {
       continue;

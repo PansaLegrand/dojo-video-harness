@@ -1,9 +1,17 @@
 import {
+  editingOnlyProposalSchema,
+  embedEditingSchema,
+  assertEditingProposal,
+} from "./editing-schema.js";
+import {
   toolMetadata,
   type AgentTool,
   type Skill,
   type AgentProfile,
   usesCompletionPreflight,
+  usesPagedReaders,
+  usesEfficientReaders,
+  usesResolvedEditSchema,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -11,6 +19,7 @@ import {
   parseCompletionRequirements,
   validateCompletionReceipt,
   completionRequirementsSchema,
+  pagedCompletionRequirementsSchema,
   type CompletionRequirement,
   type CompletionReceipt,
   type CompletionCheck,
@@ -34,7 +43,27 @@ export type TranscriptQuery = {
   sourceItemIds?: string[];
   cursor?: string;
 };
+export type AssetQuery = {
+  snapshotHash: string;
+  name?: string;
+  type?: "video" | "audio" | "image" | "font" | "lottie";
+  usage?: "all" | "used" | "unused";
+  cursor?: string;
+};
+export type CaptionSourceRange = { startMs: number; endMs: number };
+export type CaptionCueQuery = {
+  snapshotHash: string;
+  sourceItemId: string;
+  evidenceId: string;
+  sourceRange?: CaptionSourceRange;
+  cursor?: string;
+};
 export type EditorToolPorts<T> = {
+  listAssets?: (args: AssetQuery, signal: AbortSignal) => MaybePromise<unknown>;
+  readCaptionCues?: (
+    args: CaptionCueQuery,
+    signal: AbortSignal,
+  ) => MaybePromise<unknown>;
   inspectProject(
     args: { itemIds?: string[] },
     signal: AbortSignal,
@@ -132,6 +161,28 @@ function placed(value: Record<string, unknown>): Placement {
     duration: value.duration as number,
   };
 }
+const sourceRangeParameters = object(
+  {
+    startMs: { type: "number", minimum: 0 },
+    endMs: { type: "number", exclusiveMinimum: 0 },
+  },
+  ["startMs", "endMs"],
+);
+function sourceRange(value: unknown): CaptionSourceRange {
+  const input = record(value, ["startMs", "endMs"]);
+  if (
+    typeof input.startMs !== "number" ||
+    !Number.isFinite(input.startMs) ||
+    input.startMs < 0 ||
+    typeof input.endMs !== "number" ||
+    !Number.isFinite(input.endMs) ||
+    input.endMs <= input.startMs
+  )
+    throw new Error(
+      "Source range requires finite increasing millisecond times.",
+    );
+  return { startMs: input.startMs, endMs: input.endMs };
+}
 const defaultClarification = object(
   {
     id: string,
@@ -171,6 +222,11 @@ export function createEditorToolset<T>(input: {
     throw new Error(
       "Completion profiles require a preflight port and snapshot identity.",
     );
+  if (
+    usesPagedReaders(input.profile) &&
+    (!ports.listAssets || !ports.readCaptionCues)
+  )
+    throw new Error("Paged-reader profiles require both reader executors.");
   let state = input.initialCompletionState
     ? structuredClone(input.initialCompletionState)
     : undefined;
@@ -180,7 +236,10 @@ export function createEditorToolset<T>(input: {
         state.snapshotHash !== input.snapshotHash ||
         state.version !== 1 ||
         (await completionHash(
-          parseCompletionRequirements(state.requirements),
+          parseCompletionRequirements(state.requirements, {
+            assetSequence: usesPagedReaders(input.profile),
+            speechCallout: usesPagedReaders(input.profile),
+          }),
         )) !== state.requirementsHash
       )
         throw new Error(
@@ -200,6 +259,14 @@ export function createEditorToolset<T>(input: {
     return state;
   };
   let skills: Skill[] = [];
+  const readerSnapshotHash = (value: unknown) => {
+    if (value === undefined && usesEfficientReaders(input.profile))
+      return input.snapshotHash!;
+    const supplied = text(value, "snapshotHash", 1, 80);
+    if (usesEfficientReaders(input.profile) && supplied !== input.snapshotHash)
+      throw new Error("Reader snapshot differs from the frozen host snapshot.");
+    return supplied;
+  };
   const observed = (value: unknown) => ({
     kind: "observation" as const,
     value,
@@ -353,8 +420,12 @@ export function createEditorToolset<T>(input: {
       ...toolMetadata("review_edit"),
       parameters: object(
         {
-          requirements: completionRequirementsSchema,
-          edit: input.proposalSchema,
+          requirements: usesPagedReaders(input.profile)
+            ? pagedCompletionRequirementsSchema
+            : completionRequirementsSchema,
+          edit: usesResolvedEditSchema(input.profile)
+            ? embedEditingSchema(input.proposalSchema)
+            : input.proposalSchema,
         },
         ["edit"],
       ),
@@ -364,7 +435,10 @@ export function createEditorToolset<T>(input: {
         const declared =
           value.requirements === undefined
             ? state?.requirements
-            : parseCompletionRequirements(value.requirements);
+            : parseCompletionRequirements(value.requirements, {
+                assetSequence: usesPagedReaders(input.profile),
+                speechCallout: usesPagedReaders(input.profile),
+              });
         if (!declared)
           throw new Error(
             "Declare all requested outcomes in requirements before the first review.",
@@ -379,6 +453,8 @@ export function createEditorToolset<T>(input: {
         let checks: CompletionCheck[];
         let receipt: CompletionReceipt | undefined;
         try {
+          if (usesResolvedEditSchema(input.profile))
+            assertEditingProposal(value.edit);
           if (requirementsHash !== state.requirementsHash)
             throw new Error(
               "The first valid requirements are frozen. Repair the edit instead of weakening or replacing the checklist.",
@@ -451,6 +527,9 @@ export function createEditorToolset<T>(input: {
             translatedLanguage: string,
             originalColor: string,
             translatedColor: string,
+            ...(usesPagedReaders(input.profile)
+              ? { sourceRange: sourceRangeParameters }
+              : {}),
             translations: {
               type: "array",
               maxItems: 500,
@@ -483,11 +562,120 @@ export function createEditorToolset<T>(input: {
         }),
       });
   }
+  if (usesPagedReaders(input.profile)) {
+    tools.push(
+      {
+        ...toolMetadata("list_assets"),
+        parameters: object(
+          {
+            ...(usesResolvedEditSchema(input.profile)
+              ? {}
+              : { snapshotHash: string }),
+            name: { type: "string", maxLength: 128 },
+            type: { enum: ["video", "audio", "image", "font", "lottie"] },
+            usage: { enum: ["all", "used", "unused"] },
+            cursor: { type: "string", maxLength: 160 },
+          },
+          usesEfficientReaders(input.profile) ? [] : ["snapshotHash"],
+        ),
+        execute: async (args, signal) => {
+          const value = record(args, [
+            ...(usesResolvedEditSchema(input.profile) ? [] : ["snapshotHash"]),
+            "name",
+            "type",
+            "usage",
+            "cursor",
+          ]);
+          if (
+            value.type !== undefined &&
+            !["video", "audio", "image", "font", "lottie"].includes(
+              String(value.type),
+            )
+          )
+            throw new Error("Unknown asset type.");
+          if (
+            value.usage !== undefined &&
+            !["all", "used", "unused"].includes(String(value.usage))
+          )
+            throw new Error("Unknown asset usage filter.");
+          return {
+            kind: "observation",
+            pinned: true,
+            value: await ports.listAssets!(
+              {
+                snapshotHash: readerSnapshotHash(value.snapshotHash),
+                ...(value.name === undefined
+                  ? {}
+                  : { name: text(value.name, "name", 0, 128) }),
+                ...(value.type === undefined
+                  ? {}
+                  : { type: value.type as AssetQuery["type"] }),
+                ...(value.usage === undefined
+                  ? {}
+                  : { usage: value.usage as AssetQuery["usage"] }),
+                ...(value.cursor === undefined
+                  ? {}
+                  : { cursor: text(value.cursor, "cursor", 1, 160) }),
+              },
+              signal,
+            ),
+          };
+        },
+      },
+      {
+        ...toolMetadata("read_caption_cues"),
+        parameters: object(
+          {
+            ...(usesResolvedEditSchema(input.profile)
+              ? {}
+              : { snapshotHash: string }),
+            sourceItemId: { type: "string", minLength: 1, maxLength: 191 },
+            evidenceId: { type: "string", minLength: 1, maxLength: 191 },
+            sourceRange: sourceRangeParameters,
+            cursor: { type: "string", maxLength: 160 },
+          },
+          usesEfficientReaders(input.profile)
+            ? ["sourceItemId", "evidenceId"]
+            : ["snapshotHash", "sourceItemId", "evidenceId"],
+        ),
+        execute: async (args, signal) => {
+          const value = record(args, [
+            ...(usesResolvedEditSchema(input.profile) ? [] : ["snapshotHash"]),
+            "sourceItemId",
+            "evidenceId",
+            "sourceRange",
+            "cursor",
+          ]);
+          return {
+            kind: "observation",
+            pinned: true,
+            value: await ports.readCaptionCues!(
+              {
+                snapshotHash: readerSnapshotHash(value.snapshotHash),
+                sourceItemId: text(value.sourceItemId, "sourceItemId", 1, 191),
+                evidenceId: text(value.evidenceId, "evidenceId", 1, 191),
+                ...(value.sourceRange === undefined
+                  ? {}
+                  : { sourceRange: sourceRange(value.sourceRange) }),
+                ...(value.cursor === undefined
+                  ? {}
+                  : { cursor: text(value.cursor, "cursor", 1, 160) }),
+              },
+              signal,
+            ),
+          };
+        },
+      },
+    );
+  }
   tools.push(
     {
       ...toolMetadata("propose_edit"),
-      parameters: input.proposalSchema,
+      parameters: usesResolvedEditSchema(input.profile)
+        ? editingOnlyProposalSchema(input.proposalSchema)
+        : input.proposalSchema,
       execute: async (args, signal) => {
+        if (usesResolvedEditSchema(input.profile)) assertEditingProposal(args);
         if (!completion)
           return {
             kind: "terminal",

@@ -7,6 +7,7 @@ import type {
   LoopCompactionOptions,
   LoopSnapshot,
   ModelReply,
+  LoopOutputBudgetOverrun,
 } from "./types.js";
 
 /** Suggested profile; hosts must subtract any additional wrapper/history overhead. */
@@ -49,6 +50,16 @@ export class LoopRecoveryRequiredError extends Error {
   ) {
     super(`Durable loop requires host reconciliation: ${reason}.`);
     this.name = "LoopRecoveryRequiredError";
+  }
+}
+
+export class LoopProviderOutputBudgetError extends Error {
+  readonly code = "LOOP_PROVIDER_OUTPUT_BUDGET";
+  constructor(public readonly overrun: Readonly<LoopOutputBudgetOverrun>) {
+    super(
+      `Provider output token budget exceeded: returned ${overrun.returnedOutputTokens} tokens for an allowance of ${overrun.requestedMaxOutputTokens}. Returned tools and answers are blocked.`,
+    );
+    this.name = "LoopProviderOutputBudgetError";
   }
 }
 
@@ -137,7 +148,13 @@ export function validateMessages(
   }
 }
 export function validateReply(value: unknown): asserts value is ModelReply {
-  const data = object(value, ["text", "calls", "providerOutput", "usage"]);
+  const data = object(value, [
+    "text",
+    "calls",
+    "providerOutput",
+    "usage",
+    "outputTokenLimit",
+  ]);
   if (
     typeof data.text !== "string" ||
     data.text.length > 300000 ||
@@ -153,6 +170,8 @@ export function validateReply(value: unknown): asserts value is ModelReply {
       throw new Error("Tool input exceeds context budget.");
   }
   if (data.usage !== undefined) usage(data.usage);
+  if (data.outputTokenLimit !== undefined)
+    integer(data.outputTokenLimit, 1, 128000);
   if (data.providerOutput !== undefined && !Array.isArray(data.providerOutput))
     throw new Error("Invalid provider output.");
 }
@@ -198,10 +217,16 @@ export function validateSnapshot(
     "compaction",
     "checkpointEncoding",
     "checkpointCapacity",
+    "outputBudgetPolicy",
   ]);
   text(data.runId, 256);
   text(data.snapshotHash, 1024);
   if (data.modelIdentity !== undefined) text(data.modelIdentity, 2048);
+  if (
+    data.outputBudgetPolicy !== undefined &&
+    data.outputBudgetPolicy !== "preserve-overrun-v1"
+  )
+    throw new Error("Invalid output budget policy.");
   validateMessages(data.messages);
   const budgets = object(data.budgets, [
     "maxSteps",
@@ -295,6 +320,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
       "usedToolCallIds",
       "pinnedToolCallIds",
       "pendingTurn",
+      "outputBudgetOverrun",
       "result",
     ]);
     validateSnapshot(wire.snapshot);
@@ -344,6 +370,7 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     "usedToolCallIds",
     "pinnedToolCallIds",
     "pendingTurn",
+    "outputBudgetOverrun",
     "result",
   ]);
   if (data.version !== 1)
@@ -365,7 +392,10 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
   integer(data.toolCalls, 0, snapshot.budgets.maxToolCalls);
   integer(data.observationCharacters, 0, 240000);
   integer(data.sequence, 0, Number.MAX_SAFE_INTEGER);
-  if (checkpoint.usage.outputTokens > snapshot.budgets.maxOutputTokens)
+  if (
+    checkpoint.usage.outputTokens > snapshot.budgets.maxOutputTokens &&
+    !checkpoint.outputBudgetOverrun
+  )
     throw new Error("Model output budget exceeded.");
   if (
     !checkpoint.usageKnown &&
@@ -426,6 +456,10 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     object(checkpoint.pendingTurn, ["reply", "nextToolIndex"]);
     const { reply, nextToolIndex } = checkpoint.pendingTurn;
     validateReply(reply);
+    if (!snapshot.outputBudgetPolicy && reply.outputTokenLimit !== undefined)
+      throw new Error(
+        "Legacy checkpoint cannot contain output limit metadata.",
+      );
     integer(nextToolIndex, 0, reply.calls.length);
     const allIds = reply.calls.map((call) => call.id);
     if (new Set(allIds).size !== allIds.length)
@@ -471,6 +505,55 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
         reply.calls[index].id
       )
         throw new Error("Observation does not match its returned tool call.");
+  }
+  if (checkpoint.outputBudgetOverrun !== undefined) {
+    const overrun = object(checkpoint.outputBudgetOverrun, [
+      "kind",
+      "modelCall",
+      "priorOutputTokens",
+      "requestedMaxOutputTokens",
+      "returnedOutputTokens",
+    ]);
+    const reply = checkpoint.pendingTurn?.reply;
+    integer(overrun.modelCall, 1, snapshot.budgets.maxSteps);
+    integer(overrun.priorOutputTokens, 0, snapshot.budgets.maxOutputTokens - 1);
+    const remaining =
+      snapshot.budgets.maxOutputTokens - Number(overrun.priorOutputTokens);
+    integer(overrun.requestedMaxOutputTokens, 1, remaining);
+    integer(overrun.returnedOutputTokens, 0, Number.MAX_SAFE_INTEGER);
+    if (
+      snapshot.outputBudgetPolicy !== "preserve-overrun-v1" ||
+      checkpoint.phase !== "model-returned" ||
+      checkpoint.pendingTurn?.nextToolIndex !== 0 ||
+      !reply?.usage ||
+      overrun.kind !== "provider-output-budget" ||
+      overrun.modelCall !== checkpoint.modelCalls ||
+      overrun.returnedOutputTokens !== reply.usage.outputTokens ||
+      checkpoint.usage.inputTokens < reply.usage.inputTokens ||
+      overrun.requestedMaxOutputTokens !==
+        Math.min(remaining, reply.outputTokenLimit ?? remaining) ||
+      checkpoint.usage.outputTokens !==
+        Number(overrun.priorOutputTokens) +
+          Number(overrun.returnedOutputTokens) ||
+      Number(overrun.returnedOutputTokens) <=
+        Number(overrun.requestedMaxOutputTokens)
+    )
+      throw new Error("Invalid provider output budget overrun receipt.");
+  } else if (
+    snapshot.outputBudgetPolicy &&
+    checkpoint.pendingTurn?.reply.usage
+  ) {
+    const reply = checkpoint.pendingTurn.reply;
+    const prior = checkpoint.usage.outputTokens - reply.usage!.outputTokens;
+    if (
+      prior < 0 ||
+      reply.usage!.outputTokens >
+        Math.min(
+          snapshot.budgets.maxOutputTokens - prior,
+          reply.outputTokenLimit ?? snapshot.budgets.maxOutputTokens - prior,
+        )
+    )
+      throw new Error("Provider output overrun is missing its receipt.");
   }
   if (
     checkpoint.phase === "completed"

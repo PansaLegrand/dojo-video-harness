@@ -1,3 +1,4 @@
+import { assertNoUntimedWordGap } from "./speech-word-range";
 import { assertLinkedGroupBindings } from "./composition";
 import { z } from "zod/v3";
 import {
@@ -51,6 +52,20 @@ export const videoTranscriptEvidenceSchema = z
     language: z.string().max(64).optional(),
     text: z.string().max(500_000),
     words: z.array(transcriptWordSchema).max(50_000),
+    timingOmissions: z
+      .array(
+        z
+          .object({
+            tokenIndex: z.number().int().nonnegative(),
+            text: z.string().max(1000),
+            startMs: z.number().finite().nonnegative(),
+            endMs: z.number().finite().nonnegative(),
+            reason: z.literal("nonpositive-duration"),
+          })
+          .strict(),
+      )
+      .max(50_000)
+      .optional(),
   })
   .strict();
 export const videoSourceBindingSchema = z
@@ -306,6 +321,7 @@ export function parseVideoProjectDocument(
       const indices = (binding.wordIds ?? []).map((wordId) =>
         evidence.words.findIndex((word) => word.id === wordId),
       );
+      assertNoUntimedWordGap(evidence, binding.wordIds ?? []);
       if (indices.some((index, at) => at > 0 && index !== indices[at - 1]! + 1))
         throw new Error(
           "A speech anchor must use contiguous source words in order.",

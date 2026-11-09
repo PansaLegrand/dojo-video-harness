@@ -34,3 +34,37 @@ validated checkpoint tool messages. Supply it as initialCompletionState (with
 snapshotHash) when creating a new session. Pure prepare_caption_pair is optional
 and host-owned; its translations bind exact genuine cue IDs/timing without a new
 provider call. A checklist proves declared outcomes, not universal task semantics.
+
+
+Kit 0.1.3 adds local-editor-v3/commercial-editing-v4. The host supplies
+`listAssets` and `readCaptionCues` ports for snapshot-bound, byte-bounded readers.
+Asset queries discover unused imported assets with stable IDs and registration
+status. Cue queries preserve complete host-derived cue and source-word identity.
+Both readers return explicit coverage and cursor metadata. Their observations
+are pinned and may replay through a host-declared safe snapshot executor.
+
+The new profiles also support `asset_sequence` requirements for exact grouped
+media placements, `speech_callout` requirements for genuine quoted words, and an
+optional sourceRange on cue reading/caption preparation. Source-range projection
+belongs to the host kernel and returns source trim commands alongside captions.
+Earlier profiles retain their prior schema, inventory version, skills and prompts.
+
+Kit 0.1.4 adds local-editor-v4/commercial-editing-v5. These profiles prioritize
+authoritative supplied metadata and targeted discovery of the requested sources.
+Hosts pass profile to composeToolAgentPrompt to select that guidance. Reader
+snapshotHash is optional at the model boundary and resolves to the host's frozen
+snapshot, while a supplied mismatch fails. Underlying reader ports receive the
+same explicit snapshot binding.
+
+Kit 0.1.3 built-in guidance is retained for its older profiles, with regression
+digests covering inventory, skill text and prompt bytes. Current canonical skills
+continue in skills/*.md. Host-owned new-profile execution defaults can use sixteen
+model steps while retaining existing tool/output allowances and accepted-run budgets.
+
+Kit 0.1.5 adds local-editor-v5/commercial-editing-v6. Both editing tools advertise
+proposal-only, nonempty command schemas. review_edit rebases all embedded local
+references under its edit property; propose_edit retains valid root references.
+Requirements remain frozen while command batches remain repairable. Model reader
+schemas omit snapshotHash entirely and the host binds it internally. Initial
+caption context is an overview; exact requested-range cues are read before translation.
+Earlier 0.1.4 guidance/schemas remain frozen for its profiles.

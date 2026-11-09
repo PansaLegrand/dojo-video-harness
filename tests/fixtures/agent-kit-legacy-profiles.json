@@ -1,0 +1,10 @@
+{
+  "sourceCommit": "a9e34a1f328fb44b8efb7b4392a15dbfe8dbd4d2",
+  "kitVersion": "0.1.2",
+  "hashes": {
+    "local-editor-v1": "ab0af470b33c0ea50f76c3e694579d46c81d8427f73aeeea46021bf3ae7e41d8",
+    "local-editor-v2": "8370ca26f23f1972a41e93f43b0ba8d0c85fac7e9ef30b05ed13d943b29b38dc",
+    "commercial-editing-v2": "e5e991d0e4b0300a571b1ef570802f95e661e08dfb8d47c7004cc235127dae3c",
+    "commercial-editing-v3": "6900097e5fe6bc67cd0b87ae44e7d895b655d4cd047b08f990a77dadb2b270fa"
+  }
+}

@@ -13,6 +13,29 @@ explicit output budget, or in every durable run, unknown usage reserves the enti
 remaining allowance. It never retries provider requests or switches models.
 Build with `npm run build --workspace @dojo-video/agent-loop`.
 
+## Preserved provider overruns (0.1.3)
+
+New snapshots freeze `outputBudgetPolicy: "preserve-overrun-v1"`. The loop passes
+that optional policy in model limits. An adapter may then return
+`outputTokenLimit`, the exact maximum sent to its provider, including a lower
+adapter cap. Without this optional value the loop uses its requested remaining
+allowance. Adapters must omit this field for older policy/loop callers.
+
+If reported output exceeds either allowance, a durable loop saves the full reply,
+opaque provider output and exact cumulative usage before stopping. An additive
+`outputBudgetOverrun` receipt binds the model call, prior usage, allowed maximum
+and returned usage. The original budget stays unchanged. The only over-budget
+checkpoint accepted is this validated, unexecuted model-returned state.
+`LoopProviderOutputBudgetError` has code `LOOP_PROVIDER_OUTPUT_BUDGET` and the
+receipt in `overrun`. Returned tools and answers never execute; checkpoint replay
+raises the same error without a provider request. A crash after durable save is
+equally replayable. Unknown usage retains its existing full-budget reservation.
+
+Existing snapshots without this policy retain their binding and prior execution
+behavior. Commercial consumers retain their earlier immutable loop archives for
+accepted profiles. This recovery boundary does not increase the output budget
+or retry the failed provider call.
+
 ## Optional durable checkpoints (0.1.1)
 
 Existing calls without checkpoints or compaction keep the original interface and

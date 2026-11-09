@@ -5,6 +5,8 @@ import {
   type BuiltinSkillName,
   type Skill,
 } from "./catalog.js";
+import { legacySkillsV14 } from "./skills.legacy-v14.generated.js";
+import { legacySkillsV13 } from "./skills.legacy-v13.generated.js";
 import { generatedSkills } from "./skills.generated.js";
 export const builtInSkills = (): Skill[] =>
   generatedSkills.map((skill) => ({ ...skill }));
@@ -38,7 +40,29 @@ export function selectSkills(
   const tools = new Set(toolNames),
     allowed = profileSkills[profile];
   if (allowed === undefined) throw new Error("Unknown agent profile.");
-  return skills.flatMap((skill) => {
+  return skills.flatMap((inputSkill) => {
+    const currentBuiltin = generatedSkills.find(
+      (skill) => skill.name === inputSkill.name,
+    );
+    const frozenSkills =
+      profile === "local-editor-v3" || profile === "commercial-editing-v4"
+        ? legacySkillsV13
+        : profile === "local-editor-v4" || profile === "commercial-editing-v5"
+          ? legacySkillsV14
+          : undefined;
+    const frozenBuiltin = frozenSkills?.find(
+      (skill) => skill.name === inputSkill.name,
+    );
+    const frozenProfile = frozenSkills !== undefined;
+    const skill =
+      frozenProfile &&
+      frozenBuiltin &&
+      currentBuiltin &&
+      inputSkill.instructions.replace(/\r\n?/g, "\n") ===
+        currentBuiltin.instructions &&
+      inputSkill.description.trimEnd() === currentBuiltin.description
+        ? frozenBuiltin
+        : inputSkill;
     if (
       !/^[a-z0-9][a-z0-9-]{0,63}$/.test(skill.name) ||
       new TextEncoder().encode(skill.instructions).length > 65536
