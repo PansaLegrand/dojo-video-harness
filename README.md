@@ -10,7 +10,7 @@ or through chat, see changes directly, and export through [Dojo Video Engine](ht
 The agent is intentionally understandable: a model adapter, typed function calls,
 a tool registry, Markdown skills, bounded execution, and explicit user decisions.
 The difficult video-specific rules live in the tested document and command kernel.
-The shared loop **0.1.2** supports durable checkpoints and deterministic context
+The shared loop **0.1.3** supports durable checkpoints and deterministic context
 pruning; the local host owns which interrupted boundaries can safely resume.
 
 ![The local editor with a structured pending question](docs/assets/editor-question.png)
@@ -246,8 +246,8 @@ embeddable SDK distributions are a subsequent release step.
 
 ## Verification
 
-The current schema-repair update uses loop 0.1.2/kit 0.1.5. The full check passes
-576 tests, TypeScript, kit generation/integrity, 85 managed UI hashes and production
+The current schema/recovery update uses loop 0.1.3/kit 0.1.5. The full check passes
+598 tests, TypeScript, kit generation/integrity, 85 managed UI hashes and production
 build. All 66 actual browser checks pass under local-editor-v5, including the
 source-overview → cue-reader → dependent-edit path with one ASR and five model
 fixture calls. New local-editor-v5 runs default to sixteen model steps with existing
@@ -259,6 +259,13 @@ edits. Caption context initially supplies source identity and counts; the agent
 reads exact requested-range cues before translation. The host supplies reader
 snapshot hashes. Earlier profiles retain their budgets and exact
 inventory/skill/prompt digests.
+
+New loop snapshots preserve a returned paid reply and exact reported usage when
+a provider exceeds the requested output allowance, then stop before its tools or
+answer execute. Disk replay returns the same explicit error without a provider
+request. The frozen budget remains unchanged. Timestamp validation also rejects
+missing/nonfinite speech timing before constructing immutable source evidence;
+legacy transcript normalization remains unchanged unless explicitly opted in.
 
 Readers can page beyond 500 cues; caption-pair preparation remains bounded to
 500 cues per operation. Larger assembly and general continuation remain roadmap

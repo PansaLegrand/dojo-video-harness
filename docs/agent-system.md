@@ -1,6 +1,6 @@
 # Editor agent ownership and extensions
 
-The shared model/tool loop is `packages/agent-loop` **0.1.2**. Portable editor definitions
+The shared model/tool loop is `packages/agent-loop` **0.1.3**. Portable editor definitions
 are `packages/agent-kit` **0.1.5**: tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
@@ -93,6 +93,15 @@ replacement transcription. A clarification child inherits its owned speech
 receipts but starts a new model checkpoint and budget. Missing provider usage
 reserves the remaining output budget, so it cannot authorize another model turn.
 
+Loop0.1.3 freezes preserve-overrun-v1 in new snapshots and passes it to model
+adapters. They may report outputTokenLimit, the exact transmitted provider limit.
+A returned overrun is saved with full opaque output, exact aggregate usage and a
+strict outputBudgetOverrun receipt before LoopProviderOutputBudgetError stops
+tools, answers and further model calls. Disk replay returns that same error with
+zero provider requests; the original budget is unchanged. A snapshot without the
+policy keeps its previous binding and execution behavior. Commercial accepted
+runs retain their earlier immutable loop archives.
+
 Only older project-inventory and skill-read groups are eligible for deterministic
 context pruning. Original instructions, source words, prepared commands, host
 plans and errors remain protected. Pruning does not generate an LLM summary.
@@ -145,6 +154,10 @@ ASR receipts can retain nonpositive-duration tokens in `timingOmissions` while
 keeping full transcript text, raw hash and original token-index word IDs. New
 reader profiles report in-window omissions with bounded diagnostics. A fully
 read cue list may have cuesComplete:true while overall coverage remains incomplete.
+Immutable evidence opts into strict speech-timing validation: missing/nonfinite
+speech-word times and speech utterances without word lists fail before evidence
+construction, while their provider receipts remain retained. Legacy transcript
+normalization keeps its default behavior; noise/spacing/punctuation stay ignored.
 Caption-pair completion requires genuine timing coverage over its effective source
 window. Narrowing to an explicitly requested range can exclude a cropped untimed
 boundary token without inventing a timestamp.
