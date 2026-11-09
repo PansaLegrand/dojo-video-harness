@@ -14,6 +14,7 @@ import {
 } from "../../../packages/agent-kit/src/index";
 import {
   parseLoopCheckpoint,
+  canResumeLoopCheckpoint,
   encodeLoopCheckpoint,
   type CompactLoopCheckpoint,
   type LoopCheckpoint,
@@ -31,12 +32,70 @@ export type StoredEditStageState = {
   plan: EditStagePlan;
   artifacts: Record<string, { ref: EditArtifactRef; value: unknown }>;
   checkpoints: Record<string, LoopCheckpoint | CompactLoopCheckpoint>;
+  savedCandidateRef?: EditArtifactRef;
+  lastReviews?: Record<string, EditArtifactRef>;
+  pendingReplies?: Record<string, { attemptId: string; ref: EditArtifactRef }>;
 };
+export function localEditStageRecovery(state: StoredEditStageState): {
+  safe: boolean;
+  message?: string;
+} {
+  try {
+    const plan = parseEditStagePlan(state.plan);
+    if (plan.status === "cancelled" || plan.status === "failed")
+      return {
+        safe: false,
+        message:
+          "The original stage plan is stopped or expired; saved outputs remain retained.",
+      };
+    if (state.savedCandidateRef) return { safe: true };
+    if (
+      Date.now() >= Date.parse(plan.limits.expiresAt) ||
+      !plan.usage.usageKnown
+    )
+      return {
+        safe: false,
+        message:
+          "The original allowance expired or provider usage is unknown; saved results remain available without a replacement request.",
+      };
+    const active = plan.stages.find(
+      (stage) => stage.status === "running" || stage.status === "waiting",
+    );
+    if (!active?.attemptId || !state.checkpoints[active.attemptId])
+      return { safe: true };
+    const checkpoint = parseLoopCheckpoint(state.checkpoints[active.attemptId]);
+    if (checkpoint.outputBudgetOverrun || !checkpoint.usageKnown)
+      return {
+        safe: false,
+        message:
+          "Provider overrun or unknown usage requires reconciliation; no replacement request was submitted.",
+      };
+    return canResumeLoopCheckpoint(checkpoint, {
+      replaySafeToolNames: checkpoint.snapshot.tools
+        .filter((tool) => tool.replaySafe)
+        .map((tool) => tool.name),
+      answerReplaySafe: checkpoint.snapshot.answerReplaySafe,
+    })
+      ? { safe: true }
+      : {
+          safe: false,
+          message:
+            "The saved provider or unsafe tool outcome is unknown; no replacement work was submitted.",
+        };
+  } catch {
+    return {
+      safe: false,
+      message: "The saved editing stage records failed their integrity checks.",
+    };
+  }
+}
 export async function localEditStageBinding(
   project: Project,
   run: StoredRun,
   modelIdentity: string,
 ): Promise<EditStageBinding> {
+  const basis = run.request.document as Project["document"],
+    sourceIds = new Set(Object.keys(basis.sources));
   return {
     projectId: project.id,
     runId: run.id,
@@ -45,27 +104,69 @@ export async function localEditStageBinding(
     scopeHash: await completionHash(run.scope ?? { kind: "project" }),
     sourceHash: await completionHash({
       sources: project.sources
-        .map(
-          ({
-            sourceId,
-            assetId,
-            fingerprint,
-            scheme,
-            byteLength,
-            mimeType,
-          }) => ({
-            sourceId,
-            assetId,
-            fingerprint,
-            scheme,
-            byteLength,
-            mimeType,
-          }),
-        )
+        .filter((source) => sourceIds.has(source.sourceId))
+        .map(({ sourceId, fingerprint, scheme, byteLength, mimeType }) => ({
+          sourceId,
+          fingerprint,
+          scheme,
+          byteLength,
+          mimeType,
+        }))
         .sort((a, b) =>
           a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : 0,
         ),
-      sourceIdentities: project.document.sources,
+      sourceIdentities: Object.fromEntries(
+        [...sourceIds]
+          .sort()
+          .map((id) => [id, project.document.sources[id] ?? null]),
+      ),
+      fps: project.document.format.fps,
+      clocks: basis.items
+        .filter((item) => ["video", "audio"].includes(item.node.type))
+        .map((original) => {
+          const item = project.document.items.find(
+            (item) => item.id === original.id,
+          );
+          return item
+            ? {
+                id: item.id,
+                type: item.node.type,
+                assetId: item.node.assetId,
+                from: item.node.from ?? 0,
+                duration: item.node.duration,
+                videoStartTime: item.node.videoStartTime ?? 0,
+                audioStartTime: item.node.audioStartTime ?? 0,
+                playbackRate: item.node.playbackRate ?? 1,
+                loop: item.node.loop ?? false,
+              }
+            : { id: original.id, missing: true };
+        }),
+      captionInputs: basis.items
+        .filter((item) => item.caption)
+        .map((original) => {
+          const current = project.document.items.find(
+            (item) => item.id === original.id,
+          );
+          return current?.caption
+            ? {
+                id: current.id,
+                from: current.node.from ?? 0,
+                duration: current.node.duration,
+                sourceItemId: current.caption.sourceItemId,
+                pairedItemId: current.caption.pairedItemId,
+                language: current.caption.language,
+                role: current.caption.role,
+                cues: current.caption.cues.map(
+                  ({ id, text, startMs, endMs }) => ({
+                    id,
+                    text,
+                    startMs,
+                    endMs,
+                  }),
+                ),
+              }
+            : { id: original.id, missing: true };
+        }),
       speechSources: run.speechContinuation?.sources ?? [],
       speechEvidence: run.speechContinuation?.evidenceCommands ?? [],
     }),
@@ -133,6 +234,52 @@ async function readStoredArtifact(
     );
   return structuredClone(artifact.value);
 }
+export async function putLocalEditStageArtifact(
+  saved: StoredEditStageState,
+  kind: EditArtifactKind,
+  value: unknown,
+): Promise<EditArtifactRef> {
+  const json = completionCanonical(value),
+    sizeBytes = new TextEncoder().encode(json).length;
+  if (sizeBytes > 4 * 1024 * 1024)
+    throw new EditStageError(
+      "STAGE_INVALID",
+      "The editing artifact exceeds its byte budget.",
+    );
+  const sha256 = await completionHash(value),
+    identity = await completionHash({
+      kind,
+      sha256,
+      bindingHash: saved.plan.bindingHash,
+    });
+  const ref = parseEditArtifactRef({
+    version: 1,
+    id: `artifact:${identity.slice(7)}`,
+    runId: saved.plan.binding.runId,
+    bindingHash: saved.plan.bindingHash,
+    kind,
+    sha256,
+    sizeBytes,
+  });
+  if (saved.artifacts[ref.id]) {
+    await readStoredArtifact(saved, ref);
+    return ref;
+  }
+  if (
+    Object.keys(saved.artifacts).length >= 128 ||
+    Object.values(saved.artifacts).reduce(
+      (n, a) => n + a.ref.sizeBytes,
+      sizeBytes,
+    ) >
+      8 * 1024 * 1024
+  )
+    throw new EditStageError(
+      "STAGE_INVALID",
+      "The private editing-artifact storage budget is exhausted.",
+    );
+  saved.artifacts[ref.id] = { ref, value: JSON.parse(json) };
+  return ref;
+}
 export function createLocalEditStagePort(input: {
   store: ProjectStore;
   projectId: string;
@@ -193,6 +340,54 @@ export function createLocalEditStagePort(input: {
         else await assertEditStageBinding(plan, input.binding);
         if (event.type === "complete")
           for (const ref of event.outputs) await readStoredArtifact(saved, ref);
+        if (
+          (event.type === "claim" || event.type === "continue") &&
+          event.inputRef
+        )
+          await readStoredArtifact(saved, event.inputRef);
+        if (event.type === "continue") {
+          const rawCheckpoint = saved.checkpoints[event.previousAttemptId];
+          if (!rawCheckpoint)
+            throw new EditStageError(
+              "STAGE_CONFLICT",
+              "Continuation requires its saved prior checkpoint.",
+            );
+          const checkpoint = parseLoopCheckpoint(rawCheckpoint);
+          if (
+            (await completionHash(checkpoint)) !== event.priorCheckpointHash ||
+            !checkpoint.usageKnown ||
+            checkpoint.outputBudgetOverrun ||
+            checkpoint.hostWait
+          )
+            throw new EditStageError(
+              "STAGE_UNKNOWN_OUTCOME",
+              "An unknown/overrun host or provider outcome cannot authorize continuation.",
+            );
+          if (event.reason === "stage_budget") {
+            if (
+              checkpoint.phase !== "tool-observations" ||
+              checkpoint.pendingTurn ||
+              checkpoint.modelCalls < checkpoint.snapshot.budgets.maxSteps
+            )
+              throw new EditStageError(
+                "STAGE_CONFLICT",
+                "Continue only after all tools finished at the prior stage-step boundary.",
+              );
+          } else {
+            const result = checkpoint.result as
+              | { outcome?: unknown }
+              | undefined;
+            if (
+              checkpoint.phase !== "completed" ||
+              !["answer", "needs_input"].includes(String(result?.outcome))
+            )
+              throw new EditStageError(
+                "STAGE_CONFLICT",
+                "A reply continues only its completed answer/question checkpoint.",
+              );
+            await readStoredArtifact(saved, event.replyRef!);
+          }
+        }
         const result = await transitionEditStagePlan(plan, event, {
           expectedRevision,
           now: now(),
@@ -204,46 +399,7 @@ export function createLocalEditStagePort(input: {
       input.store.transaction(input.projectId, async (project) => {
         const saved = state(project, input.runId);
         await assertEditStageBinding(saved.plan, input.binding);
-        const json = completionCanonical(value),
-          sizeBytes = new TextEncoder().encode(json).length;
-        if (sizeBytes > 4 * 1024 * 1024)
-          throw new EditStageError(
-            "STAGE_INVALID",
-            "The editing artifact exceeds its byte budget.",
-          );
-        const sha256 = await completionHash(value),
-          identity = await completionHash({
-            kind,
-            sha256,
-            bindingHash: saved.plan.bindingHash,
-          });
-        const ref = parseEditArtifactRef({
-          version: 1,
-          id: `artifact:${identity.slice(7)}`,
-          runId: input.runId,
-          bindingHash: saved.plan.bindingHash,
-          kind,
-          sha256,
-          sizeBytes,
-        });
-        if (saved.artifacts[ref.id]) {
-          await readStoredArtifact(saved, ref);
-          return ref;
-        }
-        if (
-          Object.keys(saved.artifacts).length >= 128 ||
-          Object.values(saved.artifacts).reduce(
-            (n, a) => n + a.ref.sizeBytes,
-            sizeBytes,
-          ) >
-            8 * 1024 * 1024
-        )
-          throw new EditStageError(
-            "STAGE_INVALID",
-            "The private editing-artifact storage budget is exhausted.",
-          );
-        saved.artifacts[ref.id] = { ref, value: JSON.parse(json) };
-        return ref;
+        return putLocalEditStageArtifact(saved, kind, value);
       }),
     readArtifact: async (ref) => {
       const project = await input.store.read(input.projectId),
@@ -279,6 +435,26 @@ export function createLocalStageCheckpointPort(input: {
         const attempt = saved.plan.attempts.find(
           (a) => a.id === input.attemptId && a.stageId === input.stageId,
         );
+        if (checkpoint.phase === "model-pending") {
+          if (Date.now() >= Date.parse(saved.plan.limits.expiresAt))
+            throw new EditStageError(
+              "STAGE_BUDGET",
+              "The original funded stage execution allowance expired before submission.",
+            );
+          const stage = saved.plan.stages.find(
+            (stage) => stage.id === input.stageId,
+          );
+          if (
+            !stage ||
+            !["running", "waiting"].includes(stage.status) ||
+            saved.savedCandidateRef
+          )
+            throw new EditStageError(
+              "STAGE_CONFLICT",
+              "The saved stage output must be reused before another model request.",
+            );
+          await current(project, input, saved.plan);
+        }
         if (
           !attempt ||
           attempt.checkpointId !== checkpoint.snapshot.runId ||

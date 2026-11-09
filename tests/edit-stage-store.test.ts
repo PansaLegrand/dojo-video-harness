@@ -19,6 +19,7 @@ import {
   runToolLoop,
   type LoopCheckpointPort,
 } from "../packages/agent-loop/src/index";
+import { hashVideoProjectDocument } from "../packages/core/src/lib/video-project/document";
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(
@@ -32,6 +33,19 @@ async function fixture() {
   const store = new ProjectStore(directory);
   await store.init();
   const project = await store.create();
+  project.document.assets.original = {
+    id: "original",
+    name: "Original input",
+    type: "video",
+    source: "local",
+    durationSeconds: 6,
+  };
+  project.document.sources.original = {
+    assetId: "original",
+    revision: "original-revision",
+  };
+  project.documentHash = await hashVideoProjectDocument(project.document);
+  await store.save(project);
   const run: StoredRun = {
     id: randomUUID(),
     operationId: "stage-run",
@@ -250,7 +264,7 @@ it("rejects changed sources, run ownership and tampered artifact hashes while re
   const f = await fixture(),
     ref = await evidence(f);
   await f.store.transaction(f.project.id, (p) => {
-    p.document.sources.changed = { assetId: "changed", revision: "new-source" };
+    p.document.sources.original.revision = "new-source";
   });
   await expect(
     f.port.transition(claim("captions", "caption-attempt"), 2),
@@ -382,4 +396,106 @@ it("atomically checkpoints paid usage and replays a saved model return without a
     toolCalls: 1,
     outputTokens: 12,
   });
+});
+it("binds original content and caption inputs while allowing cloud registration, generated outputs and appearance edits", async () => {
+  const f = await fixture(),
+    project = await f.store.read(f.project.id),
+    run = project.runs[0];
+  project.sources.push({
+    sourceId: "original",
+    assetId: null,
+    fingerprint: "a".repeat(64),
+    scheme: "sha256",
+    byteLength: 100,
+    mimeType: "video/mp4",
+    fileName: "input.mp4",
+    url: null,
+    status: "local",
+  });
+  project.document.items.push({
+    id: "display-input",
+    name: "Manual original",
+    trackId: "visual",
+    node: {
+      id: "display-input",
+      type: "text",
+      from: 0,
+      duration: 180,
+      text: "Display",
+      style: { color: "#ffffff" },
+    },
+    caption: {
+      mode: "sentence",
+      highlightColor: "#ffff00",
+      direction: "ltr",
+      cues: [
+        {
+          id: "manual-1",
+          text: "Current manual input",
+          startMs: 0,
+          endMs: 1000,
+        },
+      ],
+      language: "en",
+      role: "original",
+      sourceItemId: "original-video",
+      pairedItemId: "translation",
+    },
+  });
+  run.request.document = structuredClone(project.document);
+  const before = await localEditStageBinding(
+    project,
+    run,
+    f.binding.modelIdentity,
+  );
+  project.sources[0].assetId = "backend-upload-123";
+  project.sources[0].status = "available";
+  project.sources.push({
+    ...project.sources[0],
+    sourceId: "generated-output",
+    fingerprint: "b".repeat(64),
+  });
+  project.document.assets.generated = {
+    id: "generated",
+    name: "New output",
+    type: "image",
+    source: "local",
+  };
+  project.document.sources.generated = {
+    assetId: "generated",
+    revision: "new-output",
+  };
+  project.document.items[0].node.style = { color: "#ff0000" };
+  expect(
+    (await localEditStageBinding(project, run, f.binding.modelIdentity))
+      .sourceHash,
+  ).toBe(before.sourceHash);
+  project.document.items[0].caption!.cues[0].text =
+    "Changed original display input";
+  expect(
+    (await localEditStageBinding(project, run, f.binding.modelIdentity))
+      .sourceHash,
+  ).not.toBe(before.sourceHash);
+  project.document.items[0].caption!.cues[0].text = "Current manual input";
+  project.sources[0].fingerprint = "c".repeat(64);
+  expect(
+    (await localEditStageBinding(project, run, f.binding.modelIdentity))
+      .sourceHash,
+  ).not.toBe(before.sourceHash);
+});
+it("preserves exact fractional canonical artifact bytes through disk reload", async () => {
+  const f = await fixture(),
+    value = {
+      sourceRange: { startMs: 0.30000000000000004, endMs: 1000.1234567890123 },
+      playbackRate: 1.2345678901234567,
+    };
+  const ref = await f.port.putArtifact("evidence", value);
+  const reopened = createLocalEditStagePort({
+    ...f.input,
+    store: new ProjectStore(f.store.directory),
+  });
+  expect(await reopened.readArtifact(ref)).toEqual(value);
+  expect(JSON.stringify(await reopened.readArtifact(ref))).toContain(
+    "0.30000000000000004",
+  );
 });

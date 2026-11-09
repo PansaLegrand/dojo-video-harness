@@ -5,6 +5,7 @@ import { captionTimingDiagnostics } from "./caption-source-range";
 
 export type NativeAgentProgress = {
   version: 1;
+  stages?: import("../../../../agent-kit/src/stage-progress").EditStageProgress;
   execution: {
     state:
       | "waiting_for_media"
@@ -156,7 +157,7 @@ export function nativeAgentProgress(
             )
           )
             continue;
-          const key = `${item.id}:${assetId}`,
+          const key = JSON.stringify([item.id, assetId]),
             prior = usages.get(key);
           usages.set(key, {
             itemId: item.id,

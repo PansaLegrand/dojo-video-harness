@@ -38,8 +38,10 @@ import type { ExportReceipt } from "./exports";
 import type { AgentSpeechContinuation } from "./agent-speech";
 import {
   agentCheckpointRecovery,
+  agentPreludeCheckpointRecovery,
   type StoredAgentLoopCheckpoint,
 } from "./agent-loop-checkpoint";
+import { nativeAgentProgress } from "../../../packages/core/src/lib/video-project/agent-progress";
 import {
   captionSegmentationReceiptSchema,
   validateCaptionSegmentationReceipt,
@@ -75,12 +77,16 @@ export type StoredRun = VideoProjectAgentRun & {
   answers?: Record<string, { hash: string; childId: string }>;
   speechContinuation?: AgentSpeechContinuation;
   loopCheckpoint?: StoredAgentLoopCheckpoint;
+  preludeCheckpoints?: StoredAgentLoopCheckpoint[];
+  stageProgress?: import("../../../packages/agent-kit/src/stage-progress").EditStageProgress;
+  stageRecovery?: { canResume: boolean; canReuseSavedResult: boolean };
   agentProfile?:
     | "local-editor-v1"
     | "local-editor-v2"
     | "local-editor-v3"
     | "local-editor-v4"
-    | "local-editor-v5";
+    | "local-editor-v5"
+    | "local-editor-v6";
   completion?: import("../../../packages/agent-kit/src/index").CompletionContract;
 };
 export type Project = {
@@ -95,13 +101,23 @@ export type Project = {
   past: VideoProjectDocument[];
   future: VideoProjectDocument[];
   versions: Record<string, VideoProjectDocument>;
-  receipts: Record<string, { hash: string; snapshot: VideoProjectSnapshot; metadata?: { captionSegmentation: CaptionSegmentationReceipt } }>;
+  receipts: Record<
+    string,
+    {
+      hash: string;
+      snapshot: VideoProjectSnapshot;
+      metadata?: { captionSegmentation: CaptionSegmentationReceipt };
+    }
+  >;
   runs: StoredRun[];
   messages: VideoProjectAgentMessage[];
   exports?: Record<string, ExportReceipt>;
   musicJobs?: Record<string, MusicJob>;
   editingWorkflows?: Record<string, EditingWorkflow>;
-  editStagePlans?: Record<string, import("./edit-stage-store").StoredEditStageState>;
+  editStagePlans?: Record<
+    string,
+    import("./edit-stage-store").StoredEditStageState
+  >;
 };
 export function snapshot(p: Project): VideoProjectSnapshot {
   return {
@@ -276,8 +292,21 @@ export class ProjectStore {
           "REVISION_CONFLICT",
         );
       if (input.captionSegmentation) {
-        try { await validateCaptionSegmentationReceipt(base, input.commands, input.captionSegmentation); }
-        catch (cause) { throw new HttpError(cause instanceof Error ? cause.message : "Prepare the linked caption edit again.", 409, "CAPTION_SEGMENTATION_STALE"); }
+        try {
+          await validateCaptionSegmentationReceipt(
+            base,
+            input.commands,
+            input.captionSegmentation,
+          );
+        } catch (cause) {
+          throw new HttpError(
+            cause instanceof Error
+              ? cause.message
+              : "Prepare the linked caption edit again.",
+            409,
+            "CAPTION_SEGMENTATION_STALE",
+          );
+        }
       }
       const result = rebaseVideoProjectCommands(
         base,
@@ -287,22 +316,67 @@ export class ProjectStore {
       if (!result.ok)
         throw new HttpError(result.reason, 409, "REVISION_CONFLICT");
       if (input.captionSegmentation) {
-        try { await validateCaptionSegmentationReceipt(p.document, result.commands, input.captionSegmentation); }
-        catch (cause) { throw new HttpError(cause instanceof Error ? cause.message : "The linked caption edit changed during recovery.", 409, "CAPTION_SEGMENTATION_STALE"); }
+        try {
+          await validateCaptionSegmentationReceipt(
+            p.document,
+            result.commands,
+            input.captionSegmentation,
+          );
+        } catch (cause) {
+          throw new HttpError(
+            cause instanceof Error
+              ? cause.message
+              : "The linked caption edit changed during recovery.",
+            409,
+            "CAPTION_SEGMENTATION_STALE",
+          );
+        }
       }
       await validate?.(p, result.commands);
       await commitDocument(p, result.document);
       const next = snapshot(p);
-      p.receipts[input.operationId] = { hash, snapshot: next,
-        ...(input.captionSegmentation ? { metadata: { captionSegmentation: input.captionSegmentation } } : {}) };
+      p.receipts[input.operationId] = {
+        hash,
+        snapshot: next,
+        ...(input.captionSegmentation
+          ? { metadata: { captionSegmentation: input.captionSegmentation } }
+          : {}),
+      };
       return next;
     });
   }
   async recoverInterrupted() {
+    const { localEditStageRecovery } = await import("./edit-stage-store");
     for (const { id } of await this.list())
       await this.transaction(id, (p) => {
         for (const run of p.runs)
           if (["queued", "running"].includes(run.status)) {
+            const stageState = p.editStagePlans?.[run.id];
+            if (stageState) {
+              const recovery = localEditStageRecovery(stageState);
+              run.status = recovery.safe
+                ? "queued"
+                : stageState.plan.status === "cancelled"
+                  ? "cancelled"
+                  : "failed";
+              run.phase = recovery.safe
+                ? "stage_resume"
+                : "stage_needs_attention";
+              run.error = recovery.safe
+                ? null
+                : {
+                    code: "STAGE_RECONCILIATION_REQUIRED",
+                    message: recovery.message!,
+                  };
+              run.updatedAt = new Date().toISOString();
+              continue;
+            }
+            if (agentPreludeCheckpointRecovery(p, run)) {
+              run.status = "queued";
+              run.error = null;
+              run.updatedAt = new Date().toISOString();
+              continue;
+            }
             const checkpoint = agentCheckpointRecovery(p, run);
             if (checkpoint.kind === "resume") {
               run.status = "queued";
@@ -390,11 +464,66 @@ export function publicRun({
   answers: _answers,
   speechContinuation: _speech,
   loopCheckpoint: _checkpoint,
+  preludeCheckpoints: _preludes,
+  stageProgress: _stages,
+  stageRecovery: _stageRecovery,
   completion: _completion,
   ...run
 }: StoredRun) {
+  const progress = _stages
+    ? nativeAgentProgress(
+        {
+          status: run.status,
+          phase: run.phase,
+          baseDocumentJson: _request.document,
+          contextJson: run.context,
+          requestJson: {
+            ..._request,
+            prerequisites: run.prerequisites,
+            evidenceCommands: _speech?.evidenceCommands,
+          },
+          resultJson: {
+            proposal: run.proposal,
+            completion: _completion,
+            ...(_completion && _stages.status === "completed"
+              ? {
+                  verification: {
+                    status: "passed",
+                    outcomes: _completion.requirements.map((requirement) => ({
+                      id: requirement.id,
+                      passed: true,
+                      message: requirement.kind.replaceAll("_", " "),
+                    })),
+                  },
+                }
+              : {}),
+          },
+          asrTasksJson: _speech?.sources.map((source) => ({
+            sourceId: source.assetId,
+            taskId: source.taskId,
+          })),
+        },
+        _stageRecovery?.canReuseSavedResult ?? false,
+      )
+    : undefined;
+  if (progress && _stages) {
+    progress.stages = _stages;
+    if (!progress.deliverables.length)
+      progress.deliverables = _stages.remainingRequirements.map(
+        (requirement) => ({
+          ...requirement,
+          label: requirement.kind.replaceAll("_", " "),
+          status: "pending",
+        }),
+      );
+    if (_stages.status !== "completed") progress.coverage = "declared";
+    progress.recovery.canResume =
+      !!_stageRecovery?.canResume &&
+      ["failed", "queued", "needs_evidence"].includes(run.status);
+  }
   return {
     ...run,
+    ...(progress ? { progress } : {}),
     manualReviewRequired: run.proposal?.impact === "review",
     ...(run.replyState
       ? {

@@ -102,15 +102,21 @@ function sourceBinding(p: Project, run: StoredRun) {
     speechEvidence: run.speechContinuation?.evidenceCommands,
   });
 }
-function parseEnvelope(p: Project, run: StoredRun): ParsedAgentLoopCheckpoint {
+function parseEnvelope(
+  p: Project,
+  run: StoredRun,
+  stagePlanOwnsCurrentBinding = false,
+): ParsedAgentLoopCheckpoint {
   const parsed = envelopeSchema.parse(run.loopCheckpoint);
   const checkpoint = parseLoopCheckpoint(parsed.checkpoint);
   const { checkpoint: _checkpoint, contextHash, ...binding } = parsed;
   if (
     parsed.projectId !== p.id ||
     parsed.runId !== run.id ||
-    parsed.runBindingHash !== runBinding(p, run) ||
-    parsed.sourceHash !== sourceBinding(p, run) ||
+    (!stagePlanOwnsCurrentBinding &&
+      parsed.runBindingHash !== runBinding(p, run)) ||
+    (!stagePlanOwnsCurrentBinding &&
+      parsed.sourceHash !== sourceBinding(p, run)) ||
     contextHash !== digest(binding) ||
     checkpoint.snapshot.runId !== run.id ||
     checkpoint.snapshot.snapshotHash !== contextHash
@@ -125,8 +131,67 @@ function parseEnvelope(p: Project, run: StoredRun): ParsedAgentLoopCheckpoint {
 export function agentCheckpointHistory(
   p: Project,
   run: StoredRun,
+  options: { stagePlanOwnsCurrentBinding?: boolean } = {},
 ): History | undefined {
-  return run.loopCheckpoint ? parseEnvelope(p, run).history : undefined;
+  return run.loopCheckpoint
+    ? parseEnvelope(
+        p,
+        run,
+        options.stagePlanOwnsCurrentBinding === true &&
+          run.agentProfile === "local-editor-v6" &&
+          !!p.editStagePlans?.[run.id],
+      ).history
+    : undefined;
+}
+
+/** A host-accepted planning clarification may restart before its next model fence.
+ * The previous paid answers remain immutable audit records and carry all usage. */
+export function agentPreludeCheckpointRecovery(
+  p: Project,
+  run: StoredRun,
+): boolean {
+  if (
+    run.agentProfile !== "local-editor-v6" ||
+    run.loopCheckpoint ||
+    !run.preludeCheckpoints?.length ||
+    run.phase !== "stage_resume" ||
+    !run.request.authoring?.clarification ||
+    !Object.values(run.answers ?? {}).some(
+      (answer) => answer.childId === run.id,
+    )
+  )
+    return false;
+  try {
+    for (const raw of run.preludeCheckpoints) {
+      const saved = envelopeSchema.parse(raw),
+        checkpoint = parseLoopCheckpoint(saved.checkpoint);
+      const { checkpoint: _checkpoint, contextHash, ...binding } = saved;
+      const result = checkpoint.result as
+        | { outcome?: string; clarification?: { id?: string } }
+        | undefined;
+      if (
+        saved.projectId !== p.id ||
+        saved.runId !== run.id ||
+        contextHash !== digest(binding) ||
+        checkpoint.snapshot.runId !== run.id ||
+        checkpoint.snapshot.snapshotHash !== contextHash ||
+        checkpoint.phase !== "completed" ||
+        !checkpoint.usageKnown ||
+        checkpoint.outputBudgetOverrun ||
+        checkpoint.hostWait ||
+        result?.outcome !== "needs_input" ||
+        !result.clarification?.id
+      )
+        return false;
+    }
+    const last = parseLoopCheckpoint(run.preludeCheckpoints.at(-1)!.checkpoint);
+    return (
+      (last.result as { clarification: { id: string } }).clarification.id ===
+      run.request.authoring.clarification.questionId
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Called inside ProjectStore's existing transaction during startup. No executor
