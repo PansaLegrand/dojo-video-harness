@@ -698,7 +698,27 @@ export function createEditorToolset<T>(input: {
       },
     );
   }
-  if (stages) tools.push(...createStagedEditorTools(stages));
+  if (stages)
+    tools.push(
+      ...createStagedEditorTools({
+        ...stages,
+        planEditStages: async (raw, signal) => {
+          await checkedState();
+          const requirements = parseCompletionRequirements(
+            (raw as { requirements?: unknown }).requirements,
+            { assetSequence: true, speechCallout: true },
+          );
+          if (
+            state &&
+            (await completionHash(requirements)) !== state.requirementsHash
+          )
+            throw new Error(
+              "The staged plan must preserve every frozen completion requirement.",
+            );
+          return stages.planEditStages(raw, signal);
+        },
+      }),
+    );
   if (stages && ports.readCaptionTrack)
     tools.push({
       ...toolMetadata("read_caption_track"),
