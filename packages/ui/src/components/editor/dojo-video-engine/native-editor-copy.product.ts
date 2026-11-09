@@ -9,6 +9,7 @@ import { editorProductCopy } from "./editor-product-copy";
 import { editorContinuationCopy } from "./editor-continuation-copy";
 import { editorMissingMediaCopy } from "./editor-missing-media-copy";
 import { editorTimelineCopy } from "./editor-timeline-copy";
+import { editorMediaBatchCopy } from "./editor-media-batch-copy";
 import { editorAuthoringCopy } from "./editor-authoring-copy";
 
 // Reuse the established editor wording in all nine supported locales.
@@ -299,6 +300,7 @@ export function useNativeEditorText() {
   const { t: translate, locale } = useTranslation();
   return (text: string) => {
     if (locale === "en") return text;
+    if (editorMediaBatchCopy[locale]?.[text]) return editorMediaBatchCopy[locale][text];
     if (editorTimelineCopy[locale]?.[text]) return editorTimelineCopy[locale][text];
     if (editorContinuationCopy[locale]?.[text]) return editorContinuationCopy[locale][text];
     if (editorMissingMediaCopy[locale]?.[text]) return editorMissingMediaCopy[locale]![text]!;

@@ -417,3 +417,16 @@
 @media (max-width: 899px) { .editor-chat-resizer { display: none; } }
 
 .editor-agent-extensions { flex-shrink: 0; min-height: 0; max-height: 40%; overflow-y: auto; }
+
+.editor-import-batch, .editor-media-selection { border: 1px solid var(--editor-border); border-radius: 6px; padding: 9px; margin: 10px 0; font-size: 11px; }
+.editor-import-batch ol, .editor-media-selection ol { max-height: 130px; overflow-y: auto; margin: 7px 0; padding: 0; list-style: none; }
+.editor-import-batch li, .editor-media-selection li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 0; }
+.editor-batch-file { min-width: 0; flex: 1 1 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor-batch-error { flex-basis: 100%; overflow-wrap: anywhere; color: var(--editor-danger-text); }
+.editor-batch-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.editor-batch-actions button { color: var(--editor-accent-text); text-decoration: underline; }
+.editor-batch-actions button:disabled { opacity: .5; }
+.editor-import-batch-strip { padding: 0 12px; flex-shrink: 0; max-height: 200px; overflow-y: auto; }
+.editor-import-batch-strip .editor-import-batch { margin: 5px 0; }
+.editor-asset-selection { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--editor-muted); padding: 4px 0; }
+.editor-media-selection button { flex-shrink: 0; }

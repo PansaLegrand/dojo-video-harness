@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceRepository": "dojo-video-web",
-  "sourceCommit": "08293487cb6d439ec8628524da9abc8e6afeb2ce",
+  "sourceCommit": "4375dc226312f8612e6c16bbaf2b66f93a2e4dd5",
   "transforms": [
     "engine namespace/path rename",
     "local user import boundary",
@@ -196,6 +196,18 @@
       "outputHash": "b38872840c7476a3680c10690c6a1219516b3937b70b32783d0948324169323c"
     },
     {
+      "source": "components/editor/motionforge/editor-import-batch-panel.tsx",
+      "target": "packages/ui/src/components/editor/dojo-video-engine/editor-import-batch-panel.tsx",
+      "sourceHash": "e83c89db694e93be1d71521ee752efe392cf95d88533878bcf39b5e1f1bde519",
+      "outputHash": "e83c89db694e93be1d71521ee752efe392cf95d88533878bcf39b5e1f1bde519"
+    },
+    {
+      "source": "components/editor/motionforge/editor-import-batch.ts",
+      "target": "packages/ui/src/components/editor/dojo-video-engine/editor-import-batch.ts",
+      "sourceHash": "c7a2770aa54842527f0fe8f744fc4061c8995c12782f5a7d3f9993f25e118d6c",
+      "outputHash": "c7a2770aa54842527f0fe8f744fc4061c8995c12782f5a7d3f9993f25e118d6c"
+    },
+    {
       "source": "components/editor/motionforge/editor-inspector.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-inspector.tsx",
       "sourceHash": "7e9cda92a91b8652887339d9f7c8935d5ffac27aa45ed903cfd3e151c8ba6009",
@@ -216,8 +228,20 @@
     {
       "source": "components/editor/motionforge/editor-library.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-library.tsx",
-      "sourceHash": "d89c5e3a35f4d806c5fd4f9ab57347e86a30d6719ff0ba07c56ae9dbec200e3b",
-      "outputHash": "512bff3381a7d3016434826f72ba56432a9e4c1b94d845cdcdad838bcd4cd378"
+      "sourceHash": "cdaf2dffa8327b6f1a8d1e564685e23525993feba405fc286fbf06e62b6a9300",
+      "outputHash": "576a7ea45e911b259c043b72f164300fd45295d7818661a1aeaf33ec0f1916eb"
+    },
+    {
+      "source": "components/editor/motionforge/editor-media-batch-copy.ts",
+      "target": "packages/ui/src/components/editor/dojo-video-engine/editor-media-batch-copy.ts",
+      "sourceHash": "b9a1135b0a7303225ae0a84933caaf68dcbe8d1db220318854497d1f90453053",
+      "outputHash": "b9a1135b0a7303225ae0a84933caaf68dcbe8d1db220318854497d1f90453053"
+    },
+    {
+      "source": "components/editor/motionforge/editor-media-insertion.ts",
+      "target": "packages/ui/src/components/editor/dojo-video-engine/editor-media-insertion.ts",
+      "sourceHash": "ec5bedaf194cce625d36f9fe89d762fb653bb85aa8d64dd419fef81ca2f3b2be",
+      "outputHash": "25f2998e205990aa30b52c258f67be9714496392355989378c8ab496ae8f0bf2"
     },
     {
       "source": "components/editor/motionforge/editor-media-previews.ts",
@@ -318,8 +342,8 @@
     {
       "source": "components/editor/motionforge/editor-source-range.ts",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-source-range.ts",
-      "sourceHash": "5131ba899654a06afb412651b23d54b13af06012a4dd601f457667fcc806b636",
-      "outputHash": "5131ba899654a06afb412651b23d54b13af06012a4dd601f457667fcc806b636"
+      "sourceHash": "6a5b8947635d03d5d227ae7bcca5586e1faa52761600274ac48fc9cbb254082a",
+      "outputHash": "6a5b8947635d03d5d227ae7bcca5586e1faa52761600274ac48fc9cbb254082a"
     },
     {
       "source": "components/editor/motionforge/editor-style-preview.ts",
@@ -390,14 +414,14 @@
     {
       "source": "components/editor/motionforge/editor-workspace.css",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-workspace.css",
-      "sourceHash": "beeef603d6db5aaf536dfe10767f5c68227159022481eaffdd54e56258b9c755",
-      "outputHash": "beeef603d6db5aaf536dfe10767f5c68227159022481eaffdd54e56258b9c755"
+      "sourceHash": "c273a503828a295dda22f27ca81cefadb4335ef7abd7b59796a551e8c25901a5",
+      "outputHash": "c273a503828a295dda22f27ca81cefadb4335ef7abd7b59796a551e8c25901a5"
     },
     {
       "source": "components/editor/motionforge/motionforge-editor.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/dojo-video-engine-editor.tsx",
-      "sourceHash": "71634a73c44383fc3fa7ffe761247e727c3c8d581e90d5f693eba931d2f24ef8",
-      "outputHash": "0946edf40f96f07e729d5a4631af3aec622c39854802a2a74445b7a05cc0995a"
+      "sourceHash": "516c102ec747db7243032f7fa3251eb5aabbbe38178ed84aecc67c95219e33d8",
+      "outputHash": "345f51d13e8a6fda18b6a29c54f96628e5ba46fa5c7886aa264396617d6c1b14"
     },
     {
       "source": "components/editor/motionforge/native-editor-copy-locales.ts",
@@ -408,8 +432,8 @@
     {
       "source": "components/editor/motionforge/native-editor-copy.ts",
       "target": "packages/ui/src/components/editor/dojo-video-engine/native-editor-copy.product.ts",
-      "sourceHash": "7769cd3822870f714917e67662b2d0af98c60dc4a38360116e423b12ec31daa5",
-      "outputHash": "7769cd3822870f714917e67662b2d0af98c60dc4a38360116e423b12ec31daa5"
+      "sourceHash": "106143ec3c3f2307730abbc2d67d9d76c6e43077c76d75310def56bf3a7484fa",
+      "outputHash": "106143ec3c3f2307730abbc2d67d9d76c6e43077c76d75310def56bf3a7484fa"
     },
     {
       "source": "components/editor/motionforge/timeline-window.ts",

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Eye, Film, FolderOpen, ImageIcon, Music2, Plus, Search, Subtitles, Type, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, Film, FolderOpen, ImageIcon, Music2, Plus, Search, Subtitles, Type, Upload } from "lucide-react";
 import { requiresLocalVideoProxy } from "@/lib/dojo-video-engine-browser/preview-proxy-policy";
 import { EditorSourcePreview } from "./editor-source-preview";
-import { filterEditorLibrary, type EditorMediaFilter, type EditorSourceRange } from "./editor-source-range";
+import { editorUsedAssetIds, filterEditorLibrary, type EditorMediaUsage, type EditorMediaFilter, type EditorSourceRange } from "./editor-source-range";
 import type { EditorAsset, EditorItem } from "@/lib/editor/document";
 import type { EditorMediaPreview } from "./editor-media-previews";
 import { EditorCaptionPanel } from "./editor-caption-panel";
@@ -20,7 +20,9 @@ import { useNativeEditorText } from "./native-editor-copy";
 export type EditorTool = "media" | "text" | "captions" | "visualizer" | "graphics" | "project";
 
 /** The original editor's tool browser. Selected-clip controls replace this panel. */
-export function EditorLibrary({ tool, selectedItemId, library, sources, previews, items, fps = 30, hidden = false, transcriptPanel, disabled, upload, onCancelImport, onImport, onDrop, onAddMedia, onAddText, onAddMotion, onImportCaptions, onAddCaption, onCreateCaptions, onTranslateCaptions, captionBusy, onSelect, onAddVisualizer, onRelink }: {
+export function EditorLibrary({ tool, selectedItemId, library, sources, previews, items, fps = 30, hidden = false, transcriptPanel, disabled, upload, onCancelImport, onImport, onDrop, onAddMedia, onAddText, onAddMotion, onImportCaptions, onAddCaption, onCreateCaptions, onTranslateCaptions, captionBusy, onSelect, onAddVisualizer, onRelink, importBatchPanel, onAddMediaSelection }: {
+  importBatchPanel?: ReactNode;
+  onAddMediaSelection?: (assets: EditorAsset[]) => boolean;
   tool: EditorTool;
   selectedItemId: string | null;
   library: EditorAsset[];
@@ -51,9 +53,14 @@ export function EditorLibrary({ tool, selectedItemId, library, sources, previews
   const { locale } = useTranslation();
   const graphicsCopy = motionCopy(locale);
   const [search, setSearch] = useState(""), [mediaType, setMediaType] = useState<EditorMediaFilter>("all");
+  const [mediaUsage, setMediaUsage] = useState<EditorMediaUsage>("all");
+  const [selection, setSelection] = useState<string[]>([]);
+  const used = useMemo(() => editorUsedAssetIds(items), [items]);
+  const selectedAssets = selection.flatMap(id => { const asset = library.find(asset => asset.id === id); return asset ? [asset] : []; });
+  const moveSelected = (index: number, offset: number) => setSelection(current => { const next = [...current]; const at = index + offset; if (at < 0 || at >= next.length) return current; [next[index], next[at]] = [next[at]!, next[index]!]; return next; });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [captionMode, setCaptionMode] = useState<"captions" | "speech">("captions");
-  const visible = useMemo(() => filterEditorLibrary(library, search, mediaType), [library, search, mediaType]);
+  const visible = useMemo(() => filterEditorLibrary(library, search, mediaType, mediaUsage, used), [library, search, mediaType, mediaUsage, used]);
   const previewAsset = library.find(asset => asset.id === previewId);
   const needsRelink = (asset: EditorAsset) => !sources[asset.id] || (requiresLocalVideoProxy(asset) && !sources[asset.id]?.startsWith("blob:"));
   const title = tool === "graphics" ? graphicsCopy.panel : tool === "text" ? "Text" : tool === "captions" ? "Captions" : tool === "visualizer" ? "Music visualizer" : "Media";
@@ -82,15 +89,25 @@ export function EditorLibrary({ tool, selectedItemId, library, sources, previews
           <span>{t("Drop video, audio or images here. Up to 250 MB per file.")}</span>
         </button>
         {upload && <div role="status" aria-label={onCancelImport ? t("Import media") : undefined} className="editor-upload-status"><div className="flex items-center justify-between gap-2"><p className="min-w-0 truncate">{t(`Importing ${upload.name}`)}</p>{onCancelImport && <button type="button" className="shrink-0 underline" onClick={onCancelImport}>{t("Cancel")}</button>}</div><progress max={1} value={upload.progress} /></div>}
+        {importBatchPanel}
         <div className="editor-quick-add"><button onClick={() => onAddText()} disabled={disabled}><Type size={16} />{t("Text")}</button><button onClick={onImportCaptions} disabled={disabled}><Subtitles size={16} />{t("SRT")}</button><button onClick={onAddCaption} disabled={disabled}><Plus size={16} />{t("Add a caption")}</button></div>
         <div className="editor-section-label">{t("Media library")}<span>{library.length}</span></div>
         {!!library.length && <div className="editor-library-search"><label><Search size={14} /><input aria-label={t("Search media")} placeholder={t("Search media")} value={search} onChange={event => setSearch(event.target.value)} /></label><select aria-label={t("Media type")} value={mediaType} onChange={event => setMediaType(event.target.value as EditorMediaFilter)}>
           {(["all", "video", "audio", "image"] as const).map(type => <option key={type} value={type}>{t(type === "all" ? "All media" : type === "video" ? "Video" : type === "audio" ? "Audio" : "Image")}</option>)}
+        </select><select aria-label={t("Media usage")} value={mediaUsage} onChange={event => setMediaUsage(event.target.value as EditorMediaUsage)}>
+          <option value="all">{t("All sources")}</option><option value="used">{t("Used in timeline")}</option><option value="unused">{t("Unused sources")}</option>
         </select></div>}
+        {!!selectedAssets.length && <section className="editor-media-selection" aria-label={t("Selected media order")}>
+          <strong>{t("Selected media order")}</strong><ol>{selectedAssets.map((asset, index) => <li key={asset.id}><span className="editor-batch-file">{index + 1}. {asset.name}</span>
+            <button aria-label={`${t("Move selected media earlier")}: ${asset.name}`} disabled={index === 0} onClick={() => moveSelected(index, -1)}><ArrowUp size={14} /></button>
+            <button aria-label={`${t("Move selected media later")}: ${asset.name}`} disabled={index === selectedAssets.length - 1} onClick={() => moveSelected(index, 1)}><ArrowDown size={14} /></button>
+          </li>)}</ol><div className="editor-batch-actions"><button disabled={disabled || !!upload || selectedAssets.some(needsRelink)} onClick={() => { if (onAddMediaSelection?.(selectedAssets)) setSelection([]); }}>{t("Add selected in order")}</button><button onClick={() => setSelection([])}>{t("Clear media selection")}</button></div>
+        </section>}
         {previewAsset && !hidden && !needsRelink(previewAsset) && <EditorSourcePreview key={`${previewAsset.id}:${sources[previewAsset.id]}`} asset={previewAsset} source={sources[previewAsset.id]!} poster={previews[previewAsset.id]?.frames?.[0]?.src} fps={fps} disabled={disabled} onClose={() => setPreviewId(null)} onAdd={range => onAddMedia(previewAsset, range)} />}
         {!library.length && <div className="editor-library-empty"><FolderOpen size={29} strokeWidth={1.3} /><p>{t("Your imported media will appear here.")}</p></div>}
         {!!library.length && !visible.length && <p className="editor-library-empty" role="status">{t("No media matches your search.")}</p>}
         <div className="editor-asset-grid">{visible.map(asset => <div key={asset.id}>
+          {onAddMediaSelection && <label className="editor-asset-selection"><input type="checkbox" aria-label={`${t("Select media")}: ${asset.name}`} checked={selection.includes(asset.id)} disabled={disabled} onChange={event => setSelection(current => event.target.checked ? [...current.filter(id => id !== asset.id), asset.id] : current.filter(id => id !== asset.id))} />{t(used.has(asset.id) ? "Used in timeline" : "Unused sources")}</label>}
           <button className="editor-asset-card" disabled={disabled || needsRelink(asset)} onClick={() => onAddMedia(asset)} title={`Add ${asset.name} at playhead`}>
             <span className="editor-asset-thumbnail">{previews[asset.id]?.frames?.[0]?.src || (asset.type === "image" && sources[asset.id]) ? <img src={previews[asset.id]?.frames?.[0]?.src ?? sources[asset.id]} alt="" /> : asset.type === "video" ? <Film size={26} /> : asset.type === "audio" ? <Music2 size={26} /> : <ImageIcon size={26} />}<span className="editor-asset-add"><Plus size={14} /></span></span>
             <span className="editor-asset-name">{asset.name}</span>

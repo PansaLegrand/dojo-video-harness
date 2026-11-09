@@ -1,6 +1,9 @@
 "use client";
 
 import { EditorMissingMedia } from "./editor-missing-media";
+import { buildEditorMediaInsertions } from "./editor-media-insertion";
+import { createEditorImportBatch, editorImportBatchKey, importEntryFinished, matchEditorImportFiles, restoreEditorImportBatch, runEditorImportBatch, type EditorImportBatch } from "./editor-import-batch";
+import { EditorImportBatchPanel } from "./editor-import-batch-panel";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
@@ -92,7 +95,7 @@ import {
   type DojoVideoEngineExportFileHandle,
 } from "@/lib/dojo-video-engine-browser/file-export";
 import { createExportOperation } from "@/lib/dojo-video-engine-browser/export-operation";
-import { highResolutionInsertionIssue } from "@/lib/dojo-video-engine-browser/preview-proxy-policy";
+import { requiresLocalVideoProxy } from "@/lib/dojo-video-engine-browser/preview-proxy-policy";
 import { useEditorPreviewDraft } from "./editor-preview-draft";
 import { useCompiledEditorPreview } from "./editor-preview-compiler";
 import { EditorTimeline } from "./editor-timeline";
@@ -202,6 +205,10 @@ export default function DojoVideoEngineEditor({
     progress: number;
   } | null>(null);
   const [localImport, setLocalImport] = useState<{ name: string; progress: number } | null>(null);
+  const [importBatch, setImportBatch] = useState<EditorImportBatch | null>(null);
+  const [importRecoveryAvailable, setImportRecoveryAvailable] = useState(true);
+  const importFilesRef = useRef(new Map<string, File>());
+  const resumeImportInputRef = useRef<HTMLInputElement>(null);
   const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [exportPhase, setExportPhase] = useState("Preparing");
   const [output, setOutput] = useState<{
@@ -273,6 +280,9 @@ export default function DojoVideoEngineEditor({
   useEffect(() => {
     const lifetime = new AbortController();
     lifetimeRef.current = lifetime;
+    importFilesRef.current.clear();
+    try { setImportBatch(restoreEditorImportBatch(sessionStorage.getItem(editorImportBatchKey(projectId)), projectId)); setImportRecoveryAvailable(true); }
+    catch { setImportBatch(null); setImportRecoveryAvailable(false); }
     void selectProject(projectId);
     void controller.open().catch(cause => { const message = cause instanceof Error ? cause.message : "Project could not be loaded."; controller.setError(message); setError(message); });
     const stopPolling = startEditorPolling(() => controller.refresh(), 30_000);
@@ -471,75 +481,30 @@ export default function DojoVideoEngineEditor({
     catch (cause) { setError(cause instanceof Error ? cause.message : "The font could not be changed."); }
   }
 
-  function addMedia(asset: EditorAsset, insertAt = controller.getPlayheadFrame(), sourceHash?: string, range?: EditorSourceRange) {
+  function insertMedia(assets: readonly EditorAsset[], insertAt: number, sourceHash?: string, range?: EditorSourceRange, itemId?: string) {
     const current = documentRef.current;
-    if (!current) return;
-    const admissionIssue = highResolutionInsertionIssue(current, asset);
-    if (admissionIssue) { setError(admissionIssue); return; }
-    const commands: EditorCommand[] = [];
-    if (!current.assets[asset.id]) commands.push({ type: "addAsset", asset });
-    const itemId = id();
-    let insertion: ReturnType<typeof editorSourceInsertion>;
-    try { insertion = editorSourceInsertion(asset, current.format.fps, range); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "The source range could not be added."); return; }
-    const { duration } = insertion;
-    let trackId = ensureTrack(
-      asset.type === "audio" ? "audio" : "visual",
-      commands,
-    );
-    if (
-      current.items.some(
-        (item) =>
-          item.trackId === trackId &&
-          (item.node.from ?? 0) < insertAt + duration &&
-          (item.node.from ?? 0) + (item.node.duration ?? 1) > insertAt,
-      )
-    )
-      trackId = ensureTrack(
-        asset.type === "audio" ? "audio" : "visual",
-        commands,
-        true,
-      );
-    const node: SceneNodeInput = {
-      id: itemId,
-      type:
-        asset.type === "image"
-          ? "img"
-          : asset.type === "audio"
-            ? "audio"
-            : "video",
-      assetId: asset.id,
-      from: insertAt,
-      ...insertion,
-      ...(asset.type !== "image" ? { volume: 1 } : {}),
-      ...(asset.type !== "audio"
-        ? {
-            style: {
-              position: "absolute",
-              left: 0,
-              top: 0,
-              width: current.format.width,
-              height: current.format.height,
-              objectFit: "contain",
-            },
-          }
-        : {}),
-    };
-    commands.push({
-      type: "addItem",
-      item: {
-        id: itemId,
-        trackId,
-        name: asset.name,
-        node: { ...node, animations: [], children: [] } as EditorItem["node"],
-      },
-    });
-    if (sourceHash && controller.getState().document) {
-      controller.dispatch([...editorCommandsToVideoCommands(controller.getState().document!, commands), { type: "addSource", source: { assetId: asset.id, revision: `sha256:${sourceHash}`, contentHash: sourceHash } }]);
-      documentRef.current = toEditorDocument(controller.getState().document!);
-    } else apply(commands);
-    setSelectedId(itemId);
-    setShowInspector(true);
+    if (!current) throw new Error("Wait for the project to load.");
+    const plan = buildEditorMediaInsertions(current, assets, insertAt, id, { selectedTrackId: selected?.trackId, itemId, range });
+    const before = controller.getState().document;
+    if (sourceHash && before) {
+      controller.dispatch([...editorCommandsToVideoCommands(before, plan.commands), { type: "addSource", source: { assetId: assets[0]!.id, revision: `sha256:${sourceHash}`, contentHash: sourceHash } }]);
+    } else controller.dispatchEditor(plan.commands);
+    const after = controller.getState();
+    if (!after.document || after.document === before) throw new Error(after.error ?? "The media could not be added.");
+    documentRef.current = toEditorDocument(after.document);
+    setSelectedId(plan.itemIds.at(-1)!); setShowInspector(true);
+    return plan;
+  }
+  function addMedia(asset: EditorAsset, insertAt = controller.getPlayheadFrame(), sourceHash?: string, range?: EditorSourceRange) {
+    try { insertMedia([asset], insertAt, sourceHash, range); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "The media could not be added."); }
+  }
+  function addMediaSelection(assets: EditorAsset[]) {
+    try {
+      if (assets.some(asset => !sources[asset.id] || (requiresLocalVideoProxy(asset) && !sources[asset.id]?.startsWith("blob:")))) throw new Error("Some selected media is unavailable. Relink it before adding the selection.");
+      insertMedia(assets, controller.getPlayheadFrame());
+      return true;
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "The media could not be added."); return false; }
   }
 
   function beginLocalMedia() {
@@ -558,44 +523,63 @@ export default function DojoVideoEngineEditor({
     if (localMediaRef.current === operation) { localMediaRef.current = null; setLocalImport(null); }
   }
 
-  async function importMedia(files: File[]) {
-    if (!files.length) return;
+  function saveImportBatch(batch: EditorImportBatch | null) {
+    setImportBatch(batch);
+    try {
+      if (batch) sessionStorage.setItem(editorImportBatchKey(projectId), JSON.stringify(batch));
+      else sessionStorage.removeItem(editorImportBatchKey(projectId));
+    } catch { setImportRecoveryAvailable(false); }
+  }
+  async function continueImport(batch: EditorImportBatch) {
     const operation = beginLocalMedia();
     if (!operation) return;
     try {
-      let insertFrame = controller.getPlayheadFrame();
-      for (const file of files) {
-        operation.signal.throwIfAborted();
-        setLocalImport({ name: file.name, progress: 0 });
-        const result = await importLocalVideoSource(projectId, file, operation.signal, progress => { if (localMediaCurrent(operation)) setLocalImport({ name: file.name, progress }); });
-        if (!localMediaCurrent(operation)) {
-          URL.revokeObjectURL(result.sourceUrl);
-          return;
-        }
-        const admissionIssue = documentRef.current && highResolutionInsertionIssue(documentRef.current, result.asset);
-        if (admissionIssue) { URL.revokeObjectURL(result.sourceUrl); throw new Error(admissionIssue); }
-        objectUrlsRef.current.add(result.sourceUrl);
-        setSources((current) => ({
-          ...current,
-          [result.asset.id]: result.sourceUrl,
-        }));
-        addMedia(result.asset, insertFrame, result.source.fingerprint);
-        insertFrame += Math.max(
-          1,
-          Math.round(
-            (result.asset.durationSeconds ?? 5) *
-              documentRef.current!.format.fps,
-          ),
-        );
-      }
-    } catch (cause) {
-      if (localMediaCurrent(operation))
-        setError(cause instanceof Error ? cause.message : "Upload failed.");
-    } finally {
-      finishLocalMedia(operation);
-      if (operation.lifetime === lifetimeRef.current && mediaInputRef.current) mediaInputRef.current.value = "";
-    }
+      const completed = await runEditorImportBatch(batch, importFilesRef.current, {
+        signal: operation.signal, fps: documentRef.current!.format.fps,
+        existingItem: itemId => { const item = controller.getState().document?.items.find(item => item.id === itemId); return item ? { assetId: item.node.assetId, from: item.node.from ?? 0, duration: item.node.duration! } : undefined; },
+        importFile: (file, signal, progress) => {
+          setLocalImport({ name: file.name, progress: 0 });
+          return importLocalVideoSource(projectId, file, signal, value => { if (localMediaCurrent(operation)) { setLocalImport({ name: file.name, progress: value }); progress(value); } });
+        },
+        insert: (result, entry, frame) => {
+          if (!localMediaCurrent(operation)) throw new DOMException("Import cancelled.", "AbortError");
+          insertMedia([result.asset], frame, result.source.fingerprint, undefined, entry.itemId);
+          objectUrlsRef.current.add(result.sourceUrl);
+          setSources(current => ({ ...current, [result.asset.id]: result.sourceUrl }));
+        },
+        release: result => { if (!objectUrlsRef.current.has(result.sourceUrl)) URL.revokeObjectURL(result.sourceUrl); },
+        changed: next => { if (operation.lifetime === lifetimeRef.current) saveImportBatch(next); },
+      });
+      if (operation.lifetime === lifetimeRef.current && completed.entries.every(importEntryFinished)) importFilesRef.current.clear();
+    } catch (cause) { if (localMediaCurrent(operation)) setError(cause instanceof Error ? cause.message : "Upload failed."); }
+    finally { finishLocalMedia(operation); }
   }
+  async function importMedia(files: File[]) {
+    if (!files.length || localMediaRef.current || upload || disabled) return;
+    try {
+      const batch = createEditorImportBatch(projectId, files, controller.getPlayheadFrame(), id);
+      importFilesRef.current = new Map(batch.entries.map((entry, index) => [entry.id, files[index]!]));
+      saveImportBatch(batch); await continueImport(batch);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Upload failed."); }
+    finally { if (mediaInputRef.current) mediaInputRef.current.value = ""; }
+  }
+  function skipImportFile() {
+    if (!importBatch) return;
+    const next = structuredClone(importBatch), pending = next.entries.find(entry => !importEntryFinished(entry));
+    if (!pending) return;
+    pending.state = "skipped"; delete pending.error; saveImportBatch(next); void continueImport(next);
+  }
+  function chooseImportFiles(files: File[]) {
+    if (!importBatch) return;
+    const matched = matchEditorImportFiles(importBatch.entries, files);
+    for (const [key, file] of matched) importFilesRef.current.set(key, file);
+    if (matched.size) void continueImport(importBatch);
+    else if (files.length) setError("Choose original files");
+    if (resumeImportInputRef.current) resumeImportInputRef.current.value = "";
+  }
+  const importBatchPanel = <EditorImportBatchPanel batch={importBatch} busy={!!localImport} recoveryAvailable={importRecoveryAvailable}
+    onRetry={() => { if (importBatch) void continueImport(importBatch); }} onSkip={skipImportFile} onChoose={() => resumeImportInputRef.current?.click()}
+    onDismiss={() => { saveImportBatch(null); importFilesRef.current.clear(); }} />;
 
   async function relinkMedia(asset: EditorAsset, file: File) {
     const operation = beginLocalMedia();
@@ -1040,6 +1024,7 @@ export default function DojoVideoEngineEditor({
       {localImport && !(showLibrary && !showInspector && activeTool === "media") && <div role="status" aria-label={t("Import media")} className="flex shrink-0 items-center gap-3 border-b border-[var(--editor-border)] bg-[var(--editor-panel)] px-4 py-2 text-xs">
         <span className="min-w-0 flex-1 truncate">{t(`Importing ${localImport.name}`)}</span><progress className="w-24 shrink-0" max={1} value={localImport.progress} /><button type="button" className="shrink-0 underline" onClick={() => localMediaRef.current?.cancel()}>{t("Cancel")}</button>
       </div>}
+      {importBatch && !(showLibrary && !showInspector && activeTool === "media") && <div className="editor-import-batch-strip">{importBatchPanel}</div>}
       <div style={{ "--editor-chat-width": `${chatWidth}px` } as CSSProperties} className={`editor-body ${showLibrary ? "" : "editor-panel-collapsed"} ${showChat ? "editor-chat-open" : ""}`}>
         <nav className="editor-tool-rail" aria-label="Editor tools">
           {([{ key: "graphics", label: "Motion Graphics", icon: Shapes }, { key: "text", label: "Text", icon: Type }, { key: "captions", label: "Captions", icon: Subtitles }, { key: "visualizer", label: "Music visualizer", icon: Activity }, { key: "media", label: "Media", icon: FolderOpen }, { key: "project", label: "Project", icon: Settings2 }] as const).map(tool => <button key={tool.key} aria-label={locale === "en" ? `Open ${tool.label}` : tool.key === "graphics" ? motionCopy(locale).panel : t(tool.label)} aria-pressed={activeTool === tool.key && showLibrary} onClick={() => openTool(tool.key)}><tool.icon size={21} strokeWidth={1.5} /><span>{tool.key === "graphics" ? motionCopy(locale).panel : t(tool.label)}</span></button>)}
@@ -1125,6 +1110,7 @@ export default function DojoVideoEngineEditor({
         )}
         <EditorLibrary hidden={showInspector}
           tool={activeTool} selectedItemId={selectedId} library={library} sources={sources} previews={mediaPreviews} disabled={disabled} upload={localImport ?? upload} onCancelImport={localImport ? () => localMediaRef.current?.cancel() : undefined}
+          importBatchPanel={importBatchPanel} onAddMediaSelection={addMediaSelection}
           onImport={() => mediaInputRef.current?.click()}
           onDrop={files => void importMedia(files)} onAddMedia={(asset, range) => addMedia(asset, undefined, undefined, range)} onAddText={addText} onAddMotion={addMotion} fps={document.format.fps}
           onImportCaptions={() => subtitlesInputRef.current?.click()}
@@ -1455,6 +1441,8 @@ export default function DojoVideoEngineEditor({
           void importMedia(Array.from(event.target.files ?? []))
         }
       />
+      <input ref={resumeImportInputRef} type="file" accept={EDITOR_MEDIA_ACCEPT} multiple className="hidden" aria-label="Choose original files"
+        onChange={event => chooseImportFiles(Array.from(event.target.files ?? []))} />
       <input
         ref={subtitlesInputRef}
         type="file"
