@@ -1,6 +1,6 @@
 {
   "name": "@dojo-video/agent-loop",
-  "version": "0.2.0-dev.0",
+  "version": "0.2.0-dev.1",
   "description": "Host-independent bounded model/tool loop for editable video agents.",
   "license": "MIT",
   "type": "module",

@@ -4,6 +4,28 @@ import {
   type AgentTool,
   type HostRequestRef,
 } from "./catalog.js";
+export type EditorVisualInputRef = {
+  version: 1;
+  requestRef: HostRequestRef;
+  receiptHash: string;
+  frames: Array<
+    {
+      sha256: string;
+      byteLength: number;
+      mimeType: "image/jpeg";
+      width: number;
+      height: number;
+    } & (
+      | {
+          sourceId: string;
+          sourceRevision: string;
+          requestedMs: number;
+          actualMs: number;
+        }
+      | { frame: number; sceneTimestampUs: number; renderHash: string }
+    )
+  >;
+};
 export type EditorHostToolResult =
   | { kind: "observation"; value: unknown }
   | { kind: "waiting"; requestRef: HostRequestRef };
