@@ -34,3 +34,17 @@ validated checkpoint tool messages. Supply it as initialCompletionState (with
 snapshotHash) when creating a new session. Pure prepare_caption_pair is optional
 and host-owned; its translations bind exact genuine cue IDs/timing without a new
 provider call. A checklist proves declared outcomes, not universal task semantics.
+
+
+Kit 0.1.3 adds local-editor-v3/commercial-editing-v4. The host supplies
+`listAssets` and `readCaptionCues` ports for snapshot-bound, byte-bounded readers.
+Asset queries discover unused imported assets with stable IDs and registration
+status. Cue queries preserve complete host-derived cue and source-word identity.
+Both readers return explicit coverage and cursor metadata. Their observations
+are pinned and may replay through a host-declared safe snapshot executor.
+
+The new profiles also support `asset_sequence` requirements for exact grouped
+media placements, `speech_callout` requirements for genuine quoted words, and an
+optional sourceRange on cue reading/caption preparation. Source-range projection
+belongs to the host kernel and returns source trim commands alongside captions.
+Earlier profiles retain their prior schema, inventory version, skills and prompts.

@@ -8,6 +8,7 @@ const names = [
   "completion-preflight",
   "motion-design",
   "music-generation",
+  "multi-asset-editing",
   "precise-editing",
   "speech-editing",
 ];

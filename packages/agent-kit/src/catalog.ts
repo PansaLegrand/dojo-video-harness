@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.1.2" as const;
+export const AGENT_KIT_VERSION = "0.1.3" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -22,6 +22,18 @@ export const toolCatalog = {
     owner: "portable",
     description:
       "Read project relationships, imported asset identities (including unused logos), and up to 24 exact items. Empty input returns a bounded inventory.",
+  },
+  list_assets: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "List owned project assets, including unused images, with filters and snapshot-bound cursor pagination. Follow nextCursor until coverage is complete before claiming all assets were inspected. Source status describes registration; browser file access is resolved by the host.",
+  },
+  read_caption_cues: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "Read exact host-derived caption cue IDs/text/times and genuine word IDs for one source, with snapshot/source/scope-bound pagination. Follow nextCursor for complete bilingual cue coverage. This reads existing transcript evidence.",
   },
   read_skill: {
     effect: "read",
@@ -114,15 +126,36 @@ export const skillRequirements = {
   "basic-editing-workflow": ["inspect_project", "prepare_editing_workflow"],
   "music-generation": ["inspect_project", "prepare_background_music"],
   "completion-preflight": ["review_edit", "propose_edit"],
+  "multi-asset-editing": [
+    "list_assets",
+    "read_caption_cues",
+    "review_edit",
+    "propose_edit",
+  ],
 } as const;
 export type BuiltinSkillName = keyof typeof skillRequirements;
 export type AgentProfile =
   | "local-editor-v1"
   | "commercial-editing-v2"
   | "local-editor-v2"
-  | "commercial-editing-v3";
+  | "commercial-editing-v3"
+  | "local-editor-v3"
+  | "commercial-editing-v4";
 export const usesCompletionPreflight = (profile: AgentProfile) =>
-  profile === "local-editor-v2" || profile === "commercial-editing-v3";
+  [
+    "local-editor-v2",
+    "commercial-editing-v3",
+    "local-editor-v3",
+    "commercial-editing-v4",
+  ].includes(profile);
+export const usesPagedReaders = (profile: AgentProfile) =>
+  profile === "local-editor-v3" || profile === "commercial-editing-v4";
+export const profileKitVersion = (profile: AgentProfile) =>
+  usesPagedReaders(profile)
+    ? AGENT_KIT_VERSION
+    : usesCompletionPreflight(profile)
+      ? "0.1.2"
+      : "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
@@ -130,6 +163,14 @@ export const profileSkills: Record<
   "local-editor-v1": null,
   "commercial-editing-v2": ["precise-editing", "motion-design"],
   "local-editor-v2": null,
+  "local-editor-v3": null,
+  "commercial-editing-v4": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+    "multi-asset-editing",
+  ],
   "commercial-editing-v3": [
     "precise-editing",
     "motion-design",
