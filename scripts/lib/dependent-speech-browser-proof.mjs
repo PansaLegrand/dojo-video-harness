@@ -85,14 +85,29 @@ export function setupDependentSpeechProof() {
       const packetSource = context.completionCaptionSources.sources.find(
         (source) => source.sourceItemId === clip.id,
       );
+      const cuePages = body.input
+        .filter((item) => item.type === "function_call_output")
+        .map((item) => JSON.parse(item.output))
+        .filter(
+          (value) =>
+            value?.kind === "caption-cues" &&
+            value.source?.sourceItemId === clip.id,
+        );
+      if (packetSource && !packetSource.cues && !cuePages.length)
+        return {
+          name: "read_caption_cues",
+          args: { sourceItemId: clip.id, evidenceId: packetSource.evidenceId },
+        };
       const captionSource = packetSource && {
         ...packetSource,
-        cues: packetSource.cues.map((cue) => ({
-          id: cue.cueId,
-          text: cue.text,
-          startMs: cue.startMs,
-          endMs: cue.endMs,
-        })),
+        cues: (packetSource.cues ?? cuePages.flatMap((page) => page.cues)).map(
+          (cue) => ({
+            id: cue.cueId,
+            text: cue.text,
+            startMs: cue.startMs,
+            endMs: cue.endMs,
+          }),
+        ),
       };
       assert(
         captionSource?.cues.length,
@@ -325,7 +340,7 @@ export function setupDependentSpeechProof() {
         );
       check(
         "dependent speech: the unchanged full instruction reaches all model/tool steps and automatically applies one complete proposal",
-        modelCalls === 4 &&
+        modelCalls === 5 &&
           receivedInstructions.every((value) => value === instruction) &&
           !run.manualReviewRequired &&
           (await page

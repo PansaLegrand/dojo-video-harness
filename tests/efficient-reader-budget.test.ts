@@ -5,7 +5,7 @@ import {
   hashVideoProjectDocument,
 } from "../packages/core/src/lib/video-project/document";
 import { builtInSkills } from "../packages/agent-kit/src/index";
-it.each(["local-editor-v3", "local-editor-v4"] as const)(
+it.each(["local-editor-v3", "local-editor-v4", "local-editor-v5"] as const)(
   "freezes the intended default model-step policy for %s",
   async (profile) => {
     const document = createVideoProjectDocument({
