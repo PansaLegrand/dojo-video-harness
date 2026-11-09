@@ -396,3 +396,63 @@ it("reports untimed tokens in the effective source window and prevents a false f
   expect(clipped.source.timingOmissions).toBeUndefined();
   expect(document.evidence.asr!.timingOmissions[0]!.startMs).toBe(0);
 });
+
+it("uses genuine neighboring token indices to retain interior untimed uncertainty after a range trim", async () => {
+  const { document, request } = await fixture();
+  document.evidence.asr!.transcriptHash = "sha256:" + "a".repeat(64);
+  document.evidence.asr!.words = [
+    { id: "w:aaaaaaaaaaaaaaaa:0", text: "Before.", startMs: 2000, endMs: 3000 },
+    { id: "w:aaaaaaaaaaaaaaaa:2", text: "After.", startMs: 4000, endMs: 5000 },
+    { id: "w:aaaaaaaaaaaaaaaa:3", text: "Later.", startMs: 6000, endMs: 7000 },
+  ];
+  document.evidence.asr!.text = "Before. missing After. Later.";
+  document.evidence.asr!.timingOmissions = [
+    {
+      tokenIndex: 1,
+      text: "missing",
+      startMs: 0,
+      endMs: 0,
+      reason: "nonpositive-duration",
+    },
+  ];
+  request.baseHash = await hashVideoProjectDocument(document);
+  const before = JSON.stringify(document.evidence);
+  const args = {
+    snapshotHash: request.baseHash,
+    sourceItemId: "speech",
+    evidenceId: "asr",
+  };
+  expect(
+    (
+      await readNativeCaptionCues(request, {
+        ...args,
+        sourceRange: { startMs: 1000, endMs: 9000 },
+      })
+    ).coverage,
+  ).toMatchObject({
+    complete: false,
+    cuesComplete: true,
+    reason: "untimed_source_tokens",
+  });
+  expect(
+    (
+      await readNativeCaptionCues(request, {
+        ...args,
+        sourceRange: { startMs: 5500, endMs: 9000 },
+      })
+    ).coverage.complete,
+  ).toBe(true);
+  document.evidence.asr!.words[0]!.id = "unknown-token-mapping";
+  request.baseHash = await hashVideoProjectDocument(document);
+  expect(
+    (
+      await readNativeCaptionCues(request, {
+        ...args,
+        snapshotHash: request.baseHash,
+        sourceRange: { startMs: 5500, endMs: 9000 },
+      })
+    ).coverage.complete,
+  ).toBe(false);
+  document.evidence.asr!.words[0]!.id = "w:aaaaaaaaaaaaaaaa:0";
+  expect(JSON.stringify(document.evidence)).toBe(before);
+});

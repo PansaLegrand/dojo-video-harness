@@ -82,19 +82,58 @@ export function prepareCaptionSourceRange(
   };
 }
 
-/** Invalid-duration tokens retain their raw observed start point. This diagnostic
- * selects that point within the effective source window and never repairs timing. */
+/** Neighbor times bound uncertainty for coverage only. Raw omission times and
+ * source words retain their provider values. Unknown token mappings stay explicit. */
 export function captionTimingDiagnostics(
   document: VideoProjectDocument,
   sourceItemId: string,
   evidence: VideoTranscriptEvidence,
 ) {
+  if (!evidence.timingOmissions?.length) return undefined;
   const source = document.items.find((item) => item.id === sourceItemId);
   if (!source) throw new Error("Caption source is missing.");
   const window = sourceWindow(source, document.format.fps);
-  const omissions = (evidence.timingOmissions ?? []).filter(
-    (token) => token.startMs >= window.startMs && token.startMs < window.endMs,
+  const prefix = /^sha256:[a-f0-9]{64}$/.test(evidence.transcriptHash)
+    ? `w:${evidence.transcriptHash.slice(7, 23)}:`
+    : undefined;
+  const indexed = evidence.words.map((word) => ({
+    word,
+    index:
+      prefix &&
+      word.id.startsWith(prefix) &&
+      /^(0|[1-9]\d*)$/.test(word.id.slice(prefix.length))
+        ? Number(word.id.slice(prefix.length))
+        : -1,
+  }));
+  const mapped = indexed.every(
+    (entry, index) =>
+      Number.isSafeInteger(entry.index) &&
+      entry.index >= 0 &&
+      (index === 0 || entry.index > indexed[index - 1]!.index),
   );
+  const omissions = evidence.timingOmissions.filter((token) => {
+    let low = 0,
+      high = indexed.length;
+    if (mapped) {
+      while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (indexed[middle]!.index < token.tokenIndex) low = middle + 1;
+        else high = middle;
+      }
+    } else if (token.tokenIndex !== 0) return true;
+    const previous = mapped ? indexed[low - 1]?.word : undefined;
+    const next = mapped ? indexed[low]?.word : evidence.words[0];
+    let start = previous?.endMs ?? 0;
+    let end =
+      next?.startMs ??
+      (document.assets[evidence.sourceAssetId]?.durationSeconds ??
+        window.endMs / 1000) * 1000;
+    if (end < start) {
+      start = Math.min(previous?.startMs ?? start, next?.startMs ?? start);
+      end = Math.max(previous?.endMs ?? end, next?.endMs ?? end);
+    }
+    return start < window.endMs && end >= window.startMs;
+  });
   if (!omissions.length) return undefined;
   return {
     count: omissions.length,
