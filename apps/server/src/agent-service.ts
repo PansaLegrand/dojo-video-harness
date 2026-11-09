@@ -517,6 +517,9 @@ export class AgentService {
           r.clarification,
         );
         r.replyState = {
+          ...(r.replyState?.answerOperationId
+            ? { answerOperationId: r.replyState.answerOperationId }
+            : {}),
           available: true,
           options: Object.fromEntries(
             (r.clarification.options ?? []).map((option) => {
@@ -875,6 +878,7 @@ export class AgentService {
             ...parent.replyState,
             available: false,
             continuationRunId: parent.id,
+            answerOperationId: input.operationId,
           };
         parent.updatedAt = new Date().toISOString();
         message(p, parent.id, "user", answer);
@@ -956,6 +960,7 @@ export class AgentService {
             ...parent.replyState,
             available: false,
             continuationRunId: parent.id,
+            answerOperationId: input.operationId,
           };
         parent.updatedAt = new Date().toISOString();
         message(p, parent.id, "user", answer);

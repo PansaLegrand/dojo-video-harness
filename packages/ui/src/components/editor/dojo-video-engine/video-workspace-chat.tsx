@@ -11,7 +11,7 @@ import { useNativeEditorText } from "./native-editor-copy";
 import { EditorAuthoringScope, resolveEditorAuthoringScope, type EditorAuthoringScopeChoice } from "./editor-authoring-scope";
 import { EditorClarification } from "./editor-clarification";
 import { EditorAgentReview, type NativeAgentComparison } from "./editor-agent-review";
-import { editorQuickActions, editorComparisonIsStale, editorAgentCanAutoApply } from "./editor-agent-actions";
+import { editorQuickActions, editorComparisonIsStale, editorAgentCanAutoApply, editorClarificationAcknowledged } from "./editor-agent-actions";
 import { editorAgentScopedSources } from "./editor-agent-progress";
 import { EditorAgentSources } from "./editor-agent-sources";
 import { EditorAgentRunProgress } from "./editor-agent-run-progress";
@@ -83,10 +83,9 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
   }, [data.runs]);
   useEffect(() => {
     for (const run of data.runs) {
-      const pending = answerAttempts.current.get(run.id), childId = run.clarificationReply?.continuationRunId;
-      if (!pending || !childId) continue;
-      const child = data.runs.find(candidate => candidate.id === childId);
-      if (child?.operationId === (pending.body as { operationId?: string }).operationId) {
+      const pending = answerAttempts.current.get(run.id);
+      if (!pending) continue;
+      if (editorClarificationAcknowledged(run, (pending.body as {operationId:string}).operationId, data.runs)) {
         answerAttempts.current.delete(run.id); setAnswers(values => ({ ...values, [run.id]: "" })); setError(null);
       }
     }

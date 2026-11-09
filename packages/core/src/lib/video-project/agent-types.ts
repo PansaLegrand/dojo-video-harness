@@ -119,6 +119,7 @@ export type VideoProjectAgentRun = {
   clarificationReply?: {
     remaining: 0 | 1;
     continuationRunId?: string;
+    answerOperationId?: string;
     options: Record<
       string,
       {
@@ -132,6 +133,7 @@ export type VideoProjectAgentRun = {
   replyState?: {
     available: boolean;
     continuationRunId?: string;
+    answerOperationId?: string;
     options: Record<
       string,
       {

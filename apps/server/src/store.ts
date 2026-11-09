@@ -530,6 +530,9 @@ export function publicRun({
           clarificationReply: {
             remaining: run.replyState.available ? (1 as const) : (0 as const),
             continuationRunId: run.replyState.continuationRunId,
+            ...(run.replyState.answerOperationId
+              ? { answerOperationId: run.replyState.answerOperationId }
+              : {}),
             options: run.replyState.options,
           },
         }
