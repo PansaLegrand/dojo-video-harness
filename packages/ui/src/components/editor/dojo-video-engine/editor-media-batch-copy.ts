@@ -1,5 +1,6 @@
 const locales = ["zh", "es", "fr", "de", "ja", "ko", "pt", "it"] as const;
 const rows: Record<string, readonly string[]> = {
+  "Choose fewer media files for one edit.": ["请减少一次添加的素材数量。", "Elige menos archivos para una sola edición.", "Choisissez moins de médias pour une seule modification.", "Wähle weniger Mediendateien für eine Bearbeitung.", "一度に追加するメディアを減らしてください。", "한 번에 추가하는 미디어 수를 줄이세요.", "Escolha menos arquivos para uma edição.", "Scegli meno file per una singola modifica."],
   "There is not enough browser storage for this file. Free space and retry importing it.": [
     "浏览器存储空间不足，请释放空间后重试导入。",
     "No hay suficiente espacio en el navegador. Libera espacio y vuelve a importar el archivo.",

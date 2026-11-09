@@ -248,7 +248,7 @@ embeddable SDK distributions are a subsequent release step.
 
 The paginated-reader update uses loop 0.1.2/kit 0.1.3. Focused reader, range and
 completion regressions pass with frozen legacy profile digests, and the full unit
-suite passes 547 tests. The final UI/package release gates are recorded separately.
+suite passes 553 tests. The final UI/package release gates are recorded separately.
 The new readers bind snapshot/filter/scope/source identity to cursor pages, retain
 UTF-8 byte bounds and expose complete/incomplete coverage. Explicit source ranges
 are prepared in a candidate and produce matching source-trim/caption commands.
