@@ -9,6 +9,7 @@ import {
 import { setupMusicProof } from "./lib/music-browser-proof.mjs";
 import { verifyMediaRecovery } from "./lib/media-recovery-browser-proof.mjs";
 import { setupDependentSpeechProof } from "./lib/dependent-speech-browser-proof.mjs";
+import { withCompletionReview } from "./lib/completion-model-fixture.mjs";
 import {
   realMediaReply,
   verifyRealMedia,
@@ -218,6 +219,9 @@ const provider = createServer(async (req, res) => {
       ],
     };
   }
+  const completedResponse = withCompletionReview(context, body, { name, args });
+  name = completedResponse.name;
+  args = completedResponse.args;
   res.end(
     JSON.stringify({
       status: "completed",
@@ -508,7 +512,7 @@ checksBlock: try {
   );
   check(
     "question answer resumes and applies a linked run without confirmation",
-    modelCalls === 3,
+    modelCalls === 5,
   );
   const greenRun = (await api(`/api/projects/${id}/agent-runs`)).runs.find(
     (run) => run.status === "applied" && run.clarificationParentRunId,
@@ -524,7 +528,7 @@ checksBlock: try {
   );
   check(
     "Undo restores the prior color without another model request",
-    modelCalls === 3,
+    modelCalls === 5,
   );
   await page
     .getByRole("textbox", { name: "Message video agent", exact: true })

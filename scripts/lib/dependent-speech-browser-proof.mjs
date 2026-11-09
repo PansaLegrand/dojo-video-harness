@@ -200,6 +200,7 @@ export function setupDependentSpeechProof() {
                   sourceItemId: match.sourceItemId,
                   evidenceId: match.evidenceId,
                   wordIds: match.wordIds,
+                  holdMs: 1200,
                 },
               ];
             }),
@@ -315,7 +316,7 @@ export function setupDependentSpeechProof() {
         );
       check(
         "dependent speech: the unchanged full instruction reaches all model/tool steps and automatically applies one complete proposal",
-        modelCalls === 3 &&
+        modelCalls === 4 &&
           receivedInstructions.every((value) => value === instruction) &&
           !run.manualReviewRequired &&
           (await page

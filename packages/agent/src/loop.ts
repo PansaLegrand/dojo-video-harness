@@ -1,4 +1,9 @@
-import { composeToolAgentPrompt } from "../../agent-kit/src/index";
+import {
+  composeToolAgentPrompt,
+  restoreCompletionStateFromMessages,
+  usesCompletionPreflight,
+  type AgentProfile,
+} from "../../agent-kit/src/index";
 import {
   runToolLoop,
   parseLoopCheckpoint,
@@ -40,6 +45,7 @@ export async function runAgent(input: {
       ) => LoopCheckpointPort | Promise<LoopCheckpointPort>);
   compaction?: LoopCompactionOptions;
   extraTools?: AgentTool[];
+  profile?: AgentProfile;
 }): Promise<NativeAgentResult> {
   const { request, model, skills, signal } = input;
   signal.throwIfAborted();
@@ -56,7 +62,9 @@ export async function runAgent(input: {
     messages: input.messages ?? [],
     responseMode: "tools",
   });
-  const toolset = createVideoToolset(request, skills, input.extraTools ?? []);
+  const toolset = createVideoToolset(request, skills, input.extraTools ?? [], {
+    profile: input.profile,
+  });
   const tools = toolset.tools;
   const system = composeToolAgentPrompt({
     editingGuide: prompts.systemPrompt,
@@ -98,6 +106,18 @@ export async function runAgent(input: {
       sequence = next.sequence;
     },
   };
+  if (port && usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
+    const saved = await checkpoint!.load();
+    toolset.restoreCompletionState(
+      saved === null
+        ? undefined
+        : await restoreCompletionStateFromMessages(
+            parseLoopCheckpoint(saved).messages,
+            request.baseHash,
+          ),
+    );
+    checkpoint!.load = async () => saved;
+  }
   const completed = await runToolLoop({
     model,
     messages,

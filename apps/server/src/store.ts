@@ -69,6 +69,8 @@ export type StoredRun = VideoProjectAgentRun & {
   answers?: Record<string, { hash: string; childId: string }>;
   speechContinuation?: AgentSpeechContinuation;
   loopCheckpoint?: StoredAgentLoopCheckpoint;
+  agentProfile?: "local-editor-v1" | "local-editor-v2";
+  completion?: import("../../../packages/agent-kit/src/index").CompletionContract;
 };
 export type Project = {
   id: string;
@@ -367,6 +369,7 @@ export function publicRun({
   answers: _answers,
   speechContinuation: _speech,
   loopCheckpoint: _checkpoint,
+  completion: _completion,
   ...run
 }: StoredRun) {
   return {

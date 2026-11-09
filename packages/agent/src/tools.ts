@@ -9,6 +9,9 @@ import {
   createEditorToolset,
   type AgentTool as KitTool,
   type Skill,
+  type AgentProfile,
+  type CompletionState,
+  usesCompletionPreflight,
 } from "../../agent-kit/src/index";
 import {
   compileNativeAgentResult,
@@ -20,6 +23,11 @@ import { searchNativeTranscript } from "../../core/src/lib/video-project/agent-t
 import { nativeClarificationSchema } from "../../core/src/lib/video-project/agent-authoring";
 import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
 import { prepareReadableOverlay } from "../../core/src/lib/video-project/readable-overlay";
+import {
+  reviewNativeCompletionEdit,
+  compileNativeCompletionResponse,
+} from "../../core/src/lib/video-project/completion-preflight";
+import { prepareCaptionPair } from "../../core/src/lib/video-project/caption-pair";
 import type { LoopTool } from "../../agent-loop/src/index";
 export type AgentTool = Omit<KitTool<NativeAgentResult>, "execute"> &
   Pick<
@@ -36,6 +44,8 @@ export const replaySafeNativeToolNames = [
   "prepare_text_overlay",
   "propose_edit",
   "ask_user",
+  "review_edit",
+  "prepare_caption_pair",
 ] as const;
 export type ToolOutcome = Awaited<ReturnType<AgentTool["execute"]>>;
 
@@ -44,15 +54,24 @@ export function createVideoToolset(
   request: NativeAgentRequest,
   skills: Skill[],
   extraTools: AgentTool[] = [],
+  options: {
+    profile?: AgentProfile;
+    initialCompletionState?: CompletionState;
+  } = {},
 ) {
   const document = parseVideoProjectDocument(request.document);
   const toolset = createEditorToolset<NativeAgentResult>({
     skills,
-    profile: "local-editor-v1",
+    profile: options.profile ?? "local-editor-v1",
+    snapshotHash: request.baseHash,
+    initialCompletionState: options.initialCompletionState,
     extraTools,
     proposalSchema: nativeAgentResponseSchema({
       clarification: true,
       composition: true,
+      anchorHold:
+        options.profile === "local-editor-v2" ||
+        options.profile === "commercial-editing-v3",
     }),
     ports: {
       inspectGraphicsSchema: () => ({
@@ -136,7 +155,23 @@ export function createVideoToolset(
         command: prepareReadableOverlay(document, args),
         next: "Include this command in propose_edit. The host handles application; preparation has not applied an edit.",
       }),
-      proposeEdit: (args) => compileNativeAgentResult(request, args),
+      reviewEdit: (input) => reviewNativeCompletionEdit(request, input),
+      prepareCaptionPair: (input) => prepareCaptionPair(document, input),
+      proposeEdit: (args, _signal, completion) => {
+        if (
+          !usesCompletionPreflight(options.profile ?? "local-editor-v1") &&
+          (args as { commands?: Array<{ holdMs?: unknown }> })?.commands?.some(
+            (command) => Object.hasOwn(command, "holdMs"),
+          )
+        )
+          throw new Error("holdMs requires the completion-preflight profile.");
+        return completion
+          ? compileNativeCompletionResponse(request, {
+              ...(args as object),
+              completion,
+            })
+          : compileNativeAgentResult(request, args);
+      },
       askUser: (args) => {
         const clarification = nativeClarificationSchema.parse(args);
         return compileNativeAgentResult(request, {
