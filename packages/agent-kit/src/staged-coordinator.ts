@@ -172,6 +172,8 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     text: string;
   }>;
   native: StageNativePorts<T>;
+  /** Opted in only by new profiles; retained profiles require bilingual pairs. */
+  generalEditing?: true;
   policy?: StagedEditPolicy;
   invoke(options: StageModelInvocation<T>): Promise<T>;
   signal: AbortSignal;
@@ -468,11 +470,17 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     }
     if (stage.id === plan.stages[0].id)
       await input.records.accountPlanning(stage.id, stage.attemptId!);
-    const manifest = manifestFor(plan, stage),
-      ref = await port.putArtifact("evidence", {
-        kind: "caption-manifest",
-        manifest,
-      });
+    const ref = await port.putArtifact(
+      "evidence",
+      input.generalEditing && stage.descriptor?.kind === "editing-basis"
+        ? {
+            kind: "editing-basis",
+            snapshotHash: input.snapshotHash,
+            bindingHash: plan.bindingHash,
+            requirementsHash: plan.requirementsHash,
+          }
+        : { kind: "caption-manifest", manifest: manifestFor(plan, stage) },
+    );
     await complete(stage, [ref]);
   }
   async function initialize(raw: unknown) {
@@ -483,10 +491,14 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     });
     if (
       !Array.isArray(value.captionPairs) ||
-      !value.captionPairs.length ||
+      (!input.generalEditing && !value.captionPairs.length) ||
       value.captionPairs.length > 12
     )
-      throw new Error("Plan 1–12 exact caption pairs.");
+      throw new Error(
+        input.generalEditing
+          ? "Plan 0–12 exact caption pairs; use an empty array for monolingual captions or graphics."
+          : "Plan 1–12 exact caption pairs.",
+      );
     const scope = input.native.readableSourceItemIds,
       manifests: StageCaptionManifest[] = [];
     for (const rawPair of value.captionPairs) {
@@ -532,6 +544,15 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     if (new Set(ids).size !== ids.length)
       throw new Error("Caption pairs need distinct stable item identities.");
     const stages: Parameters<typeof createEditStagePlan>[0]["stages"] = [];
+    if (!manifests.length)
+      stages.push({
+        id: "evidence:editing",
+        kind: "evidence",
+        execution: "host",
+        dependencies: [],
+        inputs: [],
+        descriptor: { kind: "editing-basis" },
+      });
     for (const [index, manifest] of manifests.entries()) {
       const evidenceId = `evidence:${index}`;
       stages.push({
@@ -609,7 +630,9 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     });
     await ensureEvidence(plan.stages[0]);
     return answer(
-      "The exact caption plan is saved. Continuing its bounded batches under the original overall allowance.",
+      manifests.length
+        ? "The exact caption plan is saved. Continuing its bounded batches under the original overall allowance."
+        : "The editing outcomes and original source basis are saved. Continuing native captions and graphics under the original overall allowance.",
     );
   }
   function stages(
@@ -618,6 +641,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   ): EditorStagePorts<T> {
     const getPlan = async () => (await port.load())!;
     return {
+      ...(input.generalEditing ? { generalEditing: true as const } : {}),
       preparedCommands: !!frozen?.preparedRef,
       ...(stage
         ? {
@@ -828,7 +852,10 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       if (stage.kind === "assemble") {
         const commands: unknown[] = [];
         for (const evidence of plan.stages.filter(
-          (value) => value.kind === "evidence",
+          (value) =>
+            value.kind === "evidence" &&
+            (!input.generalEditing ||
+              value.descriptor?.kind !== "editing-basis"),
         )) {
           const manifest = manifestFor(plan, evidence),
             related = plan.stages.filter(
@@ -850,11 +877,12 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
             ...(await input.native.assembleBatches(manifest, batches)).commands,
           );
         }
-        preparedRef = await port.putArtifact("commands", {
-          summary:
-            "All exact caption batches, source trims, reciprocal pairing and styles",
-          commands,
-        });
+        if (plan.stages[0].descriptor?.kind !== "editing-basis")
+          preparedRef = await port.putArtifact("commands", {
+            summary:
+              "All exact caption batches, source trims, reciprocal pairing and styles",
+            commands,
+          });
       }
       const state = await saved(),
         contextRefs = Object.values(state.artifacts)

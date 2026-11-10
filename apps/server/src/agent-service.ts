@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { EditStageError as RetainedEditStageError } from "@dojo-video/agent-kit-v20";
 import { z } from "zod/v3";
 import {
   runAgent,
@@ -67,6 +68,7 @@ import {
   type EditStagePlan,
   completionHash,
   editStageProgress,
+  usesStagedEditing,
 } from "../../../packages/agent-kit/src/index";
 import {
   LoopHostInputRequiredError,
@@ -76,6 +78,10 @@ import {
   localEditStageRecovery,
   putLocalEditStageArtifact,
 } from "./edit-stage-store";
+const isStageError = (
+  cause: unknown,
+): cause is EditStageError | RetainedEditStageError =>
+  cause instanceof EditStageError || cause instanceof RetainedEditStageError;
 export class AgentService {
   private active = new Map<string, AbortController>();
   private deadlines = new Map<string, ReturnType<typeof setTimeout>>();
@@ -97,7 +103,8 @@ export class AgentService {
       | "local-editor-v3"
       | "local-editor-v4"
       | "local-editor-v5"
-      | "local-editor-v6" = "local-editor-v1",
+      | "local-editor-v6"
+      | "local-editor-v7" = "local-editor-v1",
     private stagedOptions: {
       captionBatchSize?: number;
       onTransition?: (plan: EditStagePlan) => Promise<void>;
@@ -257,7 +264,7 @@ export class AgentService {
                 cause instanceof AgentCheckpointConflict ||
                 cause instanceof LoopCheckpointCapacityError ||
                 cause instanceof ProviderReplyByteBudgetError ||
-                cause instanceof EditStageError
+                isStageError(cause)
                   ? cause.code
                   : "AGENT_FAILED",
               message: cause instanceof Error ? cause.message : "Agent failed",
@@ -270,10 +277,7 @@ export class AgentService {
               run.stageRecovery = {
                 canResume:
                   recovery.safe &&
-                  !(
-                    cause instanceof EditStageError &&
-                    cause.code === "STAGE_CONFLICT"
-                  ),
+                  !(isStageError(cause) && cause.code === "STAGE_CONFLICT"),
                 canReuseSavedResult:
                   !!staged.savedCandidateRef &&
                   staged.plan.status !== "cancelled",
@@ -291,7 +295,7 @@ export class AgentService {
           const project = await this.store.read(projectId),
             run = runOf(project, id);
           if (
-            run.agentProfile === "local-editor-v6" &&
+            usesStagedEditing(run.agentProfile ?? "local-editor-v1") &&
             run.status === "queued" &&
             run.phase === "stage_resume"
           )
@@ -323,7 +327,7 @@ export class AgentService {
     if (initialRun.status === "cancelled") return;
     const history = agentCheckpointHistory(initial, initialRun, {
       stagePlanOwnsCurrentBinding:
-        initialRun.agentProfile === "local-editor-v6" &&
+        usesStagedEditing(initialRun.agentProfile ?? "local-editor-v1") &&
         !!initial.editStagePlans?.[id],
     });
     // A checkpoint resume may consume only existing ASR receipts. It cannot
@@ -431,47 +435,44 @@ export class AgentService {
             }
           : {}),
       });
-    const result =
-      run.agentProfile === "local-editor-v6"
-        ? await runStagedEditing({
-            store: this.store,
-            projectId,
-            runId: id,
-            request,
-            modelIdentity: model.identity ?? "",
-            signal,
-            policy: this.stagedOptions,
-            invoke,
-            onTransition: async (plan) => {
-              await this.store.transaction(projectId, (p) => {
-                const r = runOf(p, id);
-                if (r.status === "running") {
-                  const active = plan.stages.find(
-                    (stage) =>
-                      stage.status === "running" || stage.status === "waiting",
-                  );
-                  r.phase = active
-                    ? `stage:${active.kind}`
-                    : "stage:continuing";
-                  r.updatedAt = new Date().toISOString();
-                }
-                r.stageProgress = editStageProgress(plan);
-                const saved = p.editStagePlans?.[id];
-                if (saved) {
-                  const recovery = localEditStageRecovery(saved);
-                  r.stageRecovery = {
-                    canResume: recovery.safe,
-                    canReuseSavedResult:
-                      !!saved.savedCandidateRef && plan.status !== "cancelled",
-                  };
-                }
-              });
-              const controller = this.active.get(id);
-              if (controller) this.armDeadline(id, controller);
-              await this.stagedOptions.onTransition?.(plan);
-            },
-          })
-        : await invoke();
+    const result = usesStagedEditing(run.agentProfile ?? "local-editor-v1")
+      ? await runStagedEditing({
+          store: this.store,
+          projectId,
+          runId: id,
+          request,
+          modelIdentity: model.identity ?? "",
+          signal,
+          policy: this.stagedOptions,
+          invoke,
+          onTransition: async (plan) => {
+            await this.store.transaction(projectId, (p) => {
+              const r = runOf(p, id);
+              if (r.status === "running") {
+                const active = plan.stages.find(
+                  (stage) =>
+                    stage.status === "running" || stage.status === "waiting",
+                );
+                r.phase = active ? `stage:${active.kind}` : "stage:continuing";
+                r.updatedAt = new Date().toISOString();
+              }
+              r.stageProgress = editStageProgress(plan);
+              const saved = p.editStagePlans?.[id];
+              if (saved) {
+                const recovery = localEditStageRecovery(saved);
+                r.stageRecovery = {
+                  canResume: recovery.safe,
+                  canReuseSavedResult:
+                    !!saved.savedCandidateRef && plan.status !== "cancelled",
+                };
+              }
+            });
+            const controller = this.active.get(id);
+            if (controller) this.armDeadline(id, controller);
+            await this.stagedOptions.onTransition?.(plan);
+          },
+        })
+      : await invoke();
     signal.throwIfAborted();
     await this.store.transaction(projectId, async (p) => {
       const r = runOf(p, id);
@@ -885,7 +886,10 @@ export class AgentService {
         created = true;
         return parent;
       }
-      if (parent.agentProfile === "local-editor-v6" && parent.loopCheckpoint) {
+      if (
+        usesStagedEditing(parent.agentProfile ?? "local-editor-v1") &&
+        parent.loopCheckpoint
+      ) {
         const checkpoint = parseLoopCheckpoint(
           parent.loopCheckpoint.checkpoint,
         );

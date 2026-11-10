@@ -98,7 +98,7 @@ export async function createLocalApi() {
           source,
         ),
     },
-    "local-editor-v6",
+    "local-editor-v7",
   );
   type Task = {
     id: string;

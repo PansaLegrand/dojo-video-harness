@@ -8,6 +8,8 @@ import {
 } from "./completion.js";
 import type { CaptionCueQuery } from "./tools.js";
 export type EditorStagePorts<T> = {
+  /** New profiles may plan monolingual/creative edits without a translation pair. */
+  generalEditing?: boolean;
   planEditStages(input: unknown, signal: AbortSignal): Promise<T>;
   saveCaptionBatch(input: unknown, signal: AbortSignal): Promise<T>;
   readEditArtifact(
@@ -85,16 +87,22 @@ function input(raw: unknown, keys: string[]) {
 }
 export function createStagedEditorTools<T>(
   ports: EditorStagePorts<T>,
+  options?: {
+    requirementsSchema?: Record<string, unknown>;
+    description?: string;
+  },
 ): AgentTool<T>[] {
   return [
     {
       ...toolMetadata("plan_edit_stages"),
+      ...(options?.description ? { description: options.description } : {}),
       parameters: object(
         {
-          requirements: pagedCompletionRequirementsSchema,
+          requirements:
+            options?.requirementsSchema ?? pagedCompletionRequirementsSchema,
           captionPairs: {
             type: "array",
-            minItems: 1,
+            minItems: ports.generalEditing ? 0 : 1,
             maxItems: 12,
             items: pair,
           },

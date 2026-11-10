@@ -7,6 +7,7 @@ import {
   type EditStagePlan,
   type StageModelInvocation,
 } from "../../../packages/agent-kit/src/index";
+import { runEditingStages as runRetainedEditingStages } from "@dojo-video/agent-kit-v20";
 import {
   parseLoopCheckpoint,
   type LoopCheckpointPort,
@@ -93,7 +94,11 @@ export async function runStagedEditing(input: {
     { modelCalls: 0, toolCalls: 0, inputTokens: 0, outputTokens: 0 },
   );
   const port = createLocalEditStagePort({ ...input, binding });
-  return runEditingStages({
+  const coordinate =
+    run.agentProfile === "local-editor-v7"
+      ? runEditingStages
+      : runRetainedEditingStages;
+  return coordinate({
     port,
     binding,
     modelIdentity: input.modelIdentity,
@@ -213,6 +218,9 @@ export async function runStagedEditing(input: {
         };
       },
     },
+    ...(run.agentProfile === "local-editor-v7"
+      ? { generalEditing: true as const }
+      : {}),
     native: {
       readableSourceItemIds: nativeTranscriptScopedSourceItemIds({
         ...input.request,
