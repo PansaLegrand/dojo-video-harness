@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRightLeft, Combine, Maximize2, Plus, Search, X, Wand2 } from "lucide-react";
+import { ArrowRightLeft, Combine, Maximize2, Plus, Search, X, Wand2, SplitSquareHorizontal, Film } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import type { CaptionCue, EditorDocument, EditorItem } from "@/lib/editor/document";
 import { estimateCaptionWords } from "@/lib/editor/caption-words";
@@ -9,20 +9,25 @@ import { EditorField, EditorTextArea } from "./editor-fields";
 import { EditorCaptionStylePicker } from "./editor-caption-style-picker";
 import { useNativeEditorText } from "./native-editor-copy";
 import { EditorCaptionActiveCue } from "./editor-playhead";
+import type { VideoProjectDocument } from "@/lib/video-project/document";
+import { captionSegmentationItems, prepareCaptionSegmentation, type CaptionSegmentationPlan } from "@/lib/video-project/caption-segmentation";
+import { captionReadability, captionSplitDraft } from "./editor-caption-readability";
+import { captionSourceMoment } from "./editor-caption-source";
+import { EditorCaptionSourcePreview } from "./editor-caption-source-preview";
 
 function CaptionDialog({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const t = useNativeEditorText();
   function close() { (ref.current?.ownerDocument.activeElement as HTMLElement | null)?.blur(); onClose(); }
-  useEffect(() => { ref.current?.showModal(); return () => ref.current?.close(); }, []);
+  useEffect(() => { const element = ref.current, previous = element?.ownerDocument.activeElement as HTMLElement | null; element?.showModal(); return () => { element?.close(); if (previous?.isConnected) previous.focus({ preventScroll: true }); }; }, []);
   return <dialog ref={ref} className="editor-caption-dialog editor-caption-edit-dialog" role="dialog" aria-modal="true" aria-label={t(title)} onCancel={event => { event.preventDefault(); close(); }}>
     <div className="editor-caption-dialog-header"><h2>{t(title)}</h2><button aria-label={t("Close caption editor")} onClick={close}><X size={18} /></button></div>
     <div className="editor-caption-dialog-body">{children}</div>
   </dialog>;
 }
-function CueEditor({ cue, index, language, onChange, onPreview, onRemove, onMerge, onSeek, companion, disabled, allowWords }: {
+function CueEditor({ cue, index, language, direction, onChange, onPreview, onRemove, onMerge, onSplit, onSource, onTextFocus, onSeek, companion, disabled, allowWords }: {
   cue: CaptionCue; index: number; language?: string; onChange: (cue: CaptionCue) => void; onPreview: (cue: CaptionCue | null) => void;
-  onRemove: () => void; onMerge?: () => void; onSeek: () => void; companion?: React.ReactNode; disabled: boolean; allowWords: boolean;
+  onRemove: () => void; onMerge?: () => void; onSplit?: () => void; onSource?: () => void; onTextFocus?: () => void; onSeek: () => void; companion?: React.ReactNode; disabled: boolean; allowWords: boolean; direction: "ltr" | "rtl";
 }) {
   const t = useNativeEditorText(); const [wordsOpen, setWordsOpen] = useState(false);
   const words = !allowWords ? [] : cue.words?.length ? cue.words : estimateCaptionWords(cue.text, cue.startMs, cue.endMs, language);
@@ -33,10 +38,10 @@ function CueEditor({ cue, index, language, onChange, onPreview, onRemove, onMerg
   return <fieldset disabled={disabled} className="editor-caption-cue" data-cue-id={cue.id}>
     <div className="editor-caption-cue-heading"><button type="button" onClick={onSeek}>{String(index + 1).padStart(2, '0')} · {(cue.startMs/1000).toFixed(2)}–{(cue.endMs/1000).toFixed(2)} s</button><button type="button" aria-label={`${t("Remove cue")} ${index + 1}`} onClick={onRemove}><X size={13} /></button></div>
     <div className={companion ? "editor-caption-bilingual-row" : undefined}>
-      <EditorTextArea label={`Caption ${index + 1}`} value={cue.text} rows={2} onPreview={text => onPreview(text === null ? null : editCaptionText(cue, text))} onCommit={text => onChange(editCaptionText(cue, text))} />
+      <EditorTextArea label={`Caption ${index + 1}`} value={cue.text} rows={2} dir={direction} onFocus={onTextFocus} onPreview={text => onPreview(text === null ? null : editCaptionText(cue, text))} onCommit={text => onChange(editCaptionText(cue, text))} />
       {companion}
     </div>
-    <details onToggle={event => setWordsOpen(event.currentTarget.open)}><summary>{t(allowWords ? "Words & timing" : "Timing")}</summary>
+    <details onToggle={event => { setWordsOpen(event.currentTarget.open); if (event.currentTarget.open) onTextFocus?.(); }}><summary>{t(allowWords ? "Words & timing" : "Timing")}</summary>
       {wordsOpen && <div className="editor-caption-word-editor">
         <div className="grid grid-cols-2 gap-2">
           <EditorField label={`Cue ${index + 1} start (s)`} type="number" value={cue.startMs/1000} min={0} max={(cue.endMs-1)/1000} step={.01} decimalPlaces={2} onCommit={value => updateCueTime("startMs", value)} />
@@ -50,23 +55,58 @@ function CueEditor({ cue, index, language, onChange, onPreview, onRemove, onMerg
         </div>)}
       </div>}
     </details>
-    {onMerge && <button type="button" className="editor-caption-merge" aria-label={`${t("Merge with next")}: ${t(`Caption ${index + 1}`)} + ${t(`Caption ${index + 2}`)}`} onClick={onMerge}><Combine size={13} aria-hidden="true" />{t("Merge with next")}</button>}
+    {captionReadability(cue).length > 0 && <div className="editor-caption-readability" role="status">{captionReadability(cue).map(issue => <small key={issue} data-caption-issue={issue}>{t(issue === "short" ? "Short caption" : issue === "long" ? "Long caption" : "More than two lines")}</small>)}</div>}
+    <div className="editor-caption-cue-actions">
+      {onMerge && <button type="button" className="editor-caption-merge" aria-label={`${t("Merge with next")}: ${t(`Caption ${index + 1}`)} + ${t(`Caption ${index + 2}`)}`} onClick={onMerge}><Combine size={13} aria-hidden="true" />{t("Merge with next")}</button>}
+      {onSplit && <button type="button" className="editor-caption-merge" aria-label={`${t("Split cue")}: ${t(`Caption ${index + 1}`)}`} onClick={onSplit}><SplitSquareHorizontal size={13} aria-hidden="true" />{t("Split cue")}</button>}
+      {onSource && <button type="button" className="editor-caption-merge" aria-label={`${t("Inspect source moment")}: ${t(`Caption ${index + 1}`)}`} onClick={onSource}><Film size={13} aria-hidden="true" />{t("Inspect source moment")}</button>}
+    </div>
   </fieldset>;
 }
-export function EditorCaptionContent({ item, document, frame, disabled, onUpdate, onSelect, onSeek, onTranslate, onStyle, onPreviewCue }: {
+export function EditorCaptionContent({ item, document, nativeDocument, sources = {}, frame, disabled, onUpdate, onSelect, onSeek, onTranslate, onStyle, onPreviewCue, onApplyStructure, onPausePreview, mainPreviewPlaying = false, onRelinkSource }: {
   item: EditorItem; document: EditorDocument; frame: number; disabled: boolean;
   onUpdate: (id: string, patch: Partial<EditorItem>) => void; onSelect: (id: string) => void; onSeek: (frame: number) => void;
   onPreviewCue: (item: EditorItem, cue: CaptionCue | null) => void;
   onTranslate: (item: EditorItem) => void; onStyle: (item: EditorItem, key: string) => void;
+  nativeDocument?: VideoProjectDocument | null; sources?: Readonly<Record<string, string>>; onApplyStructure?: (plan: CaptionSegmentationPlan) => Promise<void>;
+  onPausePreview?: () => void; mainPreviewPlaying?: boolean; onRelinkSource?: (assetId: string) => void;
 }) {
   const t = useNativeEditorText(); const { locale } = useTranslation();
   const [query, setQuery] = useState(""); const [limit, setLimit] = useState(12);
   const [expanded, setExpanded] = useState(false); const [styleOpen, setStyleOpen] = useState(false);
   const [pairId, setPairId] = useState("");
-  useEffect(() => { setQuery(""); setLimit(12); setPairId(""); }, [item.id]);
+  const [structureBusy, setStructureBusy] = useState(false), [structureError, setStructureError] = useState<string | null>(null), [sourceCueId, setSourceCueId] = useState<string | null>(null);
+  const [splitDraft, setSplitDraft] = useState<{ basis: VideoProjectDocument; items: EditorItem[]; cueId: string; newCueId: string; splitMs: number; texts: Record<string, { before: string; after: string }> } | null>(null);
+  const structurePending = useRef(false);
+  useEffect(() => { setQuery(""); setLimit(12); setPairId(""); setSourceCueId(null); setSplitDraft(null); setStructureError(null); }, [item.id]);
   const caption = item.caption!;
   const related = captionRelations(document.items, item);
   const paired = related.find(candidate => candidate.id === pairId) ?? related[0];
+  const sourceCue = caption.cues.find(cue => cue.id === sourceCueId), moment = sourceCue ? captionSourceMoment(document, item, sourceCue) : null;
+  async function mergeCue(cueId: string) {
+    if (!nativeDocument || !onApplyStructure || structurePending.current) return;
+    structurePending.current = true; setStructureBusy(true); setStructureError(null);
+    try { await onApplyStructure(await prepareCaptionSegmentation(nativeDocument, { operation: "merge", itemId: item.id, cueId })); }
+    catch (cause) { setStructureError(cause instanceof Error ? cause.message : "The caption edit could not be applied."); }
+    finally { structurePending.current = false; setStructureBusy(false); }
+  }
+  function beginSplit(cueId: string) {
+    if (!nativeDocument) return;
+    try { const items = captionSegmentationItems(nativeDocument, item.id), draft = captionSplitDraft(items, cueId, document.format.fps);
+      setSplitDraft({ basis: nativeDocument, items, cueId, newCueId: crypto.randomUUID(), ...draft }); setExpanded(true); setLimit(50); setStructureError(null);
+    } catch (cause) { setStructureError(cause instanceof Error ? cause.message : "The caption edit could not be applied."); }
+  }
+  async function applySplit() {
+    if (!splitDraft || !onApplyStructure || structurePending.current) return;
+    structurePending.current = true; setStructureBusy(true); setStructureError(null);
+    try { await onApplyStructure(await prepareCaptionSegmentation(splitDraft.basis, { operation: "split", itemId: item.id, cueId: splitDraft.cueId, newCueId: splitDraft.newCueId, splitMs: splitDraft.splitMs, texts: splitDraft.texts })); setSplitDraft(null); }
+    catch (cause) { setStructureError(cause instanceof Error ? cause.message : "The caption edit could not be applied."); }
+    finally { structurePending.current = false; setStructureBusy(false); }
+  }
+  function inspectSource(cue: CaptionCue) {
+    if (!captionSourceMoment(document, item, cue)) { setSourceCueId(null); setStructureError("This cue is outside its linked source clip."); return; }
+    onPausePreview?.(); setSourceCueId(cue.id); setStructureError(null);
+  }
   function updateCues(owner: EditorItem, cues: CaptionCue[]) {
     onUpdate(owner.id, { caption: { ...owner.caption!, cues }, node: { ...owner.node, duration: Math.max(owner.node.duration ?? 1, Math.ceil(Math.max(1, ...cues.map(cue => cue.endMs)) * document.format.fps / 1000)) } });
   }
@@ -78,6 +118,19 @@ export function EditorCaptionContent({ item, document, frame, disabled, onUpdate
         {related.map(other => <button key={other.id} type="button" onClick={() => onSelect(other.id)}><ArrowRightLeft size={12} />{captionLanguageLabel(other.caption?.language, locale) ?? other.name}</button>)}
       </div>}
       {!related.length && caption.role === "translation" && caption.pairedItemId && <p className="editor-muted-copy">{t("Source captions unavailable")}</p>}
+      {!!related.length && nativeDocument && onApplyStructure && <p className="editor-muted-copy">{t("Merge and split update the original and every linked translation together.")}</p>}
+      {structureError && <p role="alert" className="editor-caption-edit-error">{t(structureError)}</p>}
+      {moment && sourceCueId && document.assets[moment.assetId] && <EditorCaptionSourcePreview key={moment.assetId} asset={document.assets[moment.assetId]} source={sources[moment.assetId]} moment={moment} mainPreviewPlaying={mainPreviewPlaying} onPauseMain={onPausePreview} onClose={() => setSourceCueId(null)} onRelink={onRelinkSource ? () => onRelinkSource(moment.assetId) : undefined} />}
+      {splitDraft && <fieldset className="editor-caption-split" disabled={disabled || structureBusy} data-caption-split>
+        <legend>{t("Split caption")}</legend><p>{t("Review both text parts in every language. Original speech evidence is unchanged.")}</p>
+        <EditorField label="Split time (s)" type="number" value={splitDraft.splitMs / 1000} min={(caption.cues.find(cue => cue.id === splitDraft.cueId)?.startMs ?? 0) / 1000} step={1 / document.format.fps} decimalPlaces={3} onCommit={value => setSplitDraft(current => current ? { ...current, splitMs: Number(value) * 1000 } : null)} />
+        {splitDraft.items.map(other => <div key={other.id} data-split-language={other.caption?.language ?? other.id}>
+          <h4>{captionLanguageLabel(other.caption?.language, locale) ?? other.name}</h4>
+          <EditorTextArea label={`${captionLanguageLabel(other.caption?.language, locale) ?? other.name} · ${t("Before split")}`} value={splitDraft.texts[other.id].before} rows={2} dir={other.caption!.direction} onCommit={value => setSplitDraft(current => current ? { ...current, texts: { ...current.texts, [other.id]: { ...current.texts[other.id], before: value } } } : null)} />
+          <EditorTextArea label={`${captionLanguageLabel(other.caption?.language, locale) ?? other.name} · ${t("After split")}`} value={splitDraft.texts[other.id].after} rows={2} dir={other.caption!.direction} onCommit={value => setSplitDraft(current => current ? { ...current, texts: { ...current.texts, [other.id]: { ...current.texts[other.id], after: value } } } : null)} />
+        </div>)}
+        <div className="editor-caption-cue-actions"><button type="button" className="editor-primary-button" disabled={disabled || structureBusy || Object.values(splitDraft.texts).some(parts => !parts.before.trim() || !parts.after.trim())} onClick={() => void applySplit()}>{t(structureBusy ? "Applying caption edit…" : "Apply split")}</button><button type="button" className="editor-secondary-button" onClick={() => { setSplitDraft(null); setStructureError(null); }}>{t("Cancel split")}</button></div>
+      </fieldset>}
       <div className="editor-caption-editor-toolbar">
         <label><Search size={14} /><input aria-label={t("Search captions")} placeholder={t("Search captions")} value={query} onChange={event => setQuery(event.target.value)} /></label>
         <button type="button" disabled={disabled} onClick={() => setStyleOpen(true)}><Wand2 size={14} />{t("Style")}</button>
@@ -88,11 +141,13 @@ export function EditorCaptionContent({ item, document, frame, disabled, onUpdate
         {caption.cues.map((cue, index) => ({ cue, index })).filter(({ cue }) => !query || cue.text.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, limit).map(({ cue, index }) => {
           const partner = paired?.caption?.cues.find(entry => entry.id === cue.id) ?? paired?.caption?.cues.find(entry => Math.abs(entry.startMs-cue.startMs) < 2 && Math.abs(entry.endMs-cue.endMs) < 2);
           return <EditorCaptionActiveCue key={`${item.id}:${cue.id}`} frame={frame} from={item.node.from ?? 0} fps={document.format.fps} startMs={cue.startMs} endMs={cue.endMs}>
-            <CueEditor cue={cue} index={index} allowWords={caption.role !== "translation"} language={caption.language} disabled={disabled} onSeek={() => onSeek((item.node.from ?? 0) + Math.round(cue.startMs * document.format.fps / 1000))}
+            <CueEditor cue={cue} index={index} allowWords={caption.role !== "translation"} language={caption.language} direction={caption.direction} disabled={disabled || structureBusy} onSeek={() => { onSeek((item.node.from ?? 0) + Math.round(cue.startMs * document.format.fps / 1000)); if (sourceCueId) inspectSource(cue); }} onTextFocus={() => { if (sourceCueId) inspectSource(cue); }}
               onPreview={value => onPreviewCue(item, value)}
               onChange={value => updateCues(item, caption.cues.map(entry => entry.id === cue.id ? value : entry))} onRemove={() => updateCues(item, caption.cues.filter(entry => entry.id !== cue.id))}
-              onMerge={!query && index + 1 < Math.min(limit, caption.cues.length) ? () => updateCues(item, mergeCaptionWithNext(caption.cues, cue.id, caption.language)) : undefined}
-              companion={expanded && paired && partner ? <fieldset disabled={disabled || !!document.tracks.find(track => track.id === paired.trackId)?.locked}><EditorTextArea label={`${captionLanguageLabel(paired.caption?.language, locale) ?? t("Translation")} ${index+1}`} value={partner.text} rows={2} onPreview={value => onPreviewCue(paired, value === null ? null : editCaptionText(partner, value))} onCommit={value => updateCues(paired, paired.caption!.cues.map(entry => entry.id === partner.id ? editCaptionText(entry, value) : entry))} /></fieldset> : undefined} />
+              onMerge={!query && index + 1 < Math.min(limit, caption.cues.length) && (onApplyStructure && nativeDocument || !related.length) ? () => onApplyStructure && nativeDocument ? void mergeCue(cue.id) : updateCues(item, mergeCaptionWithNext(caption.cues, cue.id, caption.language)) : undefined}
+              onSplit={nativeDocument && onApplyStructure ? () => beginSplit(cue.id) : undefined}
+              onSource={caption.sourceItemId ? () => inspectSource(cue) : undefined}
+              companion={expanded && paired && partner ? <fieldset disabled={disabled || structureBusy || !!document.tracks.find(track => track.id === paired.trackId)?.locked}><EditorTextArea label={`${captionLanguageLabel(paired.caption?.language, locale) ?? t("Translation")} ${index+1}`} value={partner.text} rows={2} dir={paired.caption!.direction} onFocus={() => { if (sourceCueId) inspectSource(cue); }} onPreview={value => onPreviewCue(paired, value === null ? null : editCaptionText(partner, value))} onCommit={value => updateCues(paired, paired.caption!.cues.map(entry => entry.id === partner.id ? editCaptionText(entry, value) : entry))} /></fieldset> : undefined} />
           </EditorCaptionActiveCue>;
         })}
       </div>
@@ -102,7 +157,7 @@ export function EditorCaptionContent({ item, document, frame, disabled, onUpdate
   }
   return <div className="editor-caption-content">
     {!expanded && content()}
-    {expanded && <CaptionDialog title="Edit captions" onClose={() => setExpanded(false)}>{content()}</CaptionDialog>}
+    {expanded && <CaptionDialog title="Edit captions" onClose={() => { setExpanded(false); setSourceCueId(null); setSplitDraft(null); }}>{content()}</CaptionDialog>}
     {styleOpen && <CaptionDialog title="Caption style" onClose={() => setStyleOpen(false)}>{caption.role === "translation" && <p className="editor-muted-copy mb-3">{t("Translated captions use static styles because they have no word timestamps.")}</p>}<EditorCaptionStylePicker value="custom" staticOnly={caption.role === "translation"} language={caption.language} disabled={disabled} onChange={key => { onStyle(item, key); setStyleOpen(false); }} /></CaptionDialog>}
   </div>;
 }

@@ -1,9 +1,18 @@
-export const AGENT_KIT_VERSION = "0.1.5" as const;
+export const AGENT_KIT_VERSION = "0.2.0" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
+};
+export type HostRequestRef = {
+  kind:
+    | "source-inspection"
+    | "project-preview"
+    | "project-export"
+    | "external-approval";
+  id: string;
+  hash: string;
 };
 export type AgentTool<T> = ToolSpec & {
   effect: ToolEffect;
@@ -13,10 +22,35 @@ export type AgentTool<T> = ToolSpec & {
   ): Promise<
     | { kind: "observation"; value: unknown; pinned?: boolean }
     | { kind: "terminal"; result: T }
+    | { kind: "waiting"; requestRef: HostRequestRef }
   >;
 };
 export type Skill = { name: string; description: string; instructions: string };
 export const toolCatalog = {
+  read_caption_track: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "Read current editable caption cue IDs/text/timing after manual merge, split or correction, with language/pair/source/clock metadata and snapshot/scope-bound pagination. These are DISPLAY values, not genuine ASR word evidence; never use them to replace immutable transcript words.",
+  },
+  plan_edit_stages: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "Freeze every requested outcome and exact source/range caption pairs before staged translation. The host creates evidence, bounded caption batches, assembly and verification stages under one original budget. This saves a plan and yields to the next stage; it never applies edits or submits provider jobs.",
+  },
+  save_caption_batch: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "Persist exactly the active caption batch, one translation per genuine cue ID. The host binds source/range/batch identity, saves a reusable artifact and continues the next stage. This never applies partial captions or changes source evidence.",
+  },
+  read_edit_artifact: {
+    effect: "read",
+    owner: "portable",
+    description:
+      "Read an owned immutable editing artifact through a bounded paginated view. Original intent, creative decisions, prepared commands and failures remain references. Provider/financial/binary payloads stay host-only; coverage is explicit.",
+  },
   inspect_project: {
     effect: "read",
     owner: "portable",
@@ -114,6 +148,15 @@ export function toolMetadata(name: CatalogToolName) {
   return { name, description, effect };
 }
 export const skillRequirements = {
+  "generated-media": ["prepare_generated_media"],
+  "visual-inspection": ["inspect_image", "sample_video_frames"],
+  "staged-editing": [
+    "plan_edit_stages",
+    "save_caption_batch",
+    "read_edit_artifact",
+    "review_edit",
+    "propose_edit",
+  ],
   "precise-editing": ["inspect_project", "propose_edit"],
   "motion-design": [
     "inspect_project",
@@ -144,7 +187,9 @@ export type AgentProfile =
   | "local-editor-v4"
   | "commercial-editing-v5"
   | "local-editor-v5"
-  | "commercial-editing-v6";
+  | "commercial-editing-v6"
+  | "local-editor-v6"
+  | "commercial-editing-v7";
 export const usesCompletionPreflight = (profile: AgentProfile) =>
   [
     "local-editor-v2",
@@ -155,6 +200,8 @@ export const usesCompletionPreflight = (profile: AgentProfile) =>
     "commercial-editing-v5",
     "local-editor-v5",
     "commercial-editing-v6",
+    "local-editor-v6",
+    "commercial-editing-v7",
   ].includes(profile);
 export const usesPagedReaders = (profile: AgentProfile) =>
   [
@@ -164,6 +211,8 @@ export const usesPagedReaders = (profile: AgentProfile) =>
     "commercial-editing-v5",
     "local-editor-v5",
     "commercial-editing-v6",
+    "local-editor-v6",
+    "commercial-editing-v7",
   ].includes(profile);
 export const usesEfficientReaders = (profile: AgentProfile) =>
   [
@@ -171,19 +220,30 @@ export const usesEfficientReaders = (profile: AgentProfile) =>
     "commercial-editing-v5",
     "local-editor-v5",
     "commercial-editing-v6",
+    "local-editor-v6",
+    "commercial-editing-v7",
   ].includes(profile);
 export const usesResolvedEditSchema = (profile: AgentProfile) =>
-  profile === "local-editor-v5" || profile === "commercial-editing-v6";
+  [
+    "local-editor-v5",
+    "commercial-editing-v6",
+    "local-editor-v6",
+    "commercial-editing-v7",
+  ].includes(profile);
+export const usesStagedEditing = (profile: AgentProfile) =>
+  profile === "local-editor-v6" || profile === "commercial-editing-v7";
 export const profileKitVersion = (profile: AgentProfile) =>
-  usesResolvedEditSchema(profile)
+  usesStagedEditing(profile)
     ? AGENT_KIT_VERSION
-    : usesEfficientReaders(profile)
-      ? "0.1.4"
-      : usesPagedReaders(profile)
-        ? "0.1.3"
-        : usesCompletionPreflight(profile)
-          ? "0.1.2"
-          : "0.1.1";
+    : usesResolvedEditSchema(profile)
+      ? "0.1.5"
+      : usesEfficientReaders(profile)
+        ? "0.1.4"
+        : usesPagedReaders(profile)
+          ? "0.1.3"
+          : usesCompletionPreflight(profile)
+            ? "0.1.2"
+            : "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
@@ -194,6 +254,17 @@ export const profileSkills: Record<
   "local-editor-v3": null,
   "local-editor-v4": null,
   "local-editor-v5": null,
+  "local-editor-v6": null,
+  "commercial-editing-v7": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+    "multi-asset-editing",
+    "staged-editing",
+    "generated-media",
+    "visual-inspection",
+  ],
   "commercial-editing-v6": [
     "precise-editing",
     "motion-design",

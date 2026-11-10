@@ -14,7 +14,6 @@ import { disposeMediaInputSafely } from "@dojo-video-engine/renderer-canvas2d";
 import { hashLocalFileChunks } from "@/lib/video-project/local-file-hash";
 import {
   EDITOR_MEDIA_ADMISSION,
-  isHighResolutionVideo,
   unsupportedVideoColor,
 } from "./media-admission";
 import {
@@ -30,6 +29,7 @@ import {
   previewProxyDigest,
   previewProxyDimensions,
   previewProxyEntryName,
+  previewProxyUsesOriginalAudio,
   type PreviewProxyManifest,
   type PreviewProxyRequest,
   type PreviewProxyResult,
@@ -48,6 +48,7 @@ type MediaSummary = {
   audioBytes: number;
   audioChannels: number;
   audioSampleRate: number;
+  audioFirstTimestamp: number | null;
 };
 
 async function packetSignature(
@@ -57,7 +58,8 @@ async function packetSignature(
 ) {
   const times: Array<[number, number]> = [],
     chunks: Uint8Array[] = [];
-  let bytes = 0;
+  let bytes = 0,
+    firstTimestamp = Infinity;
   for await (const packet of new EncodedPacketSink(track).packets(
     undefined,
     undefined,
@@ -84,6 +86,7 @@ async function packetSignature(
       Math.round(packet.timestamp * 1e6),
       Math.round(packet.duration * 1e6),
     ]);
+    firstTimestamp = Math.min(firstTimestamp, packet.timestamp);
     if (audio) {
       bytes += packet.data.byteLength;
       if (bytes > EDITOR_MEDIA_ADMISSION.copiedAudioBytes)
@@ -104,6 +107,7 @@ async function packetSignature(
   return {
     count: times.length,
     bytes,
+    firstTimestamp,
     hash: await previewProxyDigest(data.buffer),
   };
 }
@@ -166,6 +170,7 @@ async function inspect(
     audioBytes: audioPackets?.bytes ?? 0,
     audioChannels: (await audio?.getNumberOfChannels()) ?? 0,
     audioSampleRate: (await audio?.getSampleRate()) ?? 0,
+    audioFirstTimestamp: audioPackets?.firstTimestamp ?? null,
   };
 }
 
@@ -272,7 +277,8 @@ export async function preparePreviewProxy(
       (format) => format.name.toLowerCase() !== "hls",
     ),
   });
-  let conversion: Conversion | undefined;
+  let conversion: Conversion | undefined,
+    conversionCompleted = false;
   const abort = () => {
     disposeMediaInputSafely(input);
     void conversion?.cancel().catch(() => undefined);
@@ -282,11 +288,12 @@ export async function preparePreviewProxy(
   try {
     const source = await inspect(input, signal);
     const dimensions = previewProxyDimensions(source.width, source.height);
-    // Browser muxers cannot preserve negative AAC priming timestamps. High-res
-    // proxies own only picture; the preview resolver retains the original audio.
-    const audioFromOriginal = isHighResolutionVideo(
+    // The commercial preview resolver already retains original audio. Also use
+    // that path below 4K when AAC priming would be lost during browser remuxing.
+    const audioFromOriginal = previewProxyUsesOriginalAudio(
       source.width,
       source.height,
+      source.audioFirstTimestamp,
     );
     if (!dimensions) return null;
     const root = await openPreviewProxyCache(),
@@ -297,6 +304,8 @@ export async function preparePreviewProxy(
         if (
           cached.manifest.sourceWidth !== source.width ||
           cached.manifest.sourceHeight !== source.height ||
+          cached.manifest.version !== PREVIEW_PROXY_VERSION ||
+          cached.manifest.audioFirstTimestamp !== source.audioFirstTimestamp ||
           cached.manifest.audioFromOriginal !== audioFromOriginal ||
           cached.manifest.videoDuration !== source.videoDuration ||
           cached.manifest.videoTimingHash !== source.videoTimingHash ||
@@ -395,6 +404,7 @@ export async function preparePreviewProxy(
         throw new Error("Preview proxy could not preserve every media track.");
       signal.throwIfAborted();
       await conversion.execute();
+      conversionCompleted = true;
       if (!writerClosed) {
         await writer.close();
         writerClosed = true;
@@ -423,6 +433,7 @@ export async function preparePreviewProxy(
       duration: source.duration,
       videoDuration: source.videoDuration,
       audioFromOriginal,
+      audioFirstTimestamp: source.audioFirstTimestamp,
       videoFrames: source.videoFrames,
       videoTimingHash: source.videoTimingHash,
       audioHash: source.audioHash,
@@ -434,6 +445,10 @@ export async function preparePreviewProxy(
     return { file: proxy, manifest, cached: false };
   } finally {
     signal.removeEventListener("abort", abort);
+    // Abort can happen inside awaited init before `conversion` is assigned.
+    // The listener cannot cancel that late result; close it once it is owned.
+    if (conversion && !conversionCompleted)
+      await conversion.cancel().catch(() => undefined);
     disposeMediaInputSafely(input);
     await cleanup?.().catch(() => undefined);
   }

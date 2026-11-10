@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`assembles all 501 genuine cues from two batches into one complete guarded candidate > 501-cue native commands v1 1`] = `"sha256:ddc29915fbe4e8f4d0326d0439fd6e1ac4be5bf727b5099e6954396f3cf1325a"`;
+
+exports[`matches ordinary preparation exactly for a ranged, non-30fps playback source > trimmed-25fps-1.25x native commands v1 1`] = `"sha256:877fa61b00b2ef4c7d7bb4653db52512b647ba15f5796dc48c32dba67bb44e3d"`;

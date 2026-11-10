@@ -5,6 +5,8 @@ import {
   usesPagedReaders,
   usesEfficientReaders,
   usesResolvedEditSchema,
+  usesStagedEditing,
+  type EditorStagePorts,
   type AgentProfile,
 } from "../../agent-kit/src/index";
 import {
@@ -54,6 +56,8 @@ export async function runAgent(input: {
   compaction?: LoopCompactionOptions;
   extraTools?: AgentTool[];
   profile?: AgentProfile;
+  stages?: EditorStagePorts<NativeAgentResult>;
+  stageContext?: unknown;
 }): Promise<NativeAgentResult> {
   const { request, model, skills, signal } = input;
   signal.throwIfAborted();
@@ -63,19 +67,26 @@ export async function runAgent(input: {
     commands: [],
   });
   const document = parseVideoProjectDocument(request.document);
-  const prompts = buildNativeAgentPrompts({
-    ...request,
-    document,
-    instruction: request.instruction ?? "",
-    messages: input.messages ?? [],
-    responseMode: "tools",
-  });
+  const prompts = buildNativeAgentPrompts(
+    {
+      ...request,
+      document,
+      instruction: request.instruction ?? "",
+      messages: input.messages ?? [],
+      responseMode: "tools",
+    },
+    usesStagedEditing(input.profile ?? "local-editor-v1")
+      ? { evidenceMode: "reference-only" }
+      : {},
+  );
   if (usesCompletionPreflight(input.profile ?? "local-editor-v1")) {
     const sourceIds =
       nativeTranscriptScopedSourceItemIds({ ...request, document }) ??
       undefined;
     const packet = usesResolvedEditSchema(input.profile ?? "local-editor-v1")
-      ? prepareCaptionSourceOverview(document, sourceIds)
+      ? prepareCaptionSourceOverview(document, sourceIds, {
+          referenceOnly: usesStagedEditing(input.profile ?? "local-editor-v1"),
+        })
       : prepareCompletionCaptionCuePacket(document, sourceIds, {
           pagedReaders: usesPagedReaders(input.profile ?? "local-editor-v1"),
         });
@@ -91,8 +102,18 @@ export async function runAgent(input: {
         "\nCompletion caption sources: " + JSON.stringify(packet);
     }
   }
+  if (
+    usesStagedEditing(input.profile ?? "local-editor-v1") &&
+    input.stageContext !== undefined
+  ) {
+    prompts.userPrompt = JSON.stringify({
+      ...JSON.parse(prompts.userPrompt),
+      durableStages: input.stageContext,
+    });
+  }
   const toolset = createVideoToolset(request, skills, input.extraTools ?? [], {
     profile: input.profile,
+    ...(input.stages ? { stages: input.stages } : {}),
   });
   const tools = toolset.tools;
   const system =
@@ -148,6 +169,12 @@ export async function runAgent(input: {
         : await restoreCompletionStateFromMessages(
             parseLoopCheckpoint(saved).messages,
             request.baseHash,
+            input.stages
+              ? {
+                  resolvePreparedEdit: (edit) =>
+                    input.stages!.resolvePreparedEdit(edit, signal),
+                }
+              : {},
           ),
     );
     checkpoint!.load = async () => saved;

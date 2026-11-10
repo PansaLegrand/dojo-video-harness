@@ -11,7 +11,17 @@ import { useNativeEditorText } from "./native-editor-copy";
 import { EditorAuthoringScope, resolveEditorAuthoringScope, type EditorAuthoringScopeChoice } from "./editor-authoring-scope";
 import { EditorClarification } from "./editor-clarification";
 import { EditorAgentReview, type NativeAgentComparison } from "./editor-agent-review";
-import { editorQuickActions, editorComparisonIsStale, editorAgentCanAutoApply } from "./editor-agent-actions";
+import { editorQuickActions, editorComparisonIsStale, editorAgentCanAutoApply, editorClarificationAcknowledged } from "./editor-agent-actions";
+import { editorAgentScopedSources } from "./editor-agent-progress";
+import { EditorAgentSources } from "./editor-agent-sources";
+import { EditorAgentRunProgress } from "./editor-agent-run-progress";
+import { EditorOutputPanel } from "./editor-output-panel";
+import { createEditorOutputFiles } from "./editor-output-files";
+import { editorOutputRequestHint } from "./editor-output-requests";
+import type { EditorOutputPorts } from "./editor-output-ports";
+import { EditorGenerationCard } from "./editor-generation-card";
+import { EditorSourceInspectionPanel } from "./editor-source-inspection-panel";
+import { readEditorInspectionOriginal } from "./editor-inspection-original";
 
 type AgentState = { runs: WorkspaceAgentRun[]; messages: VideoProjectAgentMessage[] };
 const definitiveStatuses = new Set([400, 401, 402, 403, 404, 409, 413, 422]);
@@ -23,12 +33,16 @@ function messageFor(cause: unknown, fallback: string) {
 const button = "rounded border border-[var(--editor-border)] px-3 py-2 text-xs text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40";
 const initialScope: EditorAuthoringScopeChoice = { kind: "automatic", fromSeconds: "0", toSeconds: "5" };
 const catalog = editorCapabilityDescriptors();
-export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sources, onAuthorizeSources, onCaptureVisualContext, onClose, onCapabilityAction, onSeekFrame, onPausePreview, mainPreviewPlaying = false, hidden = false }: {
+export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sources, onAuthorizeSources, onExportOutput, onPublishOutput, onDownloadOutput, onOutputPublicationVerified, onCaptureVisualContext, onClose, onCapabilityAction, onSeekFrame, onPausePreview, onRelinkSource, restoringSources = false, mainPreviewPlaying = false, hidden = false }: {
+  onOutputPublicationVerified?:EditorOutputPorts["onOutputPublicationVerified"];
+  onDownloadOutput?: EditorOutputPorts["onDownloadOutput"];
+  onExportOutput?: EditorOutputPorts["onExportOutput"]; onPublishOutput?: EditorOutputPorts["onPublishOutput"];
   resizeHandle?: ReactNode;
   extensions?: ReactNode;
   controller: VideoWorkspaceController; sources: Record<string, string>; onAuthorizeSources: (assetIds: string[]) => Promise<void>;
   onCaptureVisualContext: (snapshot: VideoProjectSnapshot, itemId: string, frame: number) => Promise<unknown>; onClose: () => void; hidden?: boolean;
   onCapabilityAction?: (action: EditorCapabilityInput) => void | Promise<void>; onSeekFrame?: (frame: number) => void; onPausePreview?: () => void; mainPreviewPlaying?: boolean;
+  onRelinkSource?: (assetId: string) => void; restoringSources?: boolean;
 }) {
   const t = useNativeEditorText(), workspace = useSyncExternalStore(controller.subscribeContent, controller.getContentState, controller.getContentState);
   const [data, setData] = useState<AgentState>({ runs: [], messages: [] }), [instruction, setInstruction] = useState("");
@@ -43,11 +57,13 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
   const recoveryAttempts = useRef(new Map<string, unknown>()), undoAttempts = useRef(new Map<string, unknown>());
   const answerAttempts = useRef(new Map<string, { choice: string; body: unknown }>());
   const reviewSequence = useRef(0), attemptedUploads = useRef(new Set<string>());
+  const reviewReturnFocus = useRef<HTMLElement | null>(null);
+  const outputFiles = useMemo(() => createEditorOutputFiles(), [controller]);
   const endpoint = "/api/projects/" + encodeURIComponent(controller.projectId) + "/agent-runs";
   const current = (epoch: number) => generation.current === epoch && liveController.current === controller;
   useEffect(() => {
     generation.current++; setData({ runs: [], messages: [] }); setInstruction(""); setReferenceId(null); setComparison(null); setReviewingId(null); setError(null); setBusy(null); setScopeChoice(initialScope); setActionNotice(null); setAnswers({});
-    inFlight.current.clear(); attemptedApply.current.clear(); attemptedUploads.current.clear(); applyAttempts.current.clear(); recoveryAttempts.current.clear(); undoAttempts.current.clear(); answerAttempts.current.clear(); sendAttempt.current = null;
+    inFlight.current.clear(); attemptedApply.current.clear(); attemptedUploads.current.clear(); applyAttempts.current.clear(); recoveryAttempts.current.clear(); undoAttempts.current.clear(); answerAttempts.current.clear(); sendAttempt.current = null; reviewReturnFocus.current = null;
     return () => { generation.current++; reviewSequence.current++; };
   }, [controller]);
   const refresh = useCallback(async () => {
@@ -67,15 +83,15 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
   }, [data.runs]);
   useEffect(() => {
     for (const run of data.runs) {
-      const pending = answerAttempts.current.get(run.id), childId = run.clarificationReply?.continuationRunId;
-      if (!pending || !childId) continue;
-      const child = data.runs.find(candidate => candidate.id === childId);
-      if (child?.operationId === (pending.body as { operationId?: string }).operationId) {
+      const pending = answerAttempts.current.get(run.id);
+      if (!pending) continue;
+      if (editorClarificationAcknowledged(run, (pending.body as {operationId:string}).operationId, data.runs)) {
         answerAttempts.current.delete(run.id); setAnswers(values => ({ ...values, [run.id]: "" })); setError(null);
       }
     }
   }, [data.runs]);
   const resolvedScope = useMemo(() => resolveEditorAuthoringScope(workspace.document, workspace.selectedItemIds, workspace.selectedNodeId, scopeChoice), [workspace.document, workspace.selectedItemIds, workspace.selectedNodeId, scopeChoice]);
+  const scopedSources = useMemo(() => editorAgentScopedSources(workspace.document, resolvedScope.scope, sources, workspace.snapshot?.sources, restoringSources), [workspace.document, resolvedScope.scope, sources, workspace.snapshot?.sources, restoringSources]);
   const quick = useMemo(() => editorQuickActions(workspace.document, workspace.selectedItemId, workspace.selectedNodeId, resolvedScope.scope), [workspace.document, workspace.selectedItemId, workspace.selectedNodeId, resolvedScope]);
   const selected = workspace.document?.items.find(item => item.id === workspace.selectedItemId);
   const suggestions = referenceId ? ["Make this shorter", "Try a different style"] : selected && ["video", "audio"].includes(selected.node.type)
@@ -128,6 +144,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
 
   async function openReview(run: WorkspaceAgentRun) {
     const epoch = generation.current, sequence = ++reviewSequence.current;
+    if (!comparison) reviewReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : composerRef.current;
     setReviewingId(run.id); setError(null); onPausePreview?.();
     try {
       const snapshot = await controller.prepareAgentContext();
@@ -141,8 +158,8 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     finally { if (current(epoch) && sequence === reviewSequence.current) setReviewingId(null); }
   }
   async function send() {
-    if (!instruction.trim() || busy === "send") return;
-    const epoch = generation.current, text = instruction.trim(); setBusy("send"); setError(null);
+    if (!instruction.trim() || busy === "send" || inFlight.current.has("send")) return;
+    const epoch = generation.current, text = instruction.trim(); inFlight.current.add("send"); setBusy("send"); setError(null);
     try {
       const snapshot = await controller.prepareAgentContext(); if (!current(epoch)) return;
       const state = controller.getState(), scoped = resolveEditorAuthoringScope(snapshot.document, state.selectedItemIds, state.selectedNodeId, scopeChoice);
@@ -158,7 +175,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       if (!current(epoch)) return;
       sendAttempt.current = null; setInstruction(""); setReferenceId(null); await refresh();
     } catch (cause) { if (!current(epoch)) return; if (definitiveRejection(cause)) { sendAttempt.current = null; await controller.refresh().catch(() => {}); } if (current(epoch)) setError(messageFor(cause, "The request could not be started.")); }
-    finally { if (current(epoch)) setBusy(null); }
+    finally { if (current(epoch)) { inFlight.current.delete("send"); setBusy(null); } }
   }
   function handleComposerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter" || composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
@@ -209,11 +226,12 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     setError(run.scope?.kind !== "project" && (!ids.length || pin && !pinned) ? "The selected reference is no longer available." : null); composerRef.current?.focus();
   }
   async function cancel(run: WorkspaceAgentRun, revise = false) {
-    const epoch = generation.current; setBusy(run.id); setError(null);
+    if (inFlight.current.has(run.id)) return;
+    const epoch = generation.current; inFlight.current.add(run.id); setBusy(run.id); setError(null);
     try { await videoProjectRequest(endpoint + "/" + encodeURIComponent(run.id) + "/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       if (!current(epoch)) return; await refresh(); if (revise && current(epoch)) reference(run, true);
     } catch (cause) { if (current(epoch)) setError(messageFor(cause, "The request could not be cancelled.")); }
-    finally { if (current(epoch)) setBusy(null); }
+    finally { if (current(epoch)) { inFlight.current.delete(run.id); setBusy(null); } }
   }
   async function undo(run: WorkspaceAgentRun) {
     const epoch = generation.current; if (inFlight.current.has(run.id)) return;
@@ -270,15 +288,16 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingEvidenceRun?.id, busy, workspace.interactionDrafts]);
   const staleComparison = !!comparison && !comparison.applied && editorComparisonIsStale(comparison.review.basis, workspace.snapshot, workspace.pending.length, workspace.interactionDrafts);
-  const visibleRuns = data.runs.filter(run => !!run.proposal || !!run.clarification || !["applied", "completed", "cancelled"].includes(run.status) || run.phase === "cancellation_pending");
+  const visibleRuns = data.runs.filter(run => !!editorOutputRequestHint("outputRequests" in run ? run.outputRequests : undefined)?.count || !!run.externalJobs?.length || !!run.hostRequests?.count || !!run.progress || !!run.proposal || !!run.clarification || !["applied", "completed", "cancelled"].includes(run.status) || run.phase === "cancellation_pending");
   const runById = new Map(visibleRuns.map(run => [run.id, run])), lastMessage = new Map<string, string>();
   data.messages.forEach(message => { if (message.runId) lastMessage.set(message.runId, message.id); });
   const disabled = !!busy || !!workspace.interactionDrafts || workspace.pending.length > 0;
   const renderRun = (run: WorkspaceAgentRun) => {
+    const outputHint = editorOutputRequestHint("outputRequests" in run ? run.outputRequests : undefined);
     const undone = data.runs.some(candidate => candidate.status === "applied" && candidate.undoOfRunId === run.id);
     const applied = run.status === "applied", answered = run.phase === "clarification_answered";
-    const status = applied ? "Applied" : run.status === "ready" || run.status === "awaiting_review" ? "Changes ready" : run.status === "needs_input" ? "Reply to this question"
-      : run.status === "stale" ? "Needs revision" : run.status === "failed" ? "Needs attention" : run.status === "cancelled" ? "Cancelled" : run.status === "needs_evidence" ? "Speech context needed" : run.status === "running" ? "Working on your edit…" : "Preparing your request…";
+    const status = applied ? "Applied" : (run.status === "ready" || run.status === "awaiting_review") && run.proposal ? "Changes ready" : run.status === "needs_input" ? "Reply to this question"
+      : run.status === "stale" ? "Needs revision" : run.status === "failed" ? "Needs attention" : run.status === "cancelled" ? "Cancelled" : run.status === "completed" ? "Answer ready" : run.status === "needs_evidence" ? outputHint?.pending || run.hostRequests?.pending ? "Browser action needed" : "Speech context needed" : run.status === "running" ? "Working on your edit…" : "Preparing your request…";
     const names = run.proposal?.changedItemIds.map(id => workspace.document?.items.find(item => item.id === id)?.name).filter(Boolean).slice(0, 3).join(", ");
     const response = run.clarification?.question ?? run.proposal?.summary;
     return <article key={run.id} className="editor-agent-change" data-run-id={run.id} data-run-status={run.status}>
@@ -287,14 +306,26 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       {run.scope && <span className="editor-agent-scope-label">{t(run.scope.kind === "selection" ? "Selected items" : run.scope.kind === "range" ? "Time range" : "Whole project")}{names ? " · " + names : ""}</span>}
       {!!run.proposal?.propagatedItemIds?.length && <span className="editor-agent-scope-label">{t("Linked changes")}: {run.proposal.propagatedItemIds.length}</span>}
       {run.error && <><p className="text-amber-700 dark:text-amber-300">{t(run.error.message)}</p><details className="text-xs break-all"><summary>{t("Error details")}</summary><p>{t("Error code")} · {run.error.code}</p><p>{t("Run ID")} · {run.id}</p></details></>}
+      <EditorAgentRunProgress run={run} document={workspace.document} sources={sources} restoringSources={restoringSources} disabled={disabled} onSeekFrame={onSeekFrame ? frame => { onPausePreview?.(); onSeekFrame(frame); } : undefined} onRelinkSource={onRelinkSource} />
+      {workspace.document && <EditorSourceInspectionPanel projectId={controller.projectId} runId={run.id} document={workspace.document}
+        enabled={!!run.hostRequests && (run.hostRequests.count > 0 || ["queued", "running", "needs_evidence"].includes(run.status))}
+        active={!!run.hostRequests && ["queued", "running", "needs_evidence"].includes(run.status)} refreshKey={run.updatedAt} onChanged={() => void refresh()}
+        onRelinkSource={onRelinkSource}
+        getOriginalSource={(request, signal) => { const current = controller.getState(); if (!current.snapshot || !current.document) return Promise.resolve(null); return readEditorInspectionOriginal(request, { ...current.snapshot, document: current.document }, signal); }} />}
+      {outputHint && onExportOutput && onPublishOutput && onDownloadOutput && onOutputPublicationVerified && <EditorOutputPanel projectId={controller.projectId} runId={run.id} controller={controller} sources={sources}
+        enabled={outputHint.count > 0} active={outputHint.pending > 0 && ["queued", "running", "needs_evidence"].includes(run.status)} refreshKey={run.updatedAt} onChanged={refresh}
+        onExportOutput={onExportOutput} onPublishOutput={onPublishOutput} onDownloadOutput={onDownloadOutput} onOutputPublicationVerified={onOutputPublicationVerified} files={outputFiles} onRelinkSource={onRelinkSource} restoringSources={restoringSources} />}
+      {run.externalJobs?.map(job => <EditorGenerationCard key={job.id} job={job} run={run} runs={data.runs} controller={controller} disabled={disabled} active={!hidden} onChanged={refresh} onAuthorizeSources={onAuthorizeSources} onRelinkSource={onRelinkSource} onPausePreview={onPausePreview} mainPreviewPlaying={mainPreviewPlaying} />)}
       {run.clarificationParentRunId && <span className="editor-agent-scope-label">{t("Included reply")}</span>}
       {run.clarification && !answered && run.status === "needs_input" && <EditorClarification run={run} value={answers[run.id] ?? ""} disabled={disabled}
         stale={workspace.snapshot?.documentHash !== run.baseHash} retryPending={answerAttempts.current.has(run.id)}
         onChange={value => setAnswers(values => ({ ...values, [run.id]: value }))} onAnswer={optionId => void answer(run, optionId)} onRetry={() => void answer(run, undefined, true)} />}
       {(run.phase === "cancellation_pending" || run.status === "running" && Date.now() - Date.parse(run.updatedAt) > 60_000) && <button className={button} disabled={!!busy} onClick={() => void resume(run)}>{t("Check progress")}</button>}
       {["submit_uncertain", "preparation_retry"].includes(run.phase) && <button className={button} disabled={!!busy} onClick={() => void resume(run)}>{t("Retry same request")}</button>}
+      {run.progress?.recovery.canResume && !["submit_uncertain", "preparation_retry", "cancellation_pending"].includes(run.phase) && !(run.status === "running" && Date.now() - Date.parse(run.updatedAt) > 60_000) && <button className={button} disabled={!!busy} onClick={() => void resume(run)}>{t("Check progress")}</button>}
       {run.prerequisites?.status === "consent_required" && (!run.cloudConsent || attemptedUploads.current.has(run.id) && !busy) && <><p className="editor-authoring-notice">{t("This request needs cloud transcription. Selected local media will be uploaded to storage and the speech provider. Standard transcription credits apply.")}</p><button className={button} disabled={!!busy} onClick={() => void resume(run, true)}>{t(run.cloudConsent ? "Retry same request" : "Upload and continue")}</button></>}
       {run.recoverableOutput && run.proposal?.commands.some(command => command.type === "addItem" && !workspace.document?.items.some(item => item.id === command.item.id)) && <button className={button} disabled={disabled} onClick={() => void recoverGraphic(run)}>{t("Recover saved graphic")}</button>}
+      {run.progress?.recovery.canReuseSavedResult && <p className="editor-agent-saved-result">{t("Saved result available. Recovery reuses this result without new generation.")}</p>}
       {run.proposal && ["ready", "awaiting_review", "stale", "applied"].includes(run.status) && <div className="editor-agent-card-actions">
         {applied && <button className={button} disabled={disabled || reviewingId === run.id} onClick={() => void openReview(run)}>{t(reviewingId === run.id ? "Preparing comparison…" : "Compare")}</button>}
         {!applied && run.manualReviewRequired && ["ready", "awaiting_review"].includes(run.status) && <button className={button} disabled={disabled || reviewingId === run.id} onClick={() => void openReview(run)}>{t(reviewingId === run.id ? "Preparing comparison…" : "Review changes")}</button>}
@@ -305,7 +336,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       </div>}
       {["stale", "failed"].includes(run.status) && !run.clarificationParentRunId && <button className={button} onClick={() => reference(run, true)}>{t("Revise request")}</button>}
       {(run.status === "needs_input" || !!run.clarificationParentRunId && ["failed", "stale"].includes(run.status)) && <div><button className={button} disabled={!!busy || answerAttempts.current.has(run.id)} onClick={() => reference(run, true)}>{t("Start a new edit")}</button><p className="mt-1 text-[10px] text-[var(--editor-muted)]">{t("Uses standard edit credits when you send.")}</p></div>}
-      {["queued", "running", "needs_evidence", "needs_input", "ready", "awaiting_review"].includes(run.status) && <button className="text-[var(--editor-muted)] underline" disabled={!!busy} onClick={() => void cancel(run)}>{t("Cancel")}</button>}
+      {(run.progress ? run.progress.recovery.canCancel : ["queued", "running", "needs_evidence", "needs_input", "ready", "awaiting_review"].includes(run.status)) && <button className="text-[var(--editor-muted)] underline" disabled={!!busy} onClick={() => void cancel(run)}>{t("Cancel")}</button>}
     </article>;
   };
   const capabilityTarget = workspace.selectedItemId && workspace.selectedNodeId ? { itemId: workspace.selectedItemId, nodeId: workspace.selectedNodeId } : null;
@@ -329,8 +360,12 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
         </details>{actionNotice && <p role="status">{t("Applied locally")}: {t(actionNotice)}</p>}
       </div>}
     </div>
-    <form className="editor-chat-composer space-y-3" onSubmit={event => { event.preventDefault(); void send(); }}>
+    <form className={`editor-chat-composer space-y-3${data.runs.length ? " editor-chat-composer-has-history" : ""}`} onSubmit={event => { event.preventDefault(); void send(); }}>
       <EditorAuthoringScope document={workspace.document} itemIds={workspace.selectedItemIds} nodeId={workspace.selectedNodeId} getPlayheadFrame={controller.getPlayheadFrame} choice={scopeChoice} onChange={setScopeChoice} disabled={busy === "send" || !!sendAttempt.current} />
+      <details className="editor-agent-source-preview" open={!data.runs.length}>
+        <summary><span>{t("Review scoped media")} · {scopedSources.length}</span><small title={scopedSources.map(source => source.name).join(", ")}>{scopedSources.map(source => source.name).join(", ")}</small></summary>
+        <EditorAgentSources sources={scopedSources} disabled={!!busy} onInspect={onSeekFrame ? source => { onPausePreview?.(); onSeekFrame(source.seekFrame!); } : undefined} onRelink={onRelinkSource ? source => onRelinkSource(source.assetId) : undefined} />
+      </details>
       {referenceId && <div className="editor-agent-reference"><span>{t("Referring to")}: {data.runs.find(run => run.id === referenceId)?.proposal?.summary ?? t("Previous edit")}</span><button type="button" aria-label={t("Clear reference")} disabled={!!sendAttempt.current} onClick={() => setReferenceId(null)}>×</button></div>}
       <div className="editor-agent-suggestions">{suggestions.map(prompt => <button key={prompt} type="button" disabled={busy === "send"} onClick={() => { setInstruction(t(prompt)); composerRef.current?.focus(); }}>{t(prompt)}</button>)}</div>
       <textarea ref={composerRef} aria-label="Message video agent" value={instruction} onChange={event => setInstruction(event.target.value)} placeholder={t("Describe your edit…")} rows={3} className="w-full resize-y rounded-lg border border-[var(--editor-border)] bg-[var(--editor-surface)] p-3 text-xs outline-none focus:border-violet-500" aria-describedby={shortcutHintId} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }} onKeyDown={handleComposerKeyDown} />
@@ -339,7 +374,7 @@ export function VideoWorkspaceChat({ extensions, resizeHandle, controller, sourc
       <p className="text-[10px] leading-4 text-[var(--editor-muted)]">{t("Send applies edits automatically. Required media is uploaded for cloud transcription. Standard edit and transcription credits apply.")}</p>
       <div className="flex items-center justify-end"><button className={button} type="submit" disabled={!instruction.trim() || busy === "send" || !!workspace.interactionDrafts || !resolvedScope.scope}><Send size={13} className="mr-2 inline" />{t("Send")}</button></div>
     </form>
-    {!hidden && comparison && <EditorAgentReview mainPreviewPlaying={mainPreviewPlaying} comparison={comparison} sources={sources} stale={staleComparison} applying={busy === comparison.run.id} onPausePreview={onPausePreview} onSeekFrame={onSeekFrame}
+    {!hidden && comparison && <EditorAgentReview returnFocus={reviewReturnFocus.current} mainPreviewPlaying={mainPreviewPlaying} comparison={comparison} sources={sources} stale={staleComparison} applying={busy === comparison.run.id} onPausePreview={onPausePreview} onSeekFrame={onSeekFrame}
       onClose={() => { reviewSequence.current++; setComparison(null); }} onRefresh={() => void openReview(comparison.run)} onApply={() => void applyRun(comparison.run, comparison)} />}
   </aside>;
 }

@@ -235,12 +235,22 @@ it("uses the frozen host snapshot for omitted hashes only in efficient reader pr
   ).toEqual(["snapshotHash"]);
 });
 
-it.each(["local-editor-v4", "commercial-editing-v5"] as const)(
-  "preserves kit14 %s complete advertised contracts",
+it.each([
+  "local-editor-v4",
+  "commercial-editing-v5",
+  "local-editor-v5",
+  "commercial-editing-v6",
+] as const)(
+  "preserves retained %s complete advertised contracts",
   (profile) => {
     const frozen = JSON.parse(
       readFileSync(
-        new URL("./fixtures/agent-kit-v14-profiles.json", import.meta.url),
+        new URL(
+          profile === "local-editor-v5" || profile === "commercial-editing-v6"
+            ? "./fixtures/agent-kit-v15-profiles.json"
+            : "./fixtures/agent-kit-v14-profiles.json",
+          import.meta.url,
+        ),
         "utf8",
       ),
     );
@@ -255,7 +265,7 @@ it.each(["local-editor-v4", "commercial-editing-v5"] as const)(
           skills: set.skills,
         }),
       };
-    expect(set.inventory.kitVersion).toBe("0.1.4");
+    expect(set.inventory.kitVersion).toBe(frozen.kitVersion);
     expect(
       createHash("sha256").update(JSON.stringify(value)).digest("hex"),
     ).toBe(frozen.hashes[profile]);

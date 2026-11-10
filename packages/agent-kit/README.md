@@ -35,7 +35,6 @@ snapshotHash) when creating a new session. Pure prepare_caption_pair is optional
 and host-owned; its translations bind exact genuine cue IDs/timing without a new
 provider call. A checklist proves declared outcomes, not universal task semantics.
 
-
 Kit 0.1.3 adds local-editor-v3/commercial-editing-v4. The host supplies
 `listAssets` and `readCaptionCues` ports for snapshot-bound, byte-bounded readers.
 Asset queries discover unused imported assets with stable IDs and registration
@@ -58,7 +57,7 @@ same explicit snapshot binding.
 
 Kit 0.1.3 built-in guidance is retained for its older profiles, with regression
 digests covering inventory, skill text and prompt bytes. Current canonical skills
-continue in skills/*.md. Host-owned new-profile execution defaults can use sixteen
+continue in skills/\*.md. Host-owned new-profile execution defaults can use sixteen
 model steps while retaining existing tool/output allowances and accepted-run budgets.
 
 Kit 0.1.5 adds local-editor-v5/commercial-editing-v6. Both editing tools advertise
@@ -68,3 +67,32 @@ Requirements remain frozen while command batches remain repairable. Model reader
 schemas omit snapshotHash entirely and the host binds it internally. Initial
 caption context is an overview; exact requested-range cues are read before translation.
 Earlier 0.1.4 guidance/schemas remain frozen for its profiles.
+
+The 0.2 source-clock boundary exports `sourceClockWindow` and
+`projectSourceClockRange` for already validated timeline data. The structural
+numeric module has no host or renderer dependencies. The accompanying version-1
+conformance corpus checks both host kernels, including source/evidence preservation,
+scope, rebase, selective Undo and segmentation receipts. See
+[`docs/semantic-conformance.md`](../../docs/semantic-conformance.md) for the exact
+fixture boundary, intentional host differences and reference-update policy.
+
+Kit 0.2 adds `local-editor-v6` / `commercial-editing-v7`. The portable
+`runEditingStages` coordinator persists dependencies, immutable artifacts, absolute
+usage and one final reviewed candidate. The standard policy allows 32 model calls,
+64 tool calls and 32,000 output tokens for the original request, with a 16-call
+planning phase, 100-cue caption batches and 8/24/16,000 per later invocation.
+Hosts atomically save each checkpoint with its absolute usage. Questions, source
+inspection and approved external jobs pause that same funded request; they do not
+reset its allowance. Source/model/scope changes fail closed before further model
+work. The original instruction and completed artifacts remain reusable.
+
+`createEditorHostTools` registers only supplied trusted ports in these new profiles.
+Image/frame inspection, saved visual retrieval, generation quotes and browser
+preview/export are contracts, not built-in cloud services. Their two conditional
+skills load only when the required executors exist. Credentials, ownership,
+consent, prices, provider submission, storage and application stay in each host.
+The local harness does not advertise commercial HTTP adapters it does not own.
+A preview is not a general autonomous visual-repair guarantee.
+
+See [the host adapter contract](../../docs/staged-editing-host-api.md) for CAS,
+canonical JSON, float-preserving storage, continuation and receipt boundaries.

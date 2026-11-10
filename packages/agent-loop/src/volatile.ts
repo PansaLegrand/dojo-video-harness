@@ -1,5 +1,9 @@
 import type { ToolLoopInput, LoopResult, LoopEvent } from "./types.js";
-import { LoopProviderOutputBudgetError } from "./checkpoint.js";
+import {
+  LoopProviderOutputBudgetError,
+  LoopHostInputRequiredError,
+  parseHostRequestRef,
+} from "./checkpoint.js";
 
 /** The host supplies tools and commits. This package has no project, provider or billing dependencies. */
 export async function runVolatileToolLoop<T>(
@@ -50,11 +54,19 @@ export async function runVolatileToolLoop<T>(
     const remaining = maxOutputTokens - usage.outputTokens;
     if (remaining < 1)
       throw new Error("Model output budget reached. Narrow the request.");
-    await emit("model.started");
-    const response = await input.model.complete(messages, specs, signal, {
+    const limits = {
       maxOutputTokens: remaining,
-      outputBudgetPolicy: "preserve-overrun-v1",
-    });
+      outputBudgetPolicy: "preserve-overrun-v1" as const,
+    };
+    await input.model.prepare?.(messages, specs, signal, limits);
+    signal.throwIfAborted();
+    await emit("model.started");
+    const response = await input.model.complete(
+      messages,
+      specs,
+      signal,
+      limits,
+    );
     signal.throwIfAborted();
     if (response.usage) {
       if (
@@ -132,6 +144,7 @@ export async function runVolatileToolLoop<T>(
       await emit("tool.started", call.name);
       let observation: unknown;
       let terminal: { result: T } | undefined;
+      let waiting: unknown;
       try {
         const tool = registry.get(call.name);
         if (!tool)
@@ -139,6 +152,7 @@ export async function runVolatileToolLoop<T>(
         const outcome = await tool.execute(JSON.parse(call.arguments), signal);
         signal.throwIfAborted();
         if (outcome.kind === "terminal") terminal = { result: outcome.result };
+        else if (outcome.kind === "waiting") waiting = outcome.requestRef;
         else {
           observation = outcome.value;
           if (JSON.stringify(observation).length > 120000)
@@ -153,6 +167,11 @@ export async function runVolatileToolLoop<T>(
           hint: "Correct the input or ask a focused question.",
         };
       }
+      if (waiting !== undefined)
+        throw new LoopHostInputRequiredError(
+          parseHostRequestRef(waiting),
+          false,
+        );
       // Persistence/event failures are outside the correctable tool-error boundary.
       if (terminal) {
         await emit("tool.completed", call.name, "Validated");

@@ -8,6 +8,7 @@ import type {
   LoopSnapshot,
   ModelReply,
   LoopOutputBudgetOverrun,
+  HostRequestRef,
 } from "./types.js";
 
 /** Suggested profile; hosts must subtract any additional wrapper/history overhead. */
@@ -61,6 +62,54 @@ export class LoopProviderOutputBudgetError extends Error {
     );
     this.name = "LoopProviderOutputBudgetError";
   }
+}
+export const isKnownModelRejectionStatus = (status: number) =>
+  [400, 401, 403, 404, 422].includes(status);
+/** Adapters may construct this only for an explicit pre-execution rejection.
+ * Never put provider bodies, request headers or keys in the exception. */
+export class LoopKnownModelRejectionError extends Error {
+  readonly code = "LOOP_KNOWN_MODEL_REJECTION";
+  constructor(
+    public readonly status: number,
+    public readonly checkpointSaved = false,
+  ) {
+    super(
+      "The model provider rejected this request before execution. The saved rejection is retained; no automatic paid retry is authorized.",
+    );
+    if (!isKnownModelRejectionStatus(status))
+      throw new Error(
+        "This response is not a qualified known model rejection.",
+      );
+    this.name = "LoopKnownModelRejectionError";
+  }
+}
+export class LoopHostInputRequiredError extends Error {
+  readonly code = "LOOP_HOST_INPUT_REQUIRED";
+  constructor(
+    public readonly requestRef: Readonly<HostRequestRef>,
+    public readonly checkpointSaved = true,
+  ) {
+    super(
+      `Waiting for host input: ${requestRef.kind}. No new model request is authorized until the saved request is fulfilled.`,
+    );
+    this.name = "LoopHostInputRequiredError";
+  }
+}
+export function parseHostRequestRef(raw: unknown): HostRequestRef {
+  const v = object(raw, ["kind", "id", "hash"]);
+  if (
+    ![
+      "source-inspection",
+      "project-preview",
+      "project-export",
+      "external-approval",
+    ].includes(String(v.kind))
+  )
+    throw new Error("Invalid host request kind.");
+  text(v.id, 191);
+  if (typeof v.hash !== "string" || !/^(?:sha256:)?[a-f0-9]{64}$/.test(v.hash))
+    throw new Error("Invalid host request hash.");
+  return structuredClone(v) as HostRequestRef;
 }
 
 function object(value: unknown, keys: string[]): Record<string, unknown> {
@@ -218,6 +267,8 @@ export function validateSnapshot(
     "checkpointEncoding",
     "checkpointCapacity",
     "outputBudgetPolicy",
+    "hostInputPolicy",
+    "knownRejectionPolicy",
   ]);
   text(data.runId, 256);
   text(data.snapshotHash, 1024);
@@ -227,6 +278,16 @@ export function validateSnapshot(
     data.outputBudgetPolicy !== "preserve-overrun-v1"
   )
     throw new Error("Invalid output budget policy.");
+  if (
+    data.hostInputPolicy !== undefined &&
+    data.hostInputPolicy !== "durable-host-wait-v1"
+  )
+    throw new Error("Invalid host input policy.");
+  if (
+    data.knownRejectionPolicy !== undefined &&
+    data.knownRejectionPolicy !== "preserve-known-rejection-v1"
+  )
+    throw new Error("Invalid known rejection policy.");
   validateMessages(data.messages);
   const budgets = object(data.budgets, [
     "maxSteps",
@@ -321,6 +382,8 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
       "pinnedToolCallIds",
       "pendingTurn",
       "outputBudgetOverrun",
+      "hostWait",
+      "knownRejection",
       "result",
     ]);
     validateSnapshot(wire.snapshot);
@@ -371,6 +434,8 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     "pinnedToolCallIds",
     "pendingTurn",
     "outputBudgetOverrun",
+    "hostWait",
+    "knownRejection",
     "result",
   ]);
   if (data.version !== 1)
@@ -418,11 +483,13 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
   const phases = [
     "ready-for-model",
     "model-pending",
+    "model-rejected",
     "model-returned",
     "tool-pending",
     "tool-observations",
     "answer-pending",
     "completed",
+    "waiting-for-host",
   ];
   if (!phases.includes(checkpoint.phase))
     throw new Error("Invalid loop checkpoint phase.");
@@ -438,10 +505,34 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     throw new Error("Invalid initial loop checkpoint.");
   if (checkpoint.phase !== "ready-for-model" && checkpoint.modelCalls < 1)
     throw new Error("Missing persisted model-call budget.");
+  if (checkpoint.knownRejection !== undefined) {
+    const rejection = object(checkpoint.knownRejection, [
+      "version",
+      "status",
+      "modelCall",
+    ]);
+    integer(rejection.status, 400, 499);
+    if (
+      snapshot.knownRejectionPolicy !== "preserve-known-rejection-v1" ||
+      checkpoint.phase !== "model-rejected" ||
+      rejection.version !== 1 ||
+      !isKnownModelRejectionStatus(Number(rejection.status)) ||
+      rejection.modelCall !== checkpoint.modelCalls ||
+      !checkpoint.usageKnown ||
+      checkpoint.pendingTurn ||
+      checkpoint.hostWait ||
+      checkpoint.result !== undefined
+    )
+      throw new Error("Invalid known provider rejection receipt.");
+  } else if (checkpoint.phase === "model-rejected")
+    throw new Error(
+      "The rejected model request has no saved rejection receipt.",
+    );
   const requiresTurn = [
     "model-returned",
     "tool-pending",
     "answer-pending",
+    "waiting-for-host",
   ].includes(checkpoint.phase);
   if (requiresTurn && !checkpoint.pendingTurn)
     throw new Error("Missing returned model turn.");
@@ -467,7 +558,10 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
     const completed = reply.calls.slice(0, nextToolIndex);
     if (completed.some((call) => !used.includes(call.id)))
       throw new Error("Missing completed tool identity.");
-    if (checkpoint.phase === "tool-pending") {
+    if (
+      checkpoint.phase === "tool-pending" ||
+      checkpoint.phase === "waiting-for-host"
+    ) {
       if (
         !reply.calls[nextToolIndex] ||
         !used.includes(reply.calls[nextToolIndex].id)
@@ -506,6 +600,24 @@ export function parseLoopCheckpoint(value: unknown): LoopCheckpoint {
       )
         throw new Error("Observation does not match its returned tool call.");
   }
+  if (checkpoint.phase === "waiting-for-host") {
+    const wait = object(checkpoint.hostWait, ["requestRef", "toolCallId"]);
+    parseHostRequestRef(wait.requestRef);
+    text(wait.toolCallId, 256);
+    const call =
+      checkpoint.pendingTurn!.reply.calls[
+        checkpoint.pendingTurn!.nextToolIndex
+      ];
+    if (
+      snapshot.hostInputPolicy !== "durable-host-wait-v1" ||
+      call?.id !== wait.toolCallId ||
+      snapshot.tools.find((tool) => tool.name === call.name)?.replaySafe !==
+        true ||
+      checkpoint.outputBudgetOverrun
+    )
+      throw new Error("Invalid durable host-wait checkpoint.");
+  } else if (checkpoint.hostWait !== undefined)
+    throw new Error("Unexpected host-wait reference.");
   if (checkpoint.outputBudgetOverrun !== undefined) {
     const overrun = object(checkpoint.outputBudgetOverrun, [
       "kind",
@@ -616,8 +728,15 @@ export function canResumeLoopCheckpoint(
 ): boolean {
   try {
     const checkpoint = parseLoopCheckpoint(value);
-    if (checkpoint.phase === "model-pending") return false;
-    if (checkpoint.phase === "tool-pending") {
+    if (
+      checkpoint.phase === "model-pending" ||
+      checkpoint.phase === "model-rejected"
+    )
+      return false;
+    if (
+      checkpoint.phase === "tool-pending" ||
+      checkpoint.phase === "waiting-for-host"
+    ) {
       const name =
         checkpoint.pendingTurn!.reply.calls[
           checkpoint.pendingTurn!.nextToolIndex

@@ -4,6 +4,15 @@ export type ToolSpec = {
   parameters: Record<string, unknown>;
 };
 export type ToolCall = { id: string; name: string; arguments: string };
+export type HostRequestRef = {
+  kind:
+    | "source-inspection"
+    | "project-preview"
+    | "project-export"
+    | "external-approval";
+  id: string;
+  hash: string;
+};
 export type ChatMessage = {
   role: "system" | "user" | "assistant" | "tool";
   content: string | Array<unknown> | null;
@@ -23,18 +32,26 @@ export type ModelReply = {
   /** Exact maximum sent by the adapter; present only for preserve-overrun-v1. */
   outputTokenLimit?: number;
 };
+export type ModelLimits = {
+  maxOutputTokens: number;
+  maxReplyBytes?: number;
+  outputBudgetPolicy?: "preserve-overrun-v1";
+};
 export interface LanguageModel {
   /** Stable, non-secret provider endpoint/model identity for durable bindings. */
   readonly identity?: string;
+  /** Read-only owned-artifact prefetch; failures occur before the paid submission fence. */
+  prepare?(
+    messages: ChatMessage[],
+    tools: ToolSpec[],
+    signal: AbortSignal,
+    limits?: ModelLimits,
+  ): Promise<void>;
   complete(
     messages: ChatMessage[],
     tools: ToolSpec[],
     signal: AbortSignal,
-    limits?: {
-      maxOutputTokens: number;
-      maxReplyBytes?: number;
-      outputBudgetPolicy?: "preserve-overrun-v1";
-    },
+    limits?: ModelLimits,
   ): Promise<ModelReply>;
 }
 export type LoopEvent = {
@@ -62,6 +79,7 @@ export type LoopTool<T> = ToolSpec & {
   ): Promise<
     | { kind: "observation"; value: unknown; pinned?: boolean }
     | { kind: "terminal"; result: T }
+    | { kind: "waiting"; requestRef: HostRequestRef }
   >;
 };
 export type LoopCompactionOptions = {
@@ -94,6 +112,8 @@ export type LoopSnapshot = {
   checkpointEncoding?: "compact-v2";
   checkpointCapacity?: LoopCheckpointCapacity;
   outputBudgetPolicy?: "preserve-overrun-v1";
+  hostInputPolicy?: "durable-host-wait-v1";
+  knownRejectionPolicy?: "preserve-known-rejection-v1";
 };
 export type LoopOutputBudgetOverrun = {
   kind: "provider-output-budget";
@@ -105,10 +125,12 @@ export type LoopOutputBudgetOverrun = {
 export type LoopCheckpointPhase =
   | "ready-for-model"
   | "model-pending"
+  | "model-rejected"
   | "model-returned"
   | "tool-pending"
   | "tool-observations"
   | "answer-pending"
+  | "waiting-for-host"
   | "completed";
 export type LoopCheckpoint = {
   version: 1;
@@ -127,6 +149,8 @@ export type LoopCheckpoint = {
   pinnedToolCallIds: string[];
   pendingTurn?: { reply: ModelReply; nextToolIndex: number };
   outputBudgetOverrun?: LoopOutputBudgetOverrun;
+  knownRejection?: { version: 1; status: number; modelCall: number };
+  hostWait?: { requestRef: HostRequestRef; toolCallId: string };
   result?: unknown;
 };
 export type LoopCheckpointPort = {

@@ -531,15 +531,18 @@ export async function compileNativeAgentResult(
   };
 }
 
-export function buildNativeAgentPrompts(input: {
-  instruction: string;
-  baseHash?: string;
-  authoring?: NativeAuthoring;
-  document: VideoProjectDocument;
-  context: z.infer<typeof agentContextSchema>;
-  messages: Array<{ role: string; text: string }>;
-  responseMode?: "json" | "tools";
-}) {
+export function buildNativeAgentPrompts(
+  input: {
+    instruction: string;
+    baseHash?: string;
+    authoring?: NativeAuthoring;
+    document: VideoProjectDocument;
+    context: z.infer<typeof agentContextSchema>;
+    messages: Array<{ role: string; text: string }>;
+    responseMode?: "json" | "tools";
+  },
+  options: { evidenceMode?: "reference-only" } = {},
+) {
   const { visualWitness, ...context } = input.context;
   const conversation: Array<{ role: string; text: string }> = [];
   let conversationChars = 0;
@@ -616,16 +619,23 @@ export function buildNativeAgentPrompts(input: {
         document: planningDocument,
       }
     : input;
-  const captionSources = nativeCaptionSourceContext({
-    ...planningInput,
-    context: {
-      ...planningInput.context,
-      selectedItemIds: scopedSources ?? planningInput.context.selectedItemIds,
-    },
-  });
+  const captionSources =
+    options.evidenceMode === "reference-only"
+      ? { sources: [], omitted: 0, referenceOnly: true }
+      : nativeCaptionSourceContext({
+          ...planningInput,
+          context: {
+            ...planningInput.context,
+            selectedItemIds:
+              scopedSources ?? planningInput.context.selectedItemIds,
+          },
+        });
   const { document: promptDocument, ...contextPlan } = planNativeAgentContext(
     planningInput,
-    { maxChars: availableChars - JSON.stringify(captionSources).length },
+    {
+      maxChars: availableChars - JSON.stringify(captionSources).length,
+      ...(options.evidenceMode ? { evidenceMode: options.evidenceMode } : {}),
+    },
   );
   contextPlan.omitted.evidence +=
     Object.keys(input.document.evidence).length -

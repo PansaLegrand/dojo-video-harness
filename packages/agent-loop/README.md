@@ -13,6 +13,30 @@ explicit output budget, or in every durable run, unknown usage reserves the enti
 remaining allowance. It never retries provider requests or switches models.
 Build with `npm run build --workspace @dojo-video/agent-loop`.
 
+## Unreleased: owned host input and prefetch
+
+The next profile can pause on a replay-safe tool result
+`{kind:"waiting",requestRef:{kind,id,hash}}`. Supported kinds are source-inspection,
+project-preview, project-export and external-approval. A durable checkpoint saves
+the paid model reply, current tool cursor and immutable host reference in
+waiting-for-host before LoopHostInputRequiredError (`LOOP_HOST_INPUT_REQUIRED`)
+returns control to its host. The host wakes that same attempt after fulfillment.
+Only the idempotent request/receipt lookup repeats; model/tool budgets do not reset
+and a completed earlier tool does not run again. The pending host reference cannot
+change during recovery. A model narration or ordinary answer cannot fulfill it.
+
+New snapshots freeze durable-host-wait-v1. Old snapshots omit that policy and keep
+their earlier binding. Hosts retain older immutable loop versions for accepted
+profiles. The release version is coordinated with the next kit/consumer profile.
+
+An optional LanguageModel.prepare method resolves owned artifact references into
+a private cache before model-call accounting or the paid submission fence. It
+receives the same messages, tools and limits as complete. Missing, stale or
+unauthorized inputs fail without a paid-model counter; cancellation is checked
+again after prepare. Complete uses only that bound cache. Pixel data remains out
+of model text and checkpoint observations; preparation cannot authorize provider
+jobs or replace the host's consent/ownership checks.
+
 ## Preserved provider overruns (0.1.3)
 
 New snapshots freeze `outputBudgetPolicy: "preserve-overrun-v1"`. The loop passes
@@ -178,3 +202,17 @@ Permanent same-policy failures use `LoopCheckpointCapacityError`, code
 `LOOP_CHECKPOINT_CAPACITY`, with reason `checkpoint-too-large`, `reply-headroom`,
 `protected-context` or `reply-too-large`. Messages contain no raw model/source data.
 A host should fail these fast rather than repeatedly queueing the unchanged input.
+
+Version 0.2 adds durable host waits and a read-only `LanguageModel.prepare` hook.
+Preparation resolves owned pixel references before the paid submission fence;
+checkpoint messages retain metadata rather than image bytes. A waiting replay-safe
+tool resumes at its saved cursor after the exact host receipt exists. A host must
+persist wake delivery and reconcile the active/delayed queue race separately.
+
+New snapshots freeze `preserve-known-rejection-v1`. Adapters may throw
+`LoopKnownModelRejectionError` only for qualified pre-execution HTTP
+400/401/403/404/422 rejections. The loop saves a sanitized `model-rejected` receipt
+before surfacing it; subsequent replay sends no new request. Timeout, 5xx,
+malformed output and missing usage remain distinct uncertain outcomes. A known
+rejection does not authorize fallback or assert that the request had no provider
+cost. Existing snapshots retain their original policies and package behavior.

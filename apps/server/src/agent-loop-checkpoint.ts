@@ -1,3 +1,7 @@
+import {
+  completionHash,
+  transitionEditStagePlan,
+} from "../../../packages/agent-kit/src/index";
 import { createHash } from "node:crypto";
 import { z } from "zod/v3";
 import {
@@ -102,15 +106,21 @@ function sourceBinding(p: Project, run: StoredRun) {
     speechEvidence: run.speechContinuation?.evidenceCommands,
   });
 }
-function parseEnvelope(p: Project, run: StoredRun): ParsedAgentLoopCheckpoint {
+function parseEnvelope(
+  p: Project,
+  run: StoredRun,
+  stagePlanOwnsCurrentBinding = false,
+): ParsedAgentLoopCheckpoint {
   const parsed = envelopeSchema.parse(run.loopCheckpoint);
   const checkpoint = parseLoopCheckpoint(parsed.checkpoint);
   const { checkpoint: _checkpoint, contextHash, ...binding } = parsed;
   if (
     parsed.projectId !== p.id ||
     parsed.runId !== run.id ||
-    parsed.runBindingHash !== runBinding(p, run) ||
-    parsed.sourceHash !== sourceBinding(p, run) ||
+    (!stagePlanOwnsCurrentBinding &&
+      parsed.runBindingHash !== runBinding(p, run)) ||
+    (!stagePlanOwnsCurrentBinding &&
+      parsed.sourceHash !== sourceBinding(p, run)) ||
     contextHash !== digest(binding) ||
     checkpoint.snapshot.runId !== run.id ||
     checkpoint.snapshot.snapshotHash !== contextHash
@@ -125,8 +135,67 @@ function parseEnvelope(p: Project, run: StoredRun): ParsedAgentLoopCheckpoint {
 export function agentCheckpointHistory(
   p: Project,
   run: StoredRun,
+  options: { stagePlanOwnsCurrentBinding?: boolean } = {},
 ): History | undefined {
-  return run.loopCheckpoint ? parseEnvelope(p, run).history : undefined;
+  return run.loopCheckpoint
+    ? parseEnvelope(
+        p,
+        run,
+        options.stagePlanOwnsCurrentBinding === true &&
+          run.agentProfile === "local-editor-v6" &&
+          !!p.editStagePlans?.[run.id],
+      ).history
+    : undefined;
+}
+
+/** A host-accepted planning clarification may restart before its next model fence.
+ * The previous paid answers remain immutable audit records and carry all usage. */
+export function agentPreludeCheckpointRecovery(
+  p: Project,
+  run: StoredRun,
+): boolean {
+  if (
+    run.agentProfile !== "local-editor-v6" ||
+    run.loopCheckpoint ||
+    !run.preludeCheckpoints?.length ||
+    run.phase !== "stage_resume" ||
+    !run.request.authoring?.clarification ||
+    !Object.values(run.answers ?? {}).some(
+      (answer) => answer.childId === run.id,
+    )
+  )
+    return false;
+  try {
+    for (const raw of run.preludeCheckpoints) {
+      const saved = envelopeSchema.parse(raw),
+        checkpoint = parseLoopCheckpoint(saved.checkpoint);
+      const { checkpoint: _checkpoint, contextHash, ...binding } = saved;
+      const result = checkpoint.result as
+        | { outcome?: string; clarification?: { id?: string } }
+        | undefined;
+      if (
+        saved.projectId !== p.id ||
+        saved.runId !== run.id ||
+        contextHash !== digest(binding) ||
+        checkpoint.snapshot.runId !== run.id ||
+        checkpoint.snapshot.snapshotHash !== contextHash ||
+        checkpoint.phase !== "completed" ||
+        !checkpoint.usageKnown ||
+        checkpoint.outputBudgetOverrun ||
+        checkpoint.hostWait ||
+        result?.outcome !== "needs_input" ||
+        !result.clarification?.id
+      )
+        return false;
+    }
+    const last = parseLoopCheckpoint(run.preludeCheckpoints.at(-1)!.checkpoint);
+    return (
+      (last.result as { clarification: { id: string } }).clarification.id ===
+      run.request.authoring.clarification.questionId
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Called inside ProjectStore's existing transaction during startup. No executor
@@ -228,13 +297,30 @@ export async function createAgentCheckpointPort(input: {
         return saved ? structuredClone(saved.checkpoint) : null;
       }),
     save: (next, expectedRevision) =>
-      input.store.transaction(input.projectId, (p) => {
-        const { current, saved } = assertCurrent(p);
+      input.store.transaction(input.projectId, async (p) => {
+        const checkpoint = parseLoopCheckpoint(next);
+        const owner = p.runs.find((candidate) => candidate.id === input.runId);
+        // A returned paid reply is retained even if cancellation/source changes
+        // happened during HTTP. Subsequent tools/model fences still fail closed.
+        const retainPaid =
+          owner?.agentProfile === "local-editor-v6" &&
+          checkpoint.phase === "model-returned";
+        const { current, saved } = retainPaid
+          ? {
+              current: owner!,
+              saved: owner!.loopCheckpoint
+                ? parseEnvelope(p, owner!, true)
+                : null,
+            }
+          : assertCurrent(p);
+        if (saved && saved.contextHash !== contextHash)
+          throw new AgentCheckpointConflict(
+            "The paid reply belongs to another frozen checkpoint.",
+          );
         if ((saved?.checkpoint.revision ?? null) !== expectedRevision)
           throw new AgentCheckpointConflict(
             "Another execution advanced this agent checkpoint.",
           );
-        const checkpoint = parseLoopCheckpoint(next);
         if (
           checkpoint.snapshot.runId !== input.runId ||
           checkpoint.snapshot.snapshotHash !== contextHash ||
@@ -257,6 +343,76 @@ export async function createAgentCheckpointPort(input: {
             MAX_LOCAL_CHECKPOINT_BYTES
         )
           throw new LoopCheckpointCapacityError("checkpoint-too-large");
+        const staged =
+          current.agentProfile === "local-editor-v6"
+            ? p.editStagePlans?.[current.id]
+            : undefined;
+        let planning = staged?.plan.attempts.find(
+          (attempt) => attempt.id === "planning",
+        );
+        if (
+          staged &&
+          !planning &&
+          staged.plan.stages[0]?.status === "pending"
+        ) {
+          const first = staged.plan.stages[0];
+          staged.plan = (
+            await transitionEditStagePlan(
+              staged.plan,
+              {
+                type: "claim",
+                operationId: `claim:${first.id}`,
+                stageId: first.id,
+                attemptId: "planning",
+                checkpointId: current.id,
+              },
+              {
+                expectedRevision: staged.plan.revision,
+                now: new Date().toISOString(),
+              },
+            )
+          ).plan;
+          planning = staged.plan.attempts.find(
+            (attempt) => attempt.id === "planning",
+          );
+        }
+        if (staged && planning) {
+          const carried = (current.preludeCheckpoints ?? []).map((saved) =>
+            parseLoopCheckpoint(saved.checkpoint),
+          );
+          const usage = carried.reduce(
+            (total, cp) => ({
+              modelCalls: total.modelCalls + cp.modelCalls,
+              toolCalls: total.toolCalls + cp.toolCalls,
+              inputTokens: total.inputTokens + cp.usage.inputTokens,
+              outputTokens: total.outputTokens + cp.usage.outputTokens,
+              usageKnown: total.usageKnown && cp.usageKnown,
+            }),
+            {
+              modelCalls: checkpoint.modelCalls,
+              toolCalls: checkpoint.toolCalls,
+              ...checkpoint.usage,
+              usageKnown: checkpoint.usageKnown,
+            },
+          );
+          staged.plan = (
+            await transitionEditStagePlan(
+              staged.plan,
+              {
+                type: "record_usage",
+                operationId: `planning-checkpoint:${(await completionHash({ revision: checkpoint.revision, contextHash })).slice(7)}`,
+                stageId: planning.stageId,
+                attemptId: planning.id,
+                usage,
+              },
+              {
+                expectedRevision: staged.plan.revision,
+                now: new Date().toISOString(),
+              },
+            )
+          ).plan;
+          staged.checkpoints.planning = stored.checkpoint;
+        }
         current.loopCheckpoint = stored;
         current.updatedAt = new Date().toISOString();
       }),

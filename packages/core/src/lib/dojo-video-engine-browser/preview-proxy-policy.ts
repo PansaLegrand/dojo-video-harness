@@ -1,11 +1,15 @@
-import type { Scene, SceneAsset, SceneNodeInput } from "@dojo-video-engine/schema";
+import type {
+  Scene,
+  SceneAsset,
+  SceneNodeInput,
+} from "@dojo-video-engine/schema";
 import {
   EDITOR_MEDIA_ADMISSION,
   isHighResolutionVideo,
   localVideoProxyDimensions,
 } from "./media-admission";
 
-export const PREVIEW_PROXY_VERSION = 2;
+export const PREVIEW_PROXY_VERSION = 3;
 export const PREVIEW_PROXY_LIMITS = Object.freeze({
   inputBytes: EDITOR_MEDIA_ADMISSION.maxFileBytes,
   outputBytes: 32 * 1024 * 1024,
@@ -25,8 +29,7 @@ export type PreviewProxyRequest = {
   src: string;
   sourceBytes: number;
 };
-export type PreviewProxyManifest = {
-  version: 2;
+type PreviewProxyManifestFields = {
   sourceHash: string;
   sourceBytes: number;
   proxyHash: string;
@@ -44,6 +47,8 @@ export type PreviewProxyManifest = {
   audioPackets: number;
   createdAt: number;
 };
+export type PreviewProxyManifest = PreviewProxyManifestFields &
+  ({ version: 2 } | { version: 3; audioFirstTimestamp: number | null });
 export type PreviewProxyResult = {
   file: Blob;
   manifest: PreviewProxyManifest;
@@ -53,9 +58,18 @@ export const previewProxyEntryName = (hash: string) =>
   `v${PREVIEW_PROXY_VERSION}-${hash}`;
 export const previewProxyLockName = (entry: string) =>
   `dojo-video-engine-preview-proxy:${entry}`;
-export const PREVIEW_PROXY_CREATION_LOCK = "dojo-video-engine-preview-proxy-creation";
+export const PREVIEW_PROXY_CREATION_LOCK =
+  "dojo-video-engine-preview-proxy-creation";
 
 export const previewProxyDimensions = localVideoProxyDimensions;
+/** Keep packet priming in the original input; browser remuxing may drop it. */
+export const previewProxyUsesOriginalAudio = (
+  width: number,
+  height: number,
+  firstAudioTimestamp: number | null,
+) =>
+  isHighResolutionVideo(width, height) ||
+  (firstAudioTimestamp !== null && firstAudioTimestamp < 0);
 
 export function requiresLocalVideoProxy(asset: {
   id: string;
@@ -221,7 +235,7 @@ export function validatePreviewProxyManifest(
   const manifest = value as PreviewProxyManifest;
   if (
     !manifest ||
-    manifest.version !== PREVIEW_PROXY_VERSION ||
+    ![2, 3].includes(manifest.version) ||
     manifest.sourceHash !== request.sourceHash ||
     manifest.sourceBytes !== request.sourceBytes ||
     !/^[a-f0-9]{64}$/.test(manifest.proxyHash) ||
@@ -238,8 +252,22 @@ export function validatePreviewProxyManifest(
     manifest.videoDuration <= 0 ||
     manifest.videoDuration > manifest.duration + 0.00001 ||
     typeof manifest.audioFromOriginal !== "boolean" ||
-    manifest.audioFromOriginal !==
-      isHighResolutionVideo(manifest.sourceWidth, manifest.sourceHeight) ||
+    (manifest.version === 2
+      ? manifest.audioFromOriginal !==
+        isHighResolutionVideo(manifest.sourceWidth, manifest.sourceHeight)
+      : (manifest.audioFirstTimestamp === null) !==
+          (manifest.audioPackets === 0) ||
+        (manifest.audioFirstTimestamp !== null &&
+          (!Number.isFinite(manifest.audioFirstTimestamp) ||
+            manifest.audioFirstTimestamp <
+              -EDITOR_MEDIA_ADMISSION.audioPrerollSeconds ||
+            manifest.audioFirstTimestamp > manifest.duration)) ||
+        manifest.audioFromOriginal !==
+          previewProxyUsesOriginalAudio(
+            manifest.sourceWidth,
+            manifest.sourceHeight,
+            manifest.audioFirstTimestamp,
+          )) ||
     !Number.isInteger(manifest.videoFrames) ||
     manifest.videoFrames < 1 ||
     manifest.videoFrames > PREVIEW_PROXY_LIMITS.videoFrames ||

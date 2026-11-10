@@ -29,4 +29,7 @@ export type VideoProjectReceipt = {
   kind: string;
   summary: string | null;
   changedEntities: string[];
+  metadata?: {
+    captionSegmentation?: import("./caption-segmentation").CaptionSegmentationReceipt;
+  };
 };

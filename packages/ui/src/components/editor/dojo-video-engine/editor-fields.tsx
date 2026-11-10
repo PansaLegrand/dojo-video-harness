@@ -118,12 +118,16 @@ export function EditorTextArea({
   onCommit,
   onPreview,
   rows = 3,
+  dir = "auto",
+  onFocus,
 }: {
   label: string;
   value: string;
   onCommit: (value: string) => void;
   onPreview?: (value: string | null) => void;
   rows?: number;
+  dir?: "ltr" | "rtl" | "auto";
+  onFocus?: () => void;
 }) {
   const t = useNativeEditorText();
   const [draft, setDraft] = useState(value);
@@ -137,11 +141,12 @@ export function EditorTextArea({
     <label className="flex flex-col gap-1 text-[11px] text-[var(--editor-muted)]">
       {t(label)}
       <textarea
+        dir={dir}
         aria-label={t(label)}
         rows={rows}
         value={draft}
         onChange={(event) => { setDraft(event.target.value); onPreview?.(event.target.value); }}
-        onFocus={() => { if (!focused.current) { focused.current = true; interaction?.beginInteraction(); } }}
+        onFocus={() => { if (!focused.current) { focused.current = true; interaction?.beginInteraction(); } onFocus?.(); }}
         onBlur={() => {
           if (!cancelled.current && draft !== value) onCommit(draft);
           cancelled.current = false; onPreview?.(null);

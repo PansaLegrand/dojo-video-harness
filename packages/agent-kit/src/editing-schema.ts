@@ -28,17 +28,22 @@ function localTarget(root: JsonSchema, value: unknown): JsonSchema {
   return value;
 }
 /** Specialize a fresh proposal schema to the editing-only tool executor. */
-export function editingOnlyProposalSchema(input: JsonSchema): JsonSchema {
+export function editingOnlyProposalSchema(
+  input: JsonSchema,
+  options: { preparedCommands?: boolean } = {},
+): JsonSchema {
   const schema = structuredClone(input);
   if (!object(schema.properties))
     throw new Error("Editing proposal requires object properties.");
   const commands = localTarget(schema, schema.properties.commands);
   if (commands.type !== "array")
     throw new Error("Editing proposal commands must be an array.");
-  commands.minItems = Math.max(
-    1,
-    typeof commands.minItems === "number" ? commands.minItems : 0,
-  );
+  commands.minItems = options.preparedCommands
+    ? 0
+    : Math.max(
+        1,
+        typeof commands.minItems === "number" ? commands.minItems : 0,
+      );
   schema.properties.outcome = { type: "string", const: "proposal" };
   delete schema.properties.clarification;
   delete schema.properties.retrieval;
@@ -57,7 +62,10 @@ export function editingOnlyProposalSchema(input: JsonSchema): JsonSchema {
 }
 /** Nested local references resolve against the advertised tool root. Rebase the
  * complete schema so recursive definitions continue to point inside edit. */
-export function embedEditingSchema(input: JsonSchema): JsonSchema {
+export function embedEditingSchema(
+  input: JsonSchema,
+  options: { preparedCommands?: boolean } = {},
+): JsonSchema {
   const visit = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(visit);
     if (!object(value)) return value;
@@ -72,7 +80,7 @@ export function embedEditingSchema(input: JsonSchema): JsonSchema {
       ]),
     );
   };
-  return visit(editingOnlyProposalSchema(input)) as JsonSchema;
+  return visit(editingOnlyProposalSchema(input, options)) as JsonSchema;
 }
 export function assertEditingProposal(raw: unknown): void {
   if (

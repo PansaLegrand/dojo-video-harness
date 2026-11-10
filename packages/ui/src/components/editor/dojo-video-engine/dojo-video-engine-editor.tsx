@@ -120,6 +120,9 @@ import { createLocalMediaOperation } from "@/lib/video-project/local-media-opera
 import { useLocalSourceRestore } from "./use-local-source-restore";
 import { EditorChatResizer } from "./editor-chat-resizer";
 import { VideoWorkspaceChat } from "./video-workspace-chat";
+import { createEditorOutputRequestsApi } from "./editor-output-requests";
+import { OutputHostError, type ProjectExportRequest, type ProjectExportReceipt } from "@/lib/video-project/browser-output-requests";
+import { validateCaptionSegmentationReceipt, CaptionSegmentationConflict, type CaptionSegmentationPlan } from "@/lib/video-project/caption-segmentation";
 import { EditorInteractionProvider } from "./editor-interaction";
 import { useNativeEditorText } from "./native-editor-copy";
 import { useEditorMediaPreviews } from "./editor-media-previews";
@@ -216,6 +219,7 @@ export default function DojoVideoEngineEditor({
     name: string;
     publication: ExportPublication;
     savedToFile: boolean;
+    request?:ProjectExportRequest;
   } | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
@@ -249,6 +253,8 @@ export default function DojoVideoEngineEditor({
   const localMediaRef = useRef<(ReturnType<typeof createLocalMediaOperation> & { lifetime: AbortController }) | null>(null);
   const exportTaskRef = useRef<{ cancel(): void } | null>(null);
   const publicationRef = useRef<ExportPublication | null>(null);
+  const retainedAgentExportsRef = useRef(new Set<string>());
+  const requestedPublicationSessionsRef = useRef(new Map<string, ExportPublication>());
   const publicationFinishedRef = useRef(false);
   const exportIdRef = useRef<string | null>(null);
   const disabled = loading;
@@ -280,6 +286,7 @@ export default function DojoVideoEngineEditor({
   useEffect(() => {
     const lifetime = new AbortController();
     lifetimeRef.current = lifetime;
+    setOutput(null); setPublished(false); setPublishing(false);
     importFilesRef.current.clear();
     try { setImportBatch(restoreEditorImportBatch(sessionStorage.getItem(editorImportBatchKey(projectId)), projectId)); setImportRecoveryAvailable(true); }
     catch { setImportBatch(null); setImportRecoveryAvailable(false); }
@@ -294,7 +301,8 @@ export default function DojoVideoEngineEditor({
       if (localMediaRef.current?.lifetime === lifetime) {
         localMediaRef.current.cancel(); localMediaRef.current.dispose(); localMediaRef.current = null; setLocalImport(null);
       }
-      if (publicationRef.current && !publicationFinishedRef.current) void publicationRef.current.cancel().catch(() => {});
+      if (publicationRef.current && !publicationFinishedRef.current && !retainedAgentExportsRef.current.has(exportIdRef.current ?? "")) void publicationRef.current.cancel().catch(() => {});
+      publicationRef.current = null; exportIdRef.current = null; publicationFinishedRef.current = false; requestedPublicationSessionsRef.current.clear(); retainedAgentExportsRef.current.clear();
       objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); objectUrlsRef.current.clear();
     };
     // Project context callback identities change when the project loads.
@@ -311,6 +319,19 @@ export default function DojoVideoEngineEditor({
     controller.dispatchEditor(commands);
     const next = controller.getState().document;
     if (next) documentRef.current = toEditorDocument(next);
+  }, [controller]);
+  const applyCaptionStructure = useCallback(async (plan: CaptionSegmentationPlan) => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const before = controller.getState().document;
+      if (!before) throw new CaptionSegmentationConflict();
+      await validateCaptionSegmentationReceipt(before, plan.commands, plan.receipt);
+      if (controller.getState().document !== before) { if (!attempt) continue; throw new CaptionSegmentationConflict(); }
+      controller.dispatch(plan.commands, { captionSegmentation: plan.receipt });
+      const next = controller.getState();
+      if (next.document === before) throw new Error(next.error ?? "The caption edit could not be applied.");
+      if (next.document) documentRef.current = toEditorDocument(next.document);
+      return;
+    }
   }, [controller]);
 
   const applyCapability = useCallback((action: EditorCapabilityInput) => {
@@ -695,11 +716,15 @@ export default function DojoVideoEngineEditor({
     setShowInspector(true);
   }
 
-  async function exportVideo(fileHandle?: DojoVideoEngineExportFileHandle, expected?: { revision: number; documentHash: string }) {
+  async function exportVideo(fileHandle?: DojoVideoEngineExportFileHandle, expected?: { revision: number; documentHash: string }, scoped?: { request: ProjectExportRequest; signal?: AbortSignal }) {
     const lifetime = lifetimeRef.current;
     if (!compiled.scene || previewError || exportProgress !== null || exportTaskRef.current || !documentRef.current || !lifetime || lifetime.signal.aborted)
       return;
     const operation = createExportOperation(lifetime.signal);
+    const abortScoped = () => operation.cancel(scoped?.signal?.reason);
+    scoped?.signal?.addEventListener("abort", abortScoped, { once: true });
+    if (scoped?.signal?.aborted) abortScoped();
+    const resolution = scoped?.request.output.resolution ?? exportResolution;
     exportTaskRef.current = operation;
     previewRef.current?.pause();
     setExportProgress(0);
@@ -721,7 +746,9 @@ export default function DojoVideoEngineEditor({
         const cloud = exportSnapshot.sources.find(source => source.sourceId === asset.id || source.assetId === (asset.assetId ?? asset.id));
         if (cloud?.url) exportSources[asset.id] = cloud.url;
       }
-      const scene = editorExportScene(compileVideoProjectDocument(exportSnapshot.document, exportSources).scene, exportResolution);
+      const scene = editorExportScene(compileVideoProjectDocument(exportSnapshot.document, exportSources).scene, resolution);
+      if (scoped && (scene.width !== scoped.request.format.width || scene.height !== scoped.request.format.height || scene.fps !== scoped.request.format.fps || scene.duration !== scoped.request.format.durationInFrames))
+        throw new OutputHostError("STALE_OUTPUT", "The saved export settings differ from this request.");
       await operation.wait(requireEditorExportSupport(scene));
       const plan = planDojoVideoEngineExport(scene);
       if (
@@ -731,7 +758,7 @@ export default function DojoVideoEngineEditor({
         throw new Error(
           t(LARGE_EXPORT_MESSAGE),
         );
-      if (publicationRef.current && !publicationFinishedRef.current)
+      if (publicationRef.current && !publicationFinishedRef.current && !retainedAgentExportsRef.current.has(exportIdRef.current ?? ""))
         await operation.wait(publicationRef.current.cancel().catch(() => {}));
       operation.check();
       const exportId = id();
@@ -741,11 +768,12 @@ export default function DojoVideoEngineEditor({
         documentRevision: savedRevision,
         width: scene.width,
         height: scene.height,
-        resolution: exportResolution,
+        resolution,
         fps: snapshot.format.fps,
         durationInFrames: snapshot.format.durationInFrames,
         sourceType: "editor_export",
       });
+      if (scoped) requestedPublicationSessionsRef.current.set(projectId + ":" + exportId, publication);
       publicationRef.current = publication;
       publicationFinishedRef.current = false;
       await operation.wait(publication.prepare(operation.signal));
@@ -774,6 +802,7 @@ export default function DojoVideoEngineEditor({
         ? await operation.wait(fileHandle.getFile())
         : (result as { blob: Blob }).blob;
       operation.check();
+      if (scoped && blob.size > scoped.request.maxBytes) throw new OutputHostError("OUTPUT_BYTES", "The verified export exceeds this request’s file limit.");
       const extension = blob.type.includes("webm") ? "webm" : "mp4";
       const filename = `${projectName.replace(/[^\p{L}\p{N}._-]+/gu, "-") || "dojoclip-video"}.${extension}`;
       setOutput({
@@ -781,9 +810,12 @@ export default function DojoVideoEngineEditor({
         name: filename,
         publication,
         savedToFile: !!fileHandle,
+        ...(scoped?{request:scoped.request}:{}),
       });
-      if (!fileHandle) downloadBlob(blob, filename);
-      return { revision: exportSnapshot.revision, documentHash: exportSnapshot.documentHash, exportId, blob, width: scene.width, height: scene.height, fps: snapshot.format.fps, durationInFrames: snapshot.format.durationInFrames, resolution: exportResolution };
+      const downloadStarted = !fileHandle && (!scoped || scoped.request.destination === "download");
+      if (downloadStarted) downloadBlob(blob, filename);
+      if (scoped) retainedAgentExportsRef.current.add(exportId);
+      return { revision: exportSnapshot.revision, documentHash: exportSnapshot.documentHash, exportId, blob, width: scene.width, height: scene.height, fps: snapshot.format.fps, durationInFrames: snapshot.format.durationInFrames, resolution, download: fileHandle ? { state: "acknowledged" as const, method: "file-system" as const } : downloadStarted ? { state: "started" as const, method: "browser-download" as const } : { state: "not-started" as const, method: "none" as const } };
     } catch (cause) {
       if (publication) void publication.cancel().catch(() => {});
       if (
@@ -791,7 +823,9 @@ export default function DojoVideoEngineEditor({
         !(cause instanceof DOMException && cause.name === "AbortError")
       )
         setError(cause instanceof Error ? cause.message : "Export failed.");
+      if (scoped) throw cause;
     } finally {
+      scoped?.signal?.removeEventListener("abort", abortScoped);
       operation.dispose();
       if (exportTaskRef.current === operation) {
         exportTaskRef.current = null;
@@ -843,6 +877,16 @@ export default function DojoVideoEngineEditor({
     }
   }
 
+  async function publishRequestedOutput(request: ProjectExportRequest, receipt: ProjectExportReceipt, blob: Blob, signal: AbortSignal) {
+    signal.throwIfAborted();
+    const publication = requestedPublicationSessionsRef.current.get(projectId + ":" + receipt.exportId) ?? (exportIdRef.current === receipt.exportId && publicationRef.current ? publicationRef.current : createEditorExportPublication(projectId, {
+      exportId: receipt.exportId, documentRevision: String(request.snapshot.revision), sourceType: "editor_export", width: receipt.file.width,
+      height: receipt.file.height, fps: receipt.file.fps, durationInFrames: receipt.file.durationInFrames, resolution: request.output.resolution,
+    }));
+    requestedPublicationSessionsRef.current.set(projectId + ":" + receipt.exportId, publication);
+    await publication.prepare(signal); await publication.publish(blob, signal);
+  }
+
   async function publishOutput() {
     if (!output || publishing || published) return;
     setPublishing(true);
@@ -852,6 +896,9 @@ export default function DojoVideoEngineEditor({
         output.blob,
         lifetimeRef.current?.signal,
       );
+      if(output.request){const details=await createEditorOutputRequestsApi(projectId,output.request.runId).receiptDetails({kind:"project-export",request:output.request,status:"fulfilled",grant:null,hasReceipt:true,error:null},lifetimeRef.current?.signal);
+        if(!details?.publication||details.publicationError)throw new Error("Stored copy needs verification. The verified local file remains available to download.");
+      }
       publicationFinishedRef.current = true;
       setPublished(true);
     } catch (cause) {
@@ -1067,6 +1114,12 @@ export default function DojoVideoEngineEditor({
                 {["video", "img"].includes(selected.node.type) && <EditorTransitionControl key={`transition:${projectId}:${selected.id}`} document={workspace.document} itemId={selected.id} disabled={disabled} onApply={applyTransition} onSeek={seek} />}
               </> : undefined}
               document={document}
+              nativeDocument={workspace.document}
+              sources={sources}
+              onCaptionStructure={applyCaptionStructure}
+              onPausePreview={() => { previewRef.current?.pause(); setPlaying(false); }}
+              mainPreviewPlaying={playing}
+              onRelinkSource={assetId => { const asset = document.assets[assetId]; if (asset?.source === "local") { relinkAssetRef.current = asset; relinkInputRef.current?.click(); } }}
               selected={inspectorSelection}
               nestedSelection={!!selectedNestedNode}
               sourceTimingLocked={!!selectedBinding && !selectedNestedNode}
@@ -1344,7 +1397,7 @@ export default function DojoVideoEngineEditor({
           const result = await exportVideo(undefined, expected);
           if (!result) throw new Error("Export did not complete. Check the editor's export status.");
           return result;
-        } })} resizeHandle={<EditorChatResizer width={chatWidth} onChange={setChatWidth} label={t("Resize chat")} />} hidden={!showChat} controller={controller} sources={sources} onAuthorizeSources={authorizeSourceUploads} onCaptureVisualContext={captureVisualContext} onClose={() => setShowChat(false)} onSeekFrame={seek} onPausePreview={() => { previewRef.current?.pause(); setPlaying(false); }} mainPreviewPlaying={playing} onCapabilityAction={applyCapability} />
+        } })} resizeHandle={<EditorChatResizer width={chatWidth} onChange={setChatWidth} label={t("Resize chat")} />} hidden={!showChat} controller={controller} sources={sources} restoringSources={restoringSources} onRelinkSource={assetId => { const asset = document.assets[assetId]; if (asset?.source === "local") { relinkAssetRef.current = asset; relinkInputRef.current?.click(); } }} onAuthorizeSources={authorizeSourceUploads} onExportOutput={(request, signal) => exportVideo(undefined, request.snapshot, { request, signal })} onPublishOutput={publishRequestedOutput} onOutputPublicationVerified={exportId => { if(exportIdRef.current===exportId){publicationFinishedRef.current=true;setPublished(true);} }} onDownloadOutput={blob => downloadBlob(blob, `${projectName.replace(/[^\p{L}\p{N}._-]+/gu, "-") || "dojoclip-video"}.mp4`)} onCaptureVisualContext={captureVisualContext} onClose={() => setShowChat(false)} onSeekFrame={seek} onPausePreview={() => { previewRef.current?.pause(); setPlaying(false); }} mainPreviewPlaying={playing} onCapabilityAction={applyCapability} />
       </div>
       {output && (
         <div
@@ -1383,7 +1436,7 @@ export default function DojoVideoEngineEditor({
             <button
               aria-label="Dismiss completed export"
               onClick={() => {
-                if (!publicationFinishedRef.current)
+                if (!publicationFinishedRef.current && !retainedAgentExportsRef.current.has(exportIdRef.current ?? ""))
                   void output.publication.cancel().catch(() => {});
                 publicationRef.current = null;
                 setOutput(null);

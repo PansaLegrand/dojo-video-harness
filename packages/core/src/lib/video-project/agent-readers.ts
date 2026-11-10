@@ -240,6 +240,7 @@ export async function listNativeAssets(
 export async function readNativeCaptionCues(
   request: NativeAgentRequest,
   raw: unknown,
+  options: { cueRange?: { offset: number; count: number } } = {},
 ) {
   const input = nativeCaptionCueQuerySchema.parse(raw),
     original = await snapshot(request, input.snapshotHash);
@@ -279,7 +280,7 @@ export async function readNativeCaptionCues(
     (word) => word.endMs > window.startMs && word.startMs < window.endMs,
   );
   let wordAt = 0;
-  const values = command.item.caption!.cues.map((cue) => {
+  const allValues = command.item.caption!.cues.map((cue) => {
     const wordIds = (cue.words ?? []).map((word) => {
       while (wordAt < words.length) {
         const original = words[wordAt++]!;
@@ -309,6 +310,20 @@ export async function readNativeCaptionCues(
       wordIds,
     };
   });
+  const range = options.cueRange;
+  if (
+    range &&
+    (!Number.isSafeInteger(range.offset) ||
+      !Number.isSafeInteger(range.count) ||
+      range.offset < 0 ||
+      range.count < 1 ||
+      range.count > 500 ||
+      range.offset + range.count > allValues.length)
+  )
+    throw new Error("The caption-batch reader range is invalid.");
+  const values = range
+    ? allValues.slice(range.offset, range.offset + range.count)
+    : allValues;
   const timingOmissions = captionTimingDiagnostics(
     document,
     source.id,
@@ -324,6 +339,7 @@ export async function readNativeCaptionCues(
     from: source.node.from ?? 0,
     duration: source.node.duration!,
     fps: document.format.fps,
+    ...(range ? { cueRange: { ...range, total: allValues.length } } : {}),
     ...(narrowed ? { sourceRange: narrowed.sourceRange } : {}),
     ...(timingOmissions ? { timingOmissions } : {}),
   };

@@ -13,6 +13,8 @@ import {
   type CompletionState,
   usesCompletionPreflight,
   usesPagedReaders,
+  usesStagedEditing,
+  type EditorStagePorts,
 } from "../../agent-kit/src/index";
 import {
   compileNativeAgentResult,
@@ -32,12 +34,16 @@ import {
   compileNativeCompletionResponse,
 } from "../../core/src/lib/video-project/completion-preflight";
 import { prepareCaptionPair } from "../../core/src/lib/video-project/caption-pair";
-import { prepareCompletionCaptionCuePacket } from "../../core/src/lib/video-project/completion-caption-context";
+import {
+  prepareCompletionCaptionCuePacket,
+  prepareCaptionSourceOverview,
+} from "../../core/src/lib/video-project/completion-caption-context";
 import {
   listNativeAssets,
   readNativeCaptionCues,
 } from "../../core/src/lib/video-project/agent-readers";
 import type { LoopTool } from "../../agent-loop/src/index";
+import { readNativeCaptionTrack } from "../../core/src/lib/video-project/caption-track-reader";
 export type AgentTool = Omit<KitTool<NativeAgentResult>, "execute"> &
   Pick<
     LoopTool<NativeAgentResult>,
@@ -57,6 +63,10 @@ export const replaySafeNativeToolNames = [
   "prepare_caption_pair",
   "list_assets",
   "read_caption_cues",
+  "plan_edit_stages",
+  "save_caption_batch",
+  "read_edit_artifact",
+  "read_caption_track",
 ] as const;
 export type ToolOutcome = Awaited<ReturnType<AgentTool["execute"]>>;
 
@@ -68,6 +78,7 @@ export function createVideoToolset(
   options: {
     profile?: AgentProfile;
     initialCompletionState?: CompletionState;
+    stages?: EditorStagePorts<NativeAgentResult>;
   } = {},
 ) {
   const document = parseVideoProjectDocument(request.document);
@@ -87,11 +98,24 @@ export function createVideoToolset(
       anchorHold: usesCompletionPreflight(options.profile ?? "local-editor-v1"),
     }),
     ports: {
+      ...(usesStagedEditing(options.profile ?? "local-editor-v1")
+        ? {
+            readCaptionTrack: (
+              args: import("../../agent-kit/src/tools").CaptionTrackQuery,
+            ) => readNativeCaptionTrack(request, args),
+          }
+        : {}),
+      ...(options.stages ? { stages: options.stages } : {}),
       ...(usesPagedReaders(options.profile ?? "local-editor-v1")
         ? {
             listAssets: (args: unknown) => listNativeAssets(request, args),
-            readCaptionCues: (args: unknown) =>
-              readNativeCaptionCues(request, args),
+            readCaptionCues: (args: unknown, signal: AbortSignal) =>
+              options.stages?.readCaptionCues
+                ? options.stages.readCaptionCues(
+                    args as import("../../agent-kit/src/tools").CaptionCueQuery,
+                    signal,
+                  )
+                : readNativeCaptionCues(request, args),
           }
         : {}),
       inspectGraphicsSchema: () => ({
@@ -101,19 +125,35 @@ export function createVideoToolset(
       inspectProject: (query) => ({
         ...(usesCompletionPreflight(options.profile ?? "local-editor-v1")
           ? {
-              completionCaptionSources: prepareCompletionCaptionCuePacket(
-                document,
-                scopedSources === null
-                  ? query.itemIds
-                  : query.itemIds === undefined
-                    ? scopedSources
-                    : query.itemIds.filter((id) => scopedSources.includes(id)),
-                {
-                  pagedReaders: usesPagedReaders(
-                    options.profile ?? "local-editor-v1",
+              completionCaptionSources: usesStagedEditing(
+                options.profile ?? "local-editor-v1",
+              )
+                ? prepareCaptionSourceOverview(
+                    document,
+                    scopedSources === null
+                      ? query.itemIds
+                      : query.itemIds === undefined
+                        ? scopedSources
+                        : query.itemIds.filter((id) =>
+                            scopedSources.includes(id),
+                          ),
+                    { referenceOnly: true },
+                  )
+                : prepareCompletionCaptionCuePacket(
+                    document,
+                    scopedSources === null
+                      ? query.itemIds
+                      : query.itemIds === undefined
+                        ? scopedSources
+                        : query.itemIds.filter((id) =>
+                            scopedSources.includes(id),
+                          ),
+                    {
+                      pagedReaders: usesPagedReaders(
+                        options.profile ?? "local-editor-v1",
+                      ),
+                    },
                   ),
-                },
-              ),
             }
           : {}),
         snapshotHash: request.baseHash,

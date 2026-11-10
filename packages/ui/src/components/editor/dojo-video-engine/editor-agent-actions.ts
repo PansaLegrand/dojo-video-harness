@@ -30,3 +30,11 @@ export function editorComparisonIsStale(basis: NativeReviewBasis, current: { rev
 export function editorAgentCanAutoApply(run: Pick<VideoProjectAgentRun, "status" | "proposal" | "manualReviewRequired">): boolean {
   return !run.manualReviewRequired && !!run.proposal && ["ready", "awaiting_review"].includes(run.status);
 }
+
+/** A saved acknowledgement clears only this exact submitted answer. Older hosts
+ * may instead acknowledge a matching linked continuation. */
+export function editorClarificationAcknowledged(run: Pick<VideoProjectAgentRun,"clarificationReply">, operationId:string, runs:ReadonlyArray<Pick<VideoProjectAgentRun,"id"|"operationId">>):boolean {
+  if(run.clarificationReply?.answerOperationId===operationId)return true;
+  const childId=run.clarificationReply?.continuationRunId;
+  return !!childId&&runs.some(child=>child.id===childId&&child.operationId===operationId);
+}

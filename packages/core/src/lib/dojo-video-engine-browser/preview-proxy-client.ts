@@ -2,6 +2,7 @@ import type { Scene, SceneAsset } from "@dojo-video-engine/schema";
 import {
   applyPreviewProxies,
   PREVIEW_PROXY_LIMITS,
+  PREVIEW_PROXY_VERSION,
   previewProxyCandidates,
   previewProxyEntryName,
   previewProxyLockName,
@@ -113,6 +114,10 @@ export async function preparePreviewProxyInWorker(
         try {
           const result = data.result as PreviewProxyResult;
           validatePreviewProxyManifest(result?.manifest, request);
+          if (result.manifest.version !== PREVIEW_PROXY_VERSION)
+            throw new Error(
+              "Preview proxy transfer belongs to another cache policy.",
+            );
           if (
             !(result.file instanceof Blob) ||
             result.file.size !== result.manifest.proxyBytes

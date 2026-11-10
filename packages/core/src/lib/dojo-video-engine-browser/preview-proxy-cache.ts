@@ -1,5 +1,6 @@
 import {
   PREVIEW_PROXY_LIMITS,
+  PREVIEW_PROXY_VERSION,
   previewProxyEntryName,
   previewProxyLockName,
   validatePreviewProxyManifest,
@@ -42,6 +43,8 @@ export async function readPreviewProxyCache(
     JSON.parse(await metadata.text()),
     request,
   );
+  if (manifest.version !== PREVIEW_PROXY_VERSION)
+    throw new Error("Preview proxy cache namespace changed.");
   const file = await (await directory.getFileHandle("media.mp4")).getFile();
   if (file.size !== manifest.proxyBytes)
     throw new Error("Preview proxy cache file changed.");

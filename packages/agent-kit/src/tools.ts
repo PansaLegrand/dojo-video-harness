@@ -12,6 +12,7 @@ import {
   usesPagedReaders,
   usesEfficientReaders,
   usesResolvedEditSchema,
+  usesStagedEditing,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -28,6 +29,10 @@ import {
 } from "./completion.js";
 import { readSkill, selectSkills } from "./skills.js";
 import { buildAgentInventory } from "./inventory.js";
+import {
+  createStagedEditorTools,
+  type EditorStagePorts,
+} from "./staged-tools.js";
 
 type MaybePromise<T> = T | Promise<T>;
 export type Placement = {
@@ -58,7 +63,17 @@ export type CaptionCueQuery = {
   sourceRange?: CaptionSourceRange;
   cursor?: string;
 };
+export type CaptionTrackQuery = {
+  snapshotHash: string;
+  captionItemId: string;
+  cursor?: string;
+};
 export type EditorToolPorts<T> = {
+  readCaptionTrack?: (
+    input: CaptionTrackQuery,
+    signal: AbortSignal,
+  ) => MaybePromise<unknown>;
+  stages?: EditorStagePorts<T>;
   listAssets?: (args: AssetQuery, signal: AbortSignal) => MaybePromise<unknown>;
   readCaptionCues?: (
     args: CaptionCueQuery,
@@ -218,6 +233,9 @@ export function createEditorToolset<T>(input: {
 }) {
   const { ports } = input;
   const completion = usesCompletionPreflight(input.profile);
+  const stages = usesStagedEditing(input.profile) ? ports.stages : undefined;
+  if (usesStagedEditing(input.profile) && !stages)
+    throw new Error("Staged profiles require their durable host ports.");
   if (completion && (!ports.reviewEdit || !input.snapshotHash))
     throw new Error(
       "Completion profiles require a preflight port and snapshot identity.",
@@ -227,9 +245,8 @@ export function createEditorToolset<T>(input: {
     (!ports.listAssets || !ports.readCaptionCues)
   )
     throw new Error("Paged-reader profiles require both reader executors.");
-  let state = input.initialCompletionState
-    ? structuredClone(input.initialCompletionState)
-    : undefined;
+  const initialState = input.initialCompletionState ?? stages?.completionState;
+  let state = initialState ? structuredClone(initialState) : undefined;
   const checkedState = async () => {
     if (state) {
       if (
@@ -424,7 +441,9 @@ export function createEditorToolset<T>(input: {
             ? pagedCompletionRequirementsSchema
             : completionRequirementsSchema,
           edit: usesResolvedEditSchema(input.profile)
-            ? embedEditingSchema(input.proposalSchema)
+            ? embedEditingSchema(input.proposalSchema, {
+                preparedCommands: stages?.preparedCommands,
+              })
             : input.proposalSchema,
         },
         ["edit"],
@@ -452,15 +471,17 @@ export function createEditorToolset<T>(input: {
         };
         let checks: CompletionCheck[];
         let receipt: CompletionReceipt | undefined;
+        let edit = value.edit;
         try {
+          if (stages) edit = await stages.resolvePreparedEdit(edit, signal);
           if (usesResolvedEditSchema(input.profile))
-            assertEditingProposal(value.edit);
+            assertEditingProposal(edit);
           if (requirementsHash !== state.requirementsHash)
             throw new Error(
               "The first valid requirements are frozen. Repair the edit instead of weakening or replacing the checklist.",
             );
           const reviewed = await ports.reviewEdit!(
-            { requirements: state.requirements, edit: value.edit },
+            { requirements: state.requirements, edit },
             signal,
           );
           checks = reviewed.checks;
@@ -473,7 +494,7 @@ export function createEditorToolset<T>(input: {
               checked.requirementsHash !== state.requirementsHash ||
               checked.commandsHash !==
                 (await completionHash(
-                  (value.edit as { commands?: unknown })?.commands,
+                  (edit as { commands?: unknown })?.commands,
                 )) ||
               checked.checksHash !== (await completionHash(reviewed.checks))
             )
@@ -481,8 +502,17 @@ export function createEditorToolset<T>(input: {
                 "The host preflight receipt does not match the declared edit.",
               );
             receipt = checked;
-            state.successfulReceipt = receipt;
           }
+          await stages?.recordReview?.(
+            {
+              requirements: state.requirements,
+              edit,
+              checks,
+              ...(receipt ? { receipt } : {}),
+            },
+            signal,
+          );
+          if (receipt) state.successfulReceipt = receipt;
         } catch (error) {
           receipt = undefined;
           checks = [
@@ -668,13 +698,65 @@ export function createEditorToolset<T>(input: {
       },
     );
   }
+  if (stages)
+    tools.push(
+      ...createStagedEditorTools({
+        ...stages,
+        planEditStages: async (raw, signal) => {
+          await checkedState();
+          const requirements = parseCompletionRequirements(
+            (raw as { requirements?: unknown }).requirements,
+            { assetSequence: true, speechCallout: true },
+          );
+          if (
+            state &&
+            (await completionHash(requirements)) !== state.requirementsHash
+          )
+            throw new Error(
+              "The staged plan must preserve every frozen completion requirement.",
+            );
+          return stages.planEditStages(raw, signal);
+        },
+      }),
+    );
+  if (stages && ports.readCaptionTrack)
+    tools.push({
+      ...toolMetadata("read_caption_track"),
+      parameters: object(
+        {
+          captionItemId: { type: "string", minLength: 1, maxLength: 191 },
+          cursor: { type: "string", maxLength: 160 },
+        },
+        ["captionItemId"],
+      ),
+      execute: async (raw, signal) => {
+        const value = record(raw, ["captionItemId", "cursor"]);
+        return {
+          kind: "observation",
+          pinned: true,
+          value: await ports.readCaptionTrack!(
+            {
+              snapshotHash: input.snapshotHash!,
+              captionItemId: text(value.captionItemId, "captionItemId", 1, 191),
+              ...(value.cursor === undefined
+                ? {}
+                : { cursor: text(value.cursor, "cursor", 1, 160) }),
+            },
+            signal,
+          ),
+        };
+      },
+    });
   tools.push(
     {
       ...toolMetadata("propose_edit"),
       parameters: usesResolvedEditSchema(input.profile)
-        ? editingOnlyProposalSchema(input.proposalSchema)
+        ? editingOnlyProposalSchema(input.proposalSchema, {
+            preparedCommands: stages?.preparedCommands,
+          })
         : input.proposalSchema,
       execute: async (args, signal) => {
+        if (stages) args = await stages.resolvePreparedEdit(args, signal);
         if (usesResolvedEditSchema(input.profile)) assertEditingProposal(args);
         if (!completion)
           return {
@@ -698,12 +780,15 @@ export function createEditorToolset<T>(input: {
           throw new Error(
             "Run review_edit successfully for these exact commands before propose_edit. Do not omit or weaken requirements.",
           );
+        const result = await ports.proposeEdit(args, signal, {
+          requirements: state.requirements,
+          receipt: state.successfulReceipt,
+        });
         return {
           kind: "terminal",
-          result: await ports.proposeEdit(args, signal, {
-            requirements: state.requirements,
-            receipt: state.successfulReceipt,
-          }),
+          result: stages?.completeEditing
+            ? await stages.completeEditing(result, signal)
+            : result,
         };
       },
     },

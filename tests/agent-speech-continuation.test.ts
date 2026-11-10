@@ -166,12 +166,15 @@ async function fixture(available = false) {
 }
 async function waitFor(f: Awaited<ReturnType<typeof fixture>>, status: string) {
   await expect
-    .poll(async () => {
-      const run = (await f.store.read(f.p.id)).runs[0];
-      if (run?.status === "failed" && status !== "failed")
-        throw new Error(run.error?.message);
-      return run?.status;
-    })
+    .poll(
+      async () => {
+        const run = (await f.store.read(f.p.id)).runs[0];
+        if (run?.status === "failed" && status !== "failed")
+          throw new Error(run.error?.message);
+        return run?.status;
+      },
+      { timeout: 10000 },
+    )
     .toBe(status);
   // Allow the non-blocking launch cleanup to release its in-process fence.
   await new Promise((resolve) => setTimeout(resolve, 0));
