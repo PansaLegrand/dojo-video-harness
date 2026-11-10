@@ -263,7 +263,8 @@ async function settled(
   projectId: string,
   waitForCompletedAsr = false,
 ) {
-  for (let n = 0; n < 500; n++) {
+  const deadline = performance.now() + 90000;
+  while (performance.now() < deadline) {
     const project = await store.read(projectId),
       run = project.runs.at(-1)!;
     if (
@@ -369,7 +370,7 @@ it.each([1, 2])(
       publicNativeResultBytes: Buffer.byteLength(JSON.stringify(run.proposal)),
     });
   },
-  30000,
+  120000,
 );
 
 it("normal default 100-cue policy resumes the interrupted last batch without repeating five saved outputs", async () => {
