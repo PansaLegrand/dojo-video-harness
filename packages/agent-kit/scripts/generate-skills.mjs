@@ -6,12 +6,14 @@ const source = path.resolve(root, "../../skills");
 const names = [
   "basic-editing-workflow",
   "completion-preflight",
+  "generated-media",
   "motion-design",
   "music-generation",
   "multi-asset-editing",
   "precise-editing",
   "speech-editing",
   "staged-editing",
+  "visual-inspection",
 ];
 const skills = await Promise.all(
   names.map(async (name) => {

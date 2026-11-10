@@ -149,3 +149,21 @@ it("keeps binary pixels out of observations and preserves a typed wait reference
     tools[1].execute(inputs.sample_video_frames, signal),
   ).rejects.toThrow(/metadata references/);
 });
+
+it("loads cloud-media guidance only with its executors in the new profile", async () => {
+  const { builtInSkills, selectSkills } = await import(
+    "../packages/agent-kit/src/skills"
+  );
+  const names = Object.keys(EDITOR_HOST_TOOL_CATALOG);
+  expect(
+    selectSkills(builtInSkills(), names, "commercial-editing-v7")
+      .map((skill) => skill.name)
+      .sort(),
+  ).toEqual(["generated-media", "visual-inspection"]);
+  expect(selectSkills(builtInSkills(), [], "commercial-editing-v7")).toEqual(
+    [],
+  );
+  expect(selectSkills(builtInSkills(), names, "commercial-editing-v6")).toEqual(
+    [],
+  );
+});

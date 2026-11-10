@@ -148,6 +148,8 @@ export function toolMetadata(name: CatalogToolName) {
   return { name, description, effect };
 }
 export const skillRequirements = {
+  "generated-media": ["prepare_generated_media"],
+  "visual-inspection": ["inspect_image", "sample_video_frames"],
   "staged-editing": [
     "plan_edit_stages",
     "save_caption_batch",
@@ -260,6 +262,8 @@ export const profileSkills: Record<
     "completion-preflight",
     "multi-asset-editing",
     "staged-editing",
+    "generated-media",
+    "visual-inspection",
   ],
   "commercial-editing-v6": [
     "precise-editing",
