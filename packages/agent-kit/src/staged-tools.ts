@@ -6,6 +6,7 @@ import {
   type CompletionReceipt,
   type CompletionRequirement,
 } from "./completion.js";
+import type { EditArtifactRef } from "./stages.js";
 import type { CaptionCueQuery } from "./tools.js";
 export type EditorStagePorts<T> = {
   /** New profiles may plan monolingual/creative edits without a translation pair. */
@@ -32,7 +33,7 @@ export type EditorStagePorts<T> = {
       receipt?: CompletionReceipt;
     },
     signal: AbortSignal,
-  ): Promise<void>;
+  ): Promise<void | { reviewRef: EditArtifactRef }>;
   completeEditing?(result: T, signal: AbortSignal): Promise<T>;
 };
 const id = { type: "string", minLength: 1, maxLength: 191 },

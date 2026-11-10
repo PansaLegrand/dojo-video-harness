@@ -1,5 +1,7 @@
+import { parseEditArtifactRef } from "./stages.js";
 import {
   editingOnlyProposalSchema,
+  reviewedProposalSchema,
   embedEditingSchema,
   assertEditingProposal,
 } from "./editing-schema.js";
@@ -14,6 +16,7 @@ import {
   usesResolvedEditSchema,
   usesStagedEditing,
   usesAuthoringContracts,
+  usesReviewedEditReferences,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -108,6 +111,9 @@ export type EditorToolPorts<T> = {
     args: unknown,
     signal: AbortSignal,
   ) => MaybePromise<unknown>;
+  validateRequirements?: (
+    requirements: CompletionRequirement[],
+  ) => MaybePromise<void>;
   reviewEdit?: (
     input: { requirements: CompletionRequirement[]; edit: unknown },
     signal: AbortSignal,
@@ -267,6 +273,7 @@ export function createEditorToolset<T>(input: {
   const { ports } = input;
   const completion = usesCompletionPreflight(input.profile);
   const authoring = usesAuthoringContracts(input.profile);
+  const reviewReferences = usesReviewedEditReferences(input.profile);
   const stages = usesStagedEditing(input.profile) ? ports.stages : undefined;
   if (usesStagedEditing(input.profile) && !stages)
     throw new Error("Staged profiles require their durable host ports.");
@@ -305,6 +312,13 @@ export function createEditorToolset<T>(input: {
           receipt.requirementsHash !== state.requirementsHash
         )
           throw new Error("Completion review binding changed.");
+        if (
+          reviewReferences &&
+          state.successfulReviewRef &&
+          parseEditArtifactRef(state.successfulReviewRef).kind !==
+            "verification"
+        )
+          throw new Error("The successful review reference is invalid.");
       }
     }
     return state;
@@ -514,8 +528,9 @@ export function createEditorToolset<T>(input: {
       ...toolMetadata("review_edit"),
       ...(authoring
         ? {
-            description:
-              "Review the complete intended edit WITHOUT applying or saving a draft. Call with {requirements:[supported typed checks],edit:{outcome:'proposal',summary:'...',commands:[all commands]}}. The first valid requirement list freezes. Repair failed checks by reviewing the full repaired edit again. On success call propose_edit with that exact edit object. A rejected propose_edit does not save commands: reviewing commands:[] cannot recover them. Empty additional commands are allowed only when the host explicitly reports preparedCommands.",
+            description: reviewReferences
+              ? "Review the complete intended edit with {requirements,edit:{outcome:'proposal',summary,commands:[all commands]}}. Invalid requirement paths are rejected before freezing. A successful review retains the exact edit as an owned immutable verification artifact and returns a small reference; then call propose_edit({reviewed:true}) WITHOUT regenerating commands. A failed/error review clears that compact route; repair and review the complete edit again. This never applies edits."
+              : "Review the complete intended edit WITHOUT applying or saving a draft. Call with {requirements:[supported typed checks],edit:{outcome:'proposal',summary:'...',commands:[all commands]}}. The first valid requirement list freezes. Repair failed checks by reviewing the full repaired edit again. On success call propose_edit with that exact edit object. A rejected propose_edit does not save commands: reviewing commands:[] cannot recover them. Empty additional commands are allowed only when the host explicitly reports preparedCommands.",
           }
         : {}),
       parameters: object(
@@ -535,6 +550,10 @@ export function createEditorToolset<T>(input: {
       ),
       execute: async (args, signal) => {
         const value = record(args, ["requirements", "edit"]);
+        if (reviewReferences && state) {
+          delete state.successfulReceipt;
+          delete state.successfulReviewRef;
+        }
         await checkedState();
         const declared =
           value.requirements === undefined
@@ -547,6 +566,7 @@ export function createEditorToolset<T>(input: {
           throw new Error(
             "Declare all requested outcomes in requirements before the first review.",
           );
+        if (reviewReferences) await ports.validateRequirements?.(declared);
         const requirementsHash = await completionHash(declared);
         state ??= {
           version: 1,
@@ -556,6 +576,7 @@ export function createEditorToolset<T>(input: {
         };
         let checks: CompletionCheck[];
         let receipt: CompletionReceipt | undefined;
+        let reviewRef: CompletionState["successfulReviewRef"];
         let edit = value.edit;
         try {
           if (stages) edit = await stages.resolvePreparedEdit(edit, signal);
@@ -588,7 +609,7 @@ export function createEditorToolset<T>(input: {
               );
             receipt = checked;
           }
-          await stages?.recordReview?.(
+          const recorded = await stages?.recordReview?.(
             {
               requirements: state.requirements,
               edit,
@@ -597,9 +618,24 @@ export function createEditorToolset<T>(input: {
             },
             signal,
           );
-          if (receipt) state.successfulReceipt = receipt;
+          if (receipt) {
+            state.successfulReceipt = receipt;
+            if (reviewReferences && recorded?.reviewRef) {
+              reviewRef = parseEditArtifactRef(recorded.reviewRef);
+              if (reviewRef.kind !== "verification")
+                throw new Error(
+                  "Successful review was not retained as a verification artifact.",
+                );
+              state.successfulReviewRef = reviewRef;
+            }
+          }
         } catch (error) {
           receipt = undefined;
+          reviewRef = undefined;
+          if (reviewReferences && state) {
+            delete state.successfulReceipt;
+            delete state.successfulReviewRef;
+          }
           checks = [
             {
               id: "preflight",
@@ -619,9 +655,12 @@ export function createEditorToolset<T>(input: {
           value: {
             ...(authoring
               ? {
-                  nextAction: receipt
-                    ? "Call propose_edit with the exact edit object from this successful review; do not send the requirements or receipt yourself."
-                    : "No edit was saved or applied. Keep every frozen requirement, repair the complete command list, and call review_edit again with that full edit. Do not use commands:[] unless the host explicitly supplies preparedCommands.",
+                  nextAction:
+                    reviewReferences && receipt && reviewRef
+                      ? "Call propose_edit with {reviewed:true}. The host resolves this exact successful review; do not regenerate its command JSON."
+                      : receipt
+                        ? "Call propose_edit with the exact edit object from this successful review; do not send the requirements or receipt yourself."
+                        : "No edit was saved or applied. Keep every frozen requirement, repair the complete command list, and call review_edit again with that full edit. Do not use commands:[] unless the host explicitly supplies preparedCommands.",
                 }
               : {}),
             completionPreflight: {
@@ -632,6 +671,7 @@ export function createEditorToolset<T>(input: {
               status: receipt ? "passed" : "failed",
               checks,
               ...(receipt ? { receipt } : {}),
+              ...(reviewRef ? { reviewRef } : {}),
             },
           },
         };
@@ -804,6 +844,8 @@ export function createEditorToolset<T>(input: {
               (raw as { requirements?: unknown }).requirements,
               { assetSequence: true, speechCallout: true },
             );
+            if (reviewReferences)
+              await ports.validateRequirements?.(requirements);
             if (
               state &&
               (await completionHash(requirements)) !== state.requirementsHash
@@ -852,17 +894,50 @@ export function createEditorToolset<T>(input: {
       ...toolMetadata("propose_edit"),
       ...(authoring
         ? {
-            description:
-              "Finish an edit only AFTER review_edit passed for the same complete edit. Send the exact reviewed {outcome:'proposal',summary,commands} object. This call does not save an unreviewed draft. A failed attempt changes no document or draft, so retain your full commands and review them before trying again.",
+            description: reviewReferences
+              ? "Finish the latest successful saved review with exactly {reviewed:true}. The host resolves its immutable owned edit, rechecks hashes/receipt and compiles it for guarded application; do not regenerate its command JSON or supply an artifact reference. A failed/error review invalidates this route until a new complete review passes. The raw reviewed edit form remains supported."
+              : "Finish an edit only AFTER review_edit passed for the same complete edit. Send the exact reviewed {outcome:'proposal',summary,commands} object. This call does not save an unreviewed draft. A failed attempt changes no document or draft, so retain your full commands and review them before trying again.",
           }
         : {}),
-      parameters: usesResolvedEditSchema(input.profile)
-        ? editingOnlyProposalSchema(input.proposalSchema, {
+      parameters: reviewReferences
+        ? reviewedProposalSchema(input.proposalSchema, {
             preparedCommands: stages?.preparedCommands,
           })
-        : input.proposalSchema,
+        : usesResolvedEditSchema(input.profile)
+          ? editingOnlyProposalSchema(input.proposalSchema, {
+              preparedCommands: stages?.preparedCommands,
+            })
+          : input.proposalSchema,
       execute: async (args, signal) => {
-        if (stages) args = await stages.resolvePreparedEdit(args, signal);
+        const useReviewed =
+          reviewReferences &&
+          args &&
+          typeof args === "object" &&
+          Object.hasOwn(args, "reviewed");
+        if (useReviewed) {
+          const marker = record(args, ["reviewed"]);
+          if (marker.reviewed !== true)
+            throw new Error(
+              "Use exactly {reviewed:true} for the latest successful saved review.",
+            );
+          await checkedState();
+          if (
+            !state?.successfulReceipt ||
+            !state.successfulReviewRef ||
+            !stages
+          )
+            throw new Error(
+              "No latest successful saved review is available. Review the complete repaired edit first.",
+            );
+          args = await stages.resolvePreparedEdit(
+            { reviewRef: state.successfulReviewRef },
+            signal,
+          );
+        } else {
+          // Validate model form before allowing any internal reference resolution.
+          if (reviewReferences) assertEditingProposal(args);
+          if (stages) args = await stages.resolvePreparedEdit(args, signal);
+        }
         if (usesResolvedEditSchema(input.profile)) assertEditingProposal(args);
         if (!completion)
           return {

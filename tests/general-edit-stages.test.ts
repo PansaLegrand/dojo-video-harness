@@ -38,7 +38,9 @@ afterEach(async () => {
     roots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   );
 });
-async function fixture() {
+async function fixture(
+  profile: "local-editor-v7" | "local-editor-v8" = "local-editor-v7",
+) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "dojo-general-edit-"));
   roots.push(directory);
   const store = new ProjectStore(directory);
@@ -119,7 +121,7 @@ async function fixture() {
     updatedAt: now,
     scope: { kind: "project" },
     reviewBasisRequired: true,
-    agentProfile: "local-editor-v7",
+    agentProfile: profile,
     events: [],
     requestHash: "synthetic-instruction",
     request,
@@ -754,4 +756,104 @@ it("preserves typed error/recovery metadata from the retained v6 coordinator pac
   });
   expect(saved.document).toEqual(f.document);
   expect(model.complete).toHaveBeenCalledTimes(1);
+});
+
+it("new native path validation rejects an impossible plan before persistence and permits a repaired declaration", async () => {
+  const f = await fixture("local-editor-v8");
+  const { validateNativeCompletionRequirements } = await import(
+    "../packages/core/src/lib/video-project/completion-preflight"
+  );
+  const invalid = [
+    {
+      id: "source-duration",
+      kind: "property",
+      target: { kind: "item", itemId: "narration" },
+      path: ["duration"],
+      equals: 360,
+    },
+  ];
+  const valid = [{ ...invalid[0], path: ["node", "duration"] }];
+  let stageInvocations = 0;
+  await expect(
+    runEditingStages({
+      ...f.input,
+      generalEditing: true,
+      native: {
+        ...f.input.native,
+        validateRequirements: (requirements) => {
+          validateNativeCompletionRequirements(requirements);
+        },
+      },
+      invoke: async (options) => {
+        stageInvocations++;
+        if (options.stageContext)
+          throw new Error("Test boundary before assembly model work");
+        await expect(
+          options.stages.planEditStages(
+            { requirements: invalid, captionPairs: [] },
+            f.input.signal,
+          ),
+        ).rejects.toThrow(/invalid item property path/);
+        expect(await f.port.load()).toBeNull();
+        expect(await f.records.read()).toBeNull();
+        return options.stages.planEditStages(
+          { requirements: valid, captionPairs: [] },
+          f.input.signal,
+        );
+      },
+    }),
+  ).rejects.toThrow("Test boundary before assembly model work");
+  const plan = (await f.port.load())!;
+  expect(plan.requirements).toEqual(valid);
+  expect(stageInvocations).toBe(2);
+  expect((await f.store.read(f.project.id)).document).toEqual(f.document);
+});
+
+it("the reviewed-edit marker resolves one prepared bilingual prefix without duplicating captions", async () => {
+  const f = await fixture("local-editor-v8");
+  const { createCaptionBatchManifest, captionBatchManifestSchema, prepareCaptionTranslationBatch, assembleCaptionTranslationBatches, captionBatchModelContext } = await import("../packages/core/src/lib/video-project/caption-batches");
+  const { captionPairSettingsSchema } = await import("../packages/core/src/lib/video-project/caption-pair");
+  const { readNativeCaptionCues } = await import("../packages/core/src/lib/video-project/agent-readers");
+  const { validateNativeCompletionRequirements } = await import("../packages/core/src/lib/video-project/completion-preflight");
+  const pair = { sourceItemId: "narration", evidenceId: "speech", originalItemId: "en", translatedItemId: "zh", trackId: "visual", originalLanguage: "en", translatedLanguage: "zh", originalColor: "#ffffff", translatedColor: "#22d3ee" };
+  const requirements = [{ id: "bilingual", kind: "caption_pair", ...pair }, { id: "chart", kind: "item_present", itemId: "chart-0" }];
+  delete (requirements[0] as Record<string, unknown>).trackId;
+  const edit = { outcome: "proposal", summary: "Caption pair and one editable diagram", commands: [f.edit.commands[1]] };
+  let invocations = 0;
+  const input = { ...f.input, generalEditing: true as const, reviewReferences: true as const, native: {
+    ...f.input.native,
+    validateRequirements: (requirements: CompletionRequirement[]) => { validateNativeCompletionRequirements(requirements); },
+    parsePair: (raw: unknown) => captionPairSettingsSchema.parse(raw),
+    parseManifest: (raw: unknown) => captionBatchManifestSchema.parse(raw),
+    createManifest: (settings: any, batchSize: number) => createCaptionBatchManifest(f.document, settings, batchSize),
+    prepareBatch: (manifest: any, batchId: string, raw: unknown) => prepareCaptionTranslationBatch(f.document, manifest, batchId, raw),
+    assembleBatches: (manifest: any, batches: unknown[]) => assembleCaptionTranslationBatches(f.document, manifest, batches),
+    batchContext: (manifest: any, batchId: string) => captionBatchModelContext(manifest, batchId),
+    readCues: (query: any, options?: any) => readNativeCaptionCues(f.request, query, options),
+  }, invoke: async (options: StageModelInvocation<NativeAgentResult>) => {
+    invocations++;
+    const toolset = createVideoToolset(f.request, builtInSkills(), [], { profile: "local-editor-v8", stages: options.stages });
+    const call = (name: string, args: unknown) => toolset.tools.find(tool => tool.name === name)!.execute(args, f.input.signal);
+    if (!options.stageContext) return (await call("plan_edit_stages", { requirements, captionPairs: [pair] }) as { result: NativeAgentResult }).result;
+    if ((options.stageContext as any).activeStage.kind === "caption_batch") {
+      const page = await call("read_caption_cues", { sourceItemId: "narration", evidenceId: "speech" }) as { value: { cues: Array<{ cueId: string }> } };
+      return (await call("save_caption_batch", { translations: page.value.cues.map((cue, index) => ({ cueId: cue.cueId, text: `译${index}` })) }) as { result: NativeAgentResult }).result;
+    }
+    expect(options.stageContext).toMatchObject({ activeStage: { kind: "assemble" }, preparedCommands: true });
+    const reviewed = await call("review_edit", { edit }) as any;
+    expect(reviewed.value.completionPreflight.status).toBe("passed");
+    expect(reviewed.value.completionPreflight.reviewRef).toBeDefined();
+    return (await call("propose_edit", { reviewed: true }) as { result: NativeAgentResult }).result;
+  } };
+  const result = await runEditingStages(input);
+  expect(result.outcome).toBe("proposal");
+  const after = executeVideoProjectCommands(f.document, result.proposal!.commands).document;
+  expect(after.items.filter(item => item.caption).map(item => item.id).sort()).toEqual(["en", "zh"]);
+  expect(after.items.filter(item => item.id === "chart-0")).toHaveLength(1);
+  expect(after.evidence).toEqual(f.document.evidence);
+  const calls = invocations;
+  const noMoreModel = vi.fn(async () => { throw new Error("Known reviewed candidate must replay without model work"); });
+  expect(await runEditingStages({ ...input, invoke: noMoreModel })).toEqual(result);
+  expect(noMoreModel).not.toHaveBeenCalled();
+  expect(invocations).toBe(calls);
 });

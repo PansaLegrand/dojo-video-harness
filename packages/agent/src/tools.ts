@@ -15,6 +15,7 @@ import {
   usesPagedReaders,
   usesStagedEditing,
   usesAuthoringContracts,
+  usesReviewedEditReferences,
   type EditorStagePorts,
 } from "../../agent-kit/src/index";
 import {
@@ -23,6 +24,7 @@ import {
   type NativeAgentResult,
 } from "../../core/src/lib/video-project/agent-runtime";
 import {
+  nativeCompletionTargetHints,
   nativeAgentGraphicsSchema,
   nativeAgentResponseSchema,
 } from "../../core/src/lib/video-project/agent-schema";
@@ -34,6 +36,7 @@ import { nativeClarificationSchema } from "../../core/src/lib/video-project/agen
 import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
 import { prepareReadableOverlay } from "../../core/src/lib/video-project/readable-overlay";
 import {
+  validateNativeCompletionRequirements,
   reviewNativeCompletionEdit,
   compileNativeCompletionResponse,
 } from "../../core/src/lib/video-project/completion-preflight";
@@ -102,6 +105,13 @@ export function createVideoToolset(
       anchorHold: usesCompletionPreflight(options.profile ?? "local-editor-v1"),
     }),
     ports: {
+      ...(usesReviewedEditReferences(options.profile ?? "local-editor-v1")
+        ? {
+            validateRequirements: (raw: unknown) => {
+              validateNativeCompletionRequirements(raw);
+            },
+          }
+        : {}),
       ...(usesStagedEditing(options.profile ?? "local-editor-v1")
         ? {
             readCaptionTrack: (
@@ -135,6 +145,9 @@ export function createVideoToolset(
               extension: THREE_EXTENSION,
             },
       inspectProject: (query) => ({
+        ...(usesReviewedEditReferences(options.profile ?? "local-editor-v1")
+          ? { completionTargets: nativeCompletionTargetHints(document.items) }
+          : {}),
         ...(usesCompletionPreflight(options.profile ?? "local-editor-v1")
           ? {
               completionCaptionSources: usesStagedEditing(

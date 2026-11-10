@@ -23,8 +23,10 @@ siblings or replace immutable speech evidence with caption display text.
 For translation plans, assembly includes the host's complete prepared caption commands. Supply
 the remaining media placements, graphics or corrections. An empty model command
 list is useful only when durableStages explicitly confirms preparedCommands.
-`review_edit` checks the expanded complete candidate. Repair failed checks, then
-use `propose_edit` with exactly the successful additional commands. The final
+`review_edit` checks the expanded complete candidate and retains its immutable
+successful edit. Repair failed checks with the full intended additional commands,
+then finish a successful review with `propose_edit({reviewed:true})`; the host
+resolves the full saved edit without appending prepared captions twice. The final
 project application uses the existing revision/scope guards and shared Undo.
 
 Artifacts are data with source and content identities. Use `read_edit_artifact`

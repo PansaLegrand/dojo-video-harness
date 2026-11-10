@@ -5,9 +5,11 @@ import {
   STAGED_EDIT_POLICY,
   type EditorStagePorts,
   type EditStagePlan,
+  type CompletionRequirement,
   type StageModelInvocation,
 } from "../../../packages/agent-kit/src/index";
 import { runEditingStages as runRetainedEditingStages } from "@dojo-video/agent-kit-v20";
+import { runEditingStages as runRetainedAuthoringEditingStages } from "@dojo-video/agent-kit-v21";
 import {
   parseLoopCheckpoint,
   type LoopCheckpointPort,
@@ -18,7 +20,10 @@ import {
   type NativeAgentResult,
 } from "../../../packages/core/src/lib/video-project/agent-runtime";
 import { parseVideoProjectDocument } from "../../../packages/core/src/lib/video-project/document";
-import { compileNativeCompletionResponse } from "../../../packages/core/src/lib/video-project/completion-preflight";
+import {
+  compileNativeCompletionResponse,
+  validateNativeCompletionRequirements,
+} from "../../../packages/core/src/lib/video-project/completion-preflight";
 import { captionPairSettingsSchema } from "../../../packages/core/src/lib/video-project/caption-pair";
 import {
   assembleCaptionTranslationBatches,
@@ -95,9 +100,11 @@ export async function runStagedEditing(input: {
   );
   const port = createLocalEditStagePort({ ...input, binding });
   const coordinate =
-    run.agentProfile === "local-editor-v7"
+    run.agentProfile === "local-editor-v8"
       ? runEditingStages
-      : runRetainedEditingStages;
+      : run.agentProfile === "local-editor-v7"
+        ? runRetainedAuthoringEditingStages
+        : runRetainedEditingStages;
   return coordinate({
     port,
     binding,
@@ -218,10 +225,20 @@ export async function runStagedEditing(input: {
         };
       },
     },
-    ...(run.agentProfile === "local-editor-v7"
+    ...(["local-editor-v7", "local-editor-v8"].includes(run.agentProfile ?? "")
       ? { generalEditing: true as const }
       : {}),
+    ...(run.agentProfile === "local-editor-v8"
+      ? { reviewReferences: true as const }
+      : {}),
     native: {
+      ...(run.agentProfile === "local-editor-v8"
+        ? {
+            validateRequirements: (requirements: CompletionRequirement[]) => {
+              validateNativeCompletionRequirements(requirements);
+            },
+          }
+        : {}),
       readableSourceItemIds: nativeTranscriptScopedSourceItemIds({
         ...input.request,
         document,

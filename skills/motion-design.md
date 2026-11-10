@@ -49,7 +49,9 @@ not at composition frame 60. Macros expand into editable native parts; returned
 SVG/3D/text helper commands still need the ordinary complete edit review.
 
 `review_edit` takes the full `edit:{outcome:"proposal",summary,commands}` and
-concrete requirements. A rejected `propose_edit` saves no draft. Keep your full
-commands, correct field-specific errors, review the entire repaired edit, and
-then propose that exact successfully reviewed edit. Never replace the commands
-with an empty list because an earlier proposal was rejected.
+concrete requirements. A successful review retains that exact complete edit as
+an immutable owned artifact. Finish with `propose_edit({reviewed:true})` rather
+than regenerating its command JSON. A failed/error review invalidates that compact
+route; keep your full commands, correct field-specific errors and review again.
+A rejected proposal does not stage a draft or apply anything. Never send an empty
+command list to recover previously rejected commands.

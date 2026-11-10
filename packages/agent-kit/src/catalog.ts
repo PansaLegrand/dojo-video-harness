@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.2.1" as const;
+export const AGENT_KIT_VERSION = "0.2.2" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -191,7 +191,9 @@ export type AgentProfile =
   | "local-editor-v6"
   | "commercial-editing-v7"
   | "local-editor-v7"
-  | "commercial-editing-v8";
+  | "commercial-editing-v8"
+  | "local-editor-v8"
+  | "commercial-editing-v9";
 export const usesCompletionPreflight = (profile: AgentProfile) =>
   [
     "local-editor-v2",
@@ -206,6 +208,8 @@ export const usesCompletionPreflight = (profile: AgentProfile) =>
     "commercial-editing-v7",
     "local-editor-v7",
     "commercial-editing-v8",
+    "local-editor-v8",
+    "commercial-editing-v9",
   ].includes(profile);
 export const usesPagedReaders = (profile: AgentProfile) =>
   [
@@ -219,6 +223,8 @@ export const usesPagedReaders = (profile: AgentProfile) =>
     "commercial-editing-v7",
     "local-editor-v7",
     "commercial-editing-v8",
+    "local-editor-v8",
+    "commercial-editing-v9",
   ].includes(profile);
 export const usesEfficientReaders = (profile: AgentProfile) =>
   [
@@ -230,6 +236,8 @@ export const usesEfficientReaders = (profile: AgentProfile) =>
     "commercial-editing-v7",
     "local-editor-v7",
     "commercial-editing-v8",
+    "local-editor-v8",
+    "commercial-editing-v9",
   ].includes(profile);
 export const usesResolvedEditSchema = (profile: AgentProfile) =>
   [
@@ -239,6 +247,8 @@ export const usesResolvedEditSchema = (profile: AgentProfile) =>
     "commercial-editing-v7",
     "local-editor-v7",
     "commercial-editing-v8",
+    "local-editor-v8",
+    "commercial-editing-v9",
   ].includes(profile);
 export const usesStagedEditing = (profile: AgentProfile) =>
   profile === "local-editor-v6" ||
@@ -246,21 +256,28 @@ export const usesStagedEditing = (profile: AgentProfile) =>
   usesAuthoringContracts(profile);
 /** New contracts do not change metadata or repair behavior for accepted 0.2 runs. */
 export const usesAuthoringContracts = (profile: AgentProfile) =>
-  profile === "local-editor-v7" || profile === "commercial-editing-v8";
+  profile === "local-editor-v7" ||
+  profile === "commercial-editing-v8" ||
+  usesReviewedEditReferences(profile);
+/** Saved successful edits are proposed without regenerating their command JSON. */
+export const usesReviewedEditReferences = (profile: AgentProfile) =>
+  profile === "local-editor-v8" || profile === "commercial-editing-v9";
 export const profileKitVersion = (profile: AgentProfile) =>
-  usesAuthoringContracts(profile)
+  usesReviewedEditReferences(profile)
     ? AGENT_KIT_VERSION
-    : usesStagedEditing(profile)
-      ? "0.2.0"
-      : usesResolvedEditSchema(profile)
-        ? "0.1.5"
-        : usesEfficientReaders(profile)
-          ? "0.1.4"
-          : usesPagedReaders(profile)
-            ? "0.1.3"
-            : usesCompletionPreflight(profile)
-              ? "0.1.2"
-              : "0.1.1";
+    : usesAuthoringContracts(profile)
+      ? "0.2.1"
+      : usesStagedEditing(profile)
+        ? "0.2.0"
+        : usesResolvedEditSchema(profile)
+          ? "0.1.5"
+          : usesEfficientReaders(profile)
+            ? "0.1.4"
+            : usesPagedReaders(profile)
+              ? "0.1.3"
+              : usesCompletionPreflight(profile)
+                ? "0.1.2"
+                : "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
@@ -273,6 +290,17 @@ export const profileSkills: Record<
   "local-editor-v5": null,
   "local-editor-v6": null,
   "local-editor-v7": null,
+  "local-editor-v8": null,
+  "commercial-editing-v9": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+    "multi-asset-editing",
+    "staged-editing",
+    "generated-media",
+    "visual-inspection",
+  ],
   "commercial-editing-v8": [
     "precise-editing",
     "motion-design",

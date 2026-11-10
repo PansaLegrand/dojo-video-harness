@@ -2,10 +2,13 @@ import {
   completionCanonical,
   completionHash,
   parseCompletionRequirements,
+  validateCompletionReceipt,
   type CompletionContract,
+  type CompletionRequirement,
 } from "./completion.js";
 import {
   createEditStagePlan,
+  parseEditArtifactRef,
   EditStageError,
   type EditArtifactRef,
   type EditStage,
@@ -78,6 +81,10 @@ export type StageNativeResult = {
   proposal?: { commands: unknown[] } | null;
 };
 export type StageNativePorts<T extends StageNativeResult> = {
+  /** New contracts reject impossible declaration paths before plan persistence. */
+  validateRequirements?(
+    requirements: CompletionRequirement[],
+  ): void | Promise<void>;
   readableSourceItemIds: string[] | null;
   parsePair(raw: unknown): StageCaptionPair;
   parseManifest(raw: unknown): StageCaptionManifest;
@@ -174,6 +181,8 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   native: StageNativePorts<T>;
   /** Opted in only by new profiles; retained profiles require bilingual pairs. */
   generalEditing?: true;
+  /** New profiles may propose their retained successful review without resending JSON. */
+  reviewReferences?: true;
   policy?: StagedEditPolicy;
   invoke(options: StageModelInvocation<T>): Promise<T>;
   signal: AbortSignal;
@@ -489,6 +498,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       assetSequence: true,
       speechCallout: true,
     });
+    await input.native.validateRequirements?.(requirements);
     if (
       !Array.isArray(value.captionPairs) ||
       (!input.generalEditing && !value.captionPairs.length) ||
@@ -708,6 +718,76 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
         });
       },
       resolvePreparedEdit: async (raw) => {
+        if (
+          input.reviewReferences &&
+          raw &&
+          typeof raw === "object" &&
+          !Array.isArray(raw) &&
+          Object.keys(raw).length === 1 &&
+          "reviewRef" in raw
+        ) {
+          if (!stage || stage.kind !== "assemble")
+            throw new Error(
+              "Saved-review proposals require the active assembly stage. Review and propose the exact raw edit during planning.",
+            );
+          const ref = parseEditArtifactRef(
+            (raw as { reviewRef: unknown }).reviewRef,
+          );
+          if (
+            ref.kind !== "verification" ||
+            ref.runId !== binding.runId ||
+            ref.bindingHash !== (await completionHash(binding))
+          )
+            throw new Error(
+              "Saved review belongs to another editing attempt or source binding.",
+            );
+          const review = (await artifact(ref)) as ReviewRecord & {
+            kind?: string;
+            requirements?: unknown;
+          };
+          if (
+            (await completionHash(review)) !== ref.sha256 ||
+            new TextEncoder().encode(completionCanonical(review)).byteLength !==
+              ref.sizeBytes ||
+            review.kind !== "editing-review" ||
+            !review.receipt
+          )
+            throw new Error(
+              "The immutable successful review failed its content check.",
+            );
+          const receipt = await validateCompletionReceipt(review.receipt),
+            requirements = parseCompletionRequirements(review.requirements, {
+              assetSequence: true,
+              speechCallout: true,
+            });
+          await input.native.validateRequirements?.(requirements);
+          const commands =
+            review.edit && typeof review.edit === "object"
+              ? (review.edit as { commands?: unknown }).commands
+              : undefined;
+          if (
+            receipt.snapshotHash !== input.snapshotHash ||
+            receipt.requirementsHash !== (await completionHash(requirements)) ||
+            !Array.isArray(review.checks) ||
+            !review.checks.length ||
+            review.checks.some(
+              (check) =>
+                !check ||
+                typeof check !== "object" ||
+                (check as { passed?: unknown }).passed !== true,
+            ) ||
+            receipt.checksHash !== (await completionHash(review.checks)) ||
+            !Array.isArray(commands) ||
+            !commands.length ||
+            receipt.commandsHash !== (await completionHash(commands))
+          )
+            throw new Error(
+              "Saved review no longer matches its successful checks, requirements or exact edit.",
+            );
+          // The immutable record contains the full already-expanded edit. Do not
+          // append prepared caption commands a second time.
+          return structuredClone(review.edit);
+        }
         if (!stage) return raw;
         if (stage.kind !== "assemble")
           throw new Error(
@@ -731,6 +811,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           { kind: "editing-review", ...review },
         );
         await input.records.saveReview(stage.id, ref);
+        if (input.reviewReferences && review.receipt) return { reviewRef: ref };
       },
       completeEditing: async (result) => {
         if (!stage) return result;

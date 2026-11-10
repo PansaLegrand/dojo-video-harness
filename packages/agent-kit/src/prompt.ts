@@ -4,6 +4,7 @@ import {
   usesResolvedEditSchema,
   usesStagedEditing,
   usesAuthoringContracts,
+  usesReviewedEditReferences,
   type AgentProfile,
 } from "./catalog.js";
 import type { Skill } from "./catalog.js";
@@ -27,6 +28,8 @@ export function composeToolAgentPrompt(input: {
     input.profile !== undefined && usesResolvedEditSchema(input.profile);
   const authoring =
     input.profile !== undefined && usesAuthoringContracts(input.profile);
+  const reviewReferences =
+    input.profile !== undefined && usesReviewedEditReferences(input.profile);
   const staged =
     input.profile !== undefined && usesStagedEditing(input.profile);
   return [
@@ -46,9 +49,11 @@ export function composeToolAgentPrompt(input: {
     CORRECTION_GUIDE,
     ...(input.toolNames.includes("review_edit")
       ? [
-          authoring
-            ? AUTHORING_COMPLETION_GUIDE
-            : "Completion preflight: use review_edit with a small typed requirement for EVERY requested output (max12). The first valid list freezes for this run. Use host cue IDs/prepare_caption_pair for complete bilingual captions; word-bound highlights need readable holdMs and genuine IDs. Repair every failed check, including bounded layout checks, then propose_edit with EXACTLY the successful reviewed commands. A review receipt proves only the declared checklist, never universal semantic or visual quality. A fancy ending must follow the original full duration and reach the final timeline end. Never claim completion after silently dropping a dependent request.",
+          reviewReferences
+            ? REVIEW_REFERENCE_COMPLETION_GUIDE
+            : authoring
+              ? AUTHORING_COMPLETION_GUIDE
+              : "Completion preflight: use review_edit with a small typed requirement for EVERY requested output (max12). The first valid list freezes for this run. Use host cue IDs/prepare_caption_pair for complete bilingual captions; word-bound highlights need readable holdMs and genuine IDs. Repair every failed check, including bounded layout checks, then propose_edit with EXACTLY the successful reviewed commands. A review receipt proves only the declared checklist, never universal semantic or visual quality. A fancy ending must follow the original full duration and reach the final timeline end. Never claim completion after silently dropping a dependent request.",
         ]
       : []),
     ...(input.toolNames.includes("list_assets")
@@ -74,3 +79,6 @@ const AUTHORING_COMPLETION_GUIDE =
   "Review before proposing: define a small supported concrete check for every requested deliverable (max12), using kind rather than type. Supported kinds are in each requirements JSON schema; never invent preserve_source, animated_chapters, financial_accuracy or visual_style kinds. Monolingual captions use captionSource and item/property checks; never invent an en-to-en caption_pair. Preserve full source audio with asset_sequence plus exact source offset/duration properties as needed. Each important graphic can use item_present plus text/timing/property checks. Use speech_callout for an exact spoken currency/phrase; speech_highlight additionally requires supported numeric normalization. An ending inside existing narration uses item/property checks; appended_ending is only for an ending after the original/edited content. Neither review_edit nor a rejected propose_edit saves a draft. Send review_edit({requirements,edit:{outcome:'proposal',summary,commands:[ALL intended commands]}}). Repair the complete edit and review again until passed; then send that EXACT edit object to propose_edit, without requirements or receipt. Do not send commands:[] after a rejected proposal. A receipt verifies its declared checks, not universal financial/creative accuracy; use permitted preview evidence for visual uncertainty.";
 const AUTHORING_EXECUTION_GUIDE =
   "Complete the user's requested edit using authoritative source IDs and targeted reads. For an original-language audio/video explainer, read all required cue pages, keep the source narration unchanged, use captionSource for genuine captions, and native/macro graphics for the explanation. read_skill is optional guidance, not an editing operation. plan_edit_stages accepts captionPairs:[] for general editing or monolingual captions; use actual distinct-language pairs only when translation was requested. All requested outcomes remain declared and frozen, all stages share one original budget, and no plan applies edits or creates caption commands by itself. In assembly supply every actual caption/graphic/media command; commands:[] works only when durableStages explicitly reports preparedCommands. Read inspect_graphics_schema before unfamiliar native graphics: macro names use node.macro, not node.type; ordinary 2D animations use {kind:'keyframes',property:'opacity',frames:[{frame:0,value:0},{frame:12,value:1}]}. Native nested frames are parent-local, source speech uses actual source milliseconds/word IDs. Correct tool validation failures with the supplied schemas without dropping requested work. Finish a supported editing request with a successfully reviewed proposal, not an ordinary answer describing unfinished work. If genuinely blocked, state the remaining work honestly; do not claim application or spend beyond the original allowance.";
+
+const REVIEW_REFERENCE_COMPLETION_GUIDE =
+  "Review the complete edit with review_edit({requirements,edit:{outcome:'proposal',summary,commands:[ALL intended commands]}}). Use only supported concrete requirement kinds and exact native property paths; the first valid list freezes. inspect_project's from/duration index fields come from the node: use target:{kind:'node',itemId,nodeId} and path:['duration'] for timing, or explicit item path:['node','duration']; direct item path:['duration'] is invalid. A successful review retains the exact complete edit as an immutable owned verification artifact. Finish with propose_edit({reviewed:true}), without regenerating any command JSON, receipt or reference. The host resolves only this same attempt's latest successful review and still validates its source/requirements/checks/command hashes and native compiler output. A failed or error review invalidates the compact proposal path; retain your full commands, repair them and review the full edit again. Empty additional commands are allowed only when the host explicitly reports preparedCommands. Original-language captions use captionSource; never invent a same-language translation pair. Speech callouts bind genuine words; use exact phrases for currencies rather than unsupported number normalization. An ending inside existing audio uses item/property checks; appended_ending means after prior content. Native validity and declared checks do not prove universal financial or creative quality; use authorized preview evidence for visual uncertainty. Requirements, source identity, original budget and permissions never reset.";

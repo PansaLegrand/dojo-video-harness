@@ -339,7 +339,9 @@ export function nativeAgentOperationDescriptors(): readonly NativeAgentOperation
   return operationDescriptors;
 }
 
-function targetSchema(kind: VideoProjectTarget["kind"]): z.AnyZodObject {
+export function nativeAgentTargetSchema(
+  kind: VideoProjectTarget["kind"],
+): z.AnyZodObject {
   const definitions: Record<VideoProjectTarget["kind"], z.ZodTypeAny> = {
     node: sceneNodeSchema,
     item: editorItemSchema,
@@ -359,7 +361,7 @@ export function nativeAgentPropertySchema(
 ): z.ZodTypeAny | undefined {
   if (!VIDEO_PROJECT_EDITABLE_FIELDS[kind]?.includes(path[0] ?? ""))
     return undefined;
-  let schema: z.ZodTypeAny | undefined = targetSchema(kind);
+  let schema: z.ZodTypeAny | undefined = nativeAgentTargetSchema(kind);
   for (const key of path) {
     const owner = unwrap(schema!);
     schema =
@@ -374,7 +376,7 @@ export function nativeAgentPropertySchema(
 }
 
 export function nativeAgentTargetDescriptor(kind: VideoProjectTarget["kind"]) {
-  const schema = targetSchema(kind);
+  const schema = nativeAgentTargetSchema(kind);
   const fields = Object.fromEntries(
     VIDEO_PROJECT_EDITABLE_FIELDS[kind]
       .filter((key) => schema.shape[key])
@@ -712,5 +714,39 @@ export function nativeAgentGraphicsSchema(
     },
     usage:
       "Use native types such as div, text and shape. Macro names such as kineticText are not native types. Native animations use kind:keyframes, property and frames:[{frame,value}]; never preset objects. Use kind:macro for a compact installed index or a named macro's schema, or kind:three for 3D. Example source/evidence IDs are placeholders: use actual owned IDs. Give each copied group and child a unique item-specific stable ID. Keep financial values/units/bases and readable caption bounds explicit.",
+  };
+}
+
+/** Clarify existing reader flattening without creating a second target grammar. */
+export function nativeCompletionTargetHints(
+  items: readonly { id: string; node: { id?: string; duration?: number } }[],
+) {
+  const first = items[0];
+  return {
+    note: "The item index flattens node.from/node.duration for reading. Completion target kind:item reads item metadata (for example name, trackId) or an explicit node subtree path; from/duration are not direct item fields. Prefer kind:node with itemId and the root nodeId for timing/style checks.",
+    nodePaths: [
+      ["from"],
+      ["duration"],
+      ["audioStartTime"],
+      ["videoStartTime"],
+      ["volume"],
+      ["style", "color"],
+    ],
+    itemPaths: [["name"], ["trackId"], ["node", "duration"]],
+    ...(first
+      ? {
+          example: {
+            id: "preserve-source-duration",
+            kind: "property",
+            target: {
+              kind: "node",
+              itemId: first.id,
+              nodeId: first.node.id ?? first.id,
+            },
+            path: ["duration"],
+            equals: first.node.duration,
+          },
+        }
+      : {}),
   };
 }

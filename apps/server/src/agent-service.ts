@@ -1,3 +1,4 @@
+import { EditStageError as RetainedV21EditStageError } from "@dojo-video/agent-kit-v21";
 import { randomUUID } from "node:crypto";
 import { EditStageError as RetainedEditStageError } from "@dojo-video/agent-kit-v20";
 import { z } from "zod/v3";
@@ -80,8 +81,13 @@ import {
 } from "./edit-stage-store";
 const isStageError = (
   cause: unknown,
-): cause is EditStageError | RetainedEditStageError =>
-  cause instanceof EditStageError || cause instanceof RetainedEditStageError;
+): cause is
+  | EditStageError
+  | RetainedEditStageError
+  | RetainedV21EditStageError =>
+  cause instanceof EditStageError ||
+  cause instanceof RetainedEditStageError ||
+  cause instanceof RetainedV21EditStageError;
 export class AgentService {
   private active = new Map<string, AbortController>();
   private deadlines = new Map<string, ReturnType<typeof setTimeout>>();
@@ -104,7 +110,8 @@ export class AgentService {
       | "local-editor-v4"
       | "local-editor-v5"
       | "local-editor-v6"
-      | "local-editor-v7" = "local-editor-v1",
+      | "local-editor-v7"
+      | "local-editor-v8" = "local-editor-v1",
     private stagedOptions: {
       captionBatchSize?: number;
       onTransition?: (plan: EditStagePlan) => Promise<void>;

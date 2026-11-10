@@ -1,3 +1,8 @@
+import {
+  createEditorToolset as createV21Toolset,
+  builtInSkills as v21Builtins,
+  composeToolAgentPrompt as v21Prompt,
+} from "@dojo-video/agent-kit-v21";
 import { describe, expect, it } from "vitest";
 import Ajv from "ajv";
 import {
@@ -401,6 +406,12 @@ describe("new authoring contracts reuse the existing validators and tools", () =
       });
       const previous = createLegacyToolset({
         ...common,
+        ports: {
+          ...ports,
+          stages: ports.stages
+            ? { ...ports.stages, recordReview: undefined }
+            : undefined,
+        },
         skills: legacyBuiltins(),
       });
       expect(current.inventory).toEqual(previous.inventory);
@@ -412,6 +423,68 @@ describe("new authoring contracts reuse the existing validators and tools", () =
         skills: current.skills,
       };
       expect(composeToolAgentPrompt(input)).toBe(legacyPrompt(input));
+    }
+  });
+  it("preserves accepted 0.2.1 profile contracts and guide bytes against their immutable archive", () => {
+    const ports: EditorToolPorts<string> = {
+      inspectProject: () => ({}),
+      inspectGraphicsSchema: () => ({}),
+      searchTranscript: () => ({}),
+      prepareSvgGraphic: () => ({}),
+      prepareThreeScene: () => ({}),
+      readCaptionTrack: () => ({}),
+      readCaptionCues: () => ({}),
+      listAssets: () => ({}),
+      prepareCaptionPair: () => ({}),
+      reviewEdit: async () => ({ checks: [] }),
+      proposeEdit: async () => "edit",
+      askUser: async () => "question",
+      stages: {
+        generalEditing: true,
+        preparedCommands: false,
+        resolvePreparedEdit: async (value) => value,
+        planEditStages: async () => "plan",
+        saveCaptionBatch: async () => "batch",
+        readEditArtifact: async () => ({}),
+      },
+    };
+    for (const profile of [
+      "local-editor-v7",
+      "commercial-editing-v8",
+    ] as const) {
+      const common = {
+        profile,
+        ports,
+        snapshotHash: "sha256:" + "a".repeat(64),
+        proposalSchema: nativeAgentResponseSchema({
+          clarification: true,
+          composition: true,
+          anchorHold: true,
+        }),
+      };
+      const current = createEditorToolset({
+        ...common,
+        skills: builtInSkills(),
+      });
+      const previous = createV21Toolset({
+        ...common,
+        ports: {
+          ...ports,
+          stages: ports.stages
+            ? { ...ports.stages, recordReview: undefined }
+            : undefined,
+        },
+        skills: v21Builtins(),
+      });
+      expect(current.inventory).toEqual(previous.inventory);
+      expect(current.skills).toEqual(previous.skills);
+      const input = {
+        profile,
+        editingGuide: "Frozen host guide",
+        toolNames: current.tools.map((tool) => tool.name),
+        skills: current.skills,
+      };
+      expect(composeToolAgentPrompt(input)).toBe(v21Prompt(input));
     }
   });
 });

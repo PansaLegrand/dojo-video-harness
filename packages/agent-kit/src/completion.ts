@@ -1,3 +1,4 @@
+import { parseEditArtifactRef, type EditArtifactRef } from "./stages.js";
 /** Portable completion declarations and deterministic receipts. No domain,
  * provider, persistence or rendering authority lives in this module. */
 export type CompletionTarget =
@@ -90,6 +91,8 @@ export type CompletionState = {
   requirements: CompletionRequirement[];
   requirementsHash: string;
   successfulReceipt?: CompletionReceipt;
+  /** Small owned reference only; command JSON remains in the original review/artifact. */
+  successfulReviewRef?: EditArtifactRef;
 };
 export const COMPLETION_LIMITS = {
   requirements: 12,
@@ -372,7 +375,10 @@ export async function validateCompletionReceipt(
 export async function restoreCompletionStateFromMessages(
   messages: readonly unknown[],
   snapshotHash: string,
-  options: { resolvePreparedEdit?: (edit: unknown) => Promise<unknown> } = {},
+  options: {
+    resolvePreparedEdit?: (edit: unknown) => Promise<unknown>;
+    reviewReferences?: true;
+  } = {},
 ): Promise<CompletionState | undefined> {
   let state: CompletionState | undefined;
   const calls = new Map<string, { name: string; arguments: string }>();
@@ -398,6 +404,12 @@ export async function restoreCompletionStateFromMessages(
       calls.get(message.tool_call_id)?.name !== "review_edit"
     )
       continue;
+    // Latest failed/error review invalidates the compact proposal path. Never
+    // silently use an earlier successful edit after an unsuccessful repair.
+    if (options.reviewReferences && state) {
+      delete state.successfulReceipt;
+      delete state.successfulReviewRef;
+    }
     const value = JSON.parse(message.content);
     if (!plain(value) || !plain(value.completionPreflight)) continue;
     const review = value.completionPreflight;
@@ -431,6 +443,14 @@ export async function restoreCompletionStateFromMessages(
           "Restored completion review does not match its tool call.",
         );
       state.successfulReceipt = receipt;
+      if (options.reviewReferences && review.reviewRef !== undefined) {
+        const ref = parseEditArtifactRef(review.reviewRef);
+        if (ref.kind !== "verification")
+          throw new Error(
+            "A successful review requires a verification artifact.",
+          );
+        state.successfulReviewRef = ref;
+      }
     } else if (review.status !== "failed")
       throw new Error("Invalid completion review status.");
   }
