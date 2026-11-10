@@ -16,6 +16,14 @@ the local editor and commercial adapters. Host persistence, accounts, credits,
 provider credentials and external-job policy remain separate. Synchronization is
 explicit and tested; the repositories do not share one interchangeable server.
 
+The local application selects `local-editor-v9`, using the portable agent kit
+**0.2.3** and the unchanged host-independent loop **0.2.0**. Engine packages remain
+**1.2.3**. These are separate versioned boundaries: a tool-contract change does not
+require a renderer or loop rewrite. Older runs retain their bound profiles,
+archived tool/skill contracts and checkpoint semantics rather than upgrading in place.
+See [the profile catalog](../packages/agent-kit/src/catalog.ts) and
+[local application setup](../apps/server/src/local-api.ts).
+
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
 transports. The current agent transport supports GPT models through the Responses
@@ -37,7 +45,7 @@ The host retains 50 undo states and 100 revision bases. Older bases fail closed;
 operation receipts are retained for replay. Model calls do not hold a project lock.
 
 Runs persist requests, scope, proposals, questions, tool events and private loop
-checkpoints. `agent-loop` 0.1.2 stores a returned model response, the next tool
+checkpoints. `agent-loop` 0.2.0 stores a returned model response, the next tool
 cursor, call identities and cumulative model/tool/token counters. The local
 `agent-loop-checkpoint.ts` adapter saves these through ProjectStore's atomic
 transactions with a revision compare-and-swap. It binds the original request,
@@ -126,14 +134,58 @@ so the acknowledged original arrangement is restored rather than reorganized.
 Completion profiles add a pure candidate preflight before terminal proposal.
 `completion-preflight.ts` compiles/arranges once and produces a receipt binding
 the exact snapshot, declared checklist, raw/compiled commands and preview hash.
-The checklist is frozen on its first valid declaration, including when candidate
-compilation fails, and persists as pinned observations. The local adapter restores
+For the current profile, checklist shape and native field paths are validated
+before the first declaration is frozen. That checklist remains frozen even when
+candidate compilation fails, and persists as pinned observations. The local adapter restores
 that state from one validated checkpoint load before continuing tool execution.
 It stores completion metadata privately and checks actual outcomes/layout again
 after rebase; the model never grants itself a receipt or document commit.
+
+The existing [stage coordinator](../packages/agent-kit/src/staged-coordinator.ts)
+handles dependent edits as planning, optional caption-translation batches, then
+assembly. A general edit can declare `captionPairs: []`: original-language captions
+and graphics do not need an invented translation pair. The host advances to
+assembly without caption batches, where the model authors the complete requested
+edit using genuine source evidence. All phases share the original allowance.
+
+For the current profile, the host derives the phase and filters the actual tool
+registry before advertising tools and skills. Planning has `plan_edit_stages`;
+caption batches have `save_caption_batch` but cannot review or propose a partial
+edit; assembly has `review_edit` and `propose_edit` and cannot replan. Read tools and
+`ask_user` remain available. Skills are advertised only when their required tools
+are present. Phase guidance tells assembly to fulfill the full original instruction
+and omit new `requirements` from `review_edit` to keep the frozen checklist, even
+when that checklist covers only some outcomes.
+The model cannot change phase or grant itself tools.
+
+A successful assembly review saves the exact expanded edit through the existing
+immutable verification artifact. `propose_edit({ reviewed: true })` asks the host to
+resolve that saved edit; it does not accept a model-supplied artifact reference.
+Ownership, attempt/source bindings, hashes, checklist and receipt are checked again,
+and native compilation and guarded Apply still run. Completion metadata stores a
+small reference rather than a second command copy. The local loop wrapper restores this
+eligibility after restart so a saved model reply can finish without another model
+call or duplicated prepared captions. Planning without a persisted stage plan keeps
+the exact raw-edit proposal form. This reuses existing artifacts, checkpoints and
+command validation; it adds no storage service or agent framework.
 
 `caption-pair.ts` prepares exact host-cue coverage and ordered reciprocal caption
 links without another model/provider request. Source-number display holds remain
 separate from immutable word ranges. Bounded layout preflight uses engine display
 lists, fitted fonts/world transforms and cumulative opacity/color alpha; browser
 export and real-media acceptance remain separate evidence.
+
+The 2026-11-11 source gate passed **868 tests in 90 files**, TypeScript, managed UI
+checks and the production build. This covers phase inventories, native commands,
+review-reference recovery and older-profile compatibility; it does not establish
+live-model editing quality or successful rendered-media acceptance. See
+[phase-tool tests](../tests/phase-scoped-tools.test.ts),
+[staged-edit tests](../tests/general-edit-stages.test.ts) and
+[saved-review tests](../tests/reviewed-edit-reference.test.ts).
+
+One bounded follow-up remains for the next immutable contract patch: malformed
+`review_edit` input can be rejected before clearing an earlier successful review
+in the same session, while checkpoint restoration clears the error. The reference
+still resolves only the earlier exact verified edit; unreviewed commands cannot
+reuse its receipt. Move invalidation before input parsing and cover the same-session
+and restored-checkpoint behavior together. The immutable 0.2.3 contract is retained.
