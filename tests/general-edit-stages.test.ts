@@ -39,7 +39,10 @@ afterEach(async () => {
   );
 });
 async function fixture(
-  profile: "local-editor-v7" | "local-editor-v8" = "local-editor-v7",
+  profile:
+    | "local-editor-v7"
+    | "local-editor-v8"
+    | "local-editor-v9" = "local-editor-v7",
 ) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "dojo-general-edit-"));
   roots.push(directory);
@@ -520,188 +523,214 @@ it("rejects untranslated declared pairs rather than treating an empty array as a
   expect(await f.port.load()).toBeNull();
 });
 
-it("runs the new local profile through actual AgentService review, Apply, reload, replay and Undo", async () => {
-  const f = await fixture();
-  await f.store.transaction(f.project.id, (project) => {
-    project.runs = [];
-  });
-  const { AgentService } = await import("../apps/server/src/agent-service");
-  type LanguageModel = import("../packages/agent/src/types").LanguageModel;
-  let calls = 0;
-  const model: LanguageModel = {
-    identity: "synthetic-general-authoring-model",
-    complete: vi.fn(
-      async (...parameters: Parameters<LanguageModel["complete"]>) => {
-        const [messages, tools, _signal, limits] = parameters;
-        calls++;
-        const prompt = JSON.parse(
-          String(messages.find((message) => message.role === "user")!.content),
-        );
-        const context = prompt.durableStages;
-        let name: string, args: unknown;
-        if (!context) {
-          name = "plan_edit_stages";
-          args = { requirements: f.requirements, captionPairs: [] };
-        } else {
-          expect(context.activeStage.kind).toBe("assemble");
-          expect(context.preparedCommands).toBe(false);
-          const reviewed = messages.some(
-            (message) =>
-              message.role === "tool" &&
-              JSON.parse(String(message.content)).completionPreflight
-                ?.status === "passed",
+it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9"] as const)(
+  "runs %s through actual AgentService review, Apply, reload, replay and Undo",
+  async (profile) => {
+    const f = await fixture(profile);
+    await f.store.transaction(f.project.id, (project) => {
+      project.runs = [];
+    });
+    const { AgentService } = await import("../apps/server/src/agent-service");
+    type LanguageModel = import("../packages/agent/src/types").LanguageModel;
+    let calls = 0;
+    const model: LanguageModel = {
+      identity: "synthetic-general-authoring-model",
+      complete: vi.fn(
+        async (...parameters: Parameters<LanguageModel["complete"]>) => {
+          const [messages, tools, _signal, limits] = parameters;
+          calls++;
+          const prompt = JSON.parse(
+            String(
+              messages.find((message) => message.role === "user")!.content,
+            ),
           );
-          name = reviewed ? "propose_edit" : "review_edit";
-          args = reviewed ? f.edit : { edit: f.edit };
-        }
-        expect(tools.some((tool) => tool.name === name)).toBe(true);
-        const encoded = JSON.stringify(args),
-          outputTokens = Math.ceil(encoded.length / 4);
-        expect(outputTokens).toBeLessThanOrEqual(limits!.maxOutputTokens);
-        return {
-          text: "",
-          calls: [{ id: `call-${calls}`, name, arguments: encoded }],
-          usage: { inputTokens: 100, outputTokens },
-        };
-      },
-    ),
-  };
-  const agent = new AgentService(
-    f.store,
-    model,
-    builtInSkills(),
-    undefined,
-    "review",
-    undefined,
-    "local-editor-v7",
-  );
-  const initial = await f.store.read(f.project.id),
-    body = {
-      operationId: "normal-general-request",
-      instruction: f.request.instruction!,
-      baseRevision: initial.revision,
-      baseHash: initial.documentHash,
-      context: { selectedItemIds: [], playheadFrame: 0 },
-      scope: { kind: "project" as const },
+          const context = prompt.durableStages;
+          let name: string, args: unknown;
+          if (!context) {
+            expect(tools.some((tool) => tool.name === "plan_edit_stages")).toBe(
+              true,
+            );
+            expect(
+              tools.some((tool) => tool.name === "save_caption_batch"),
+            ).toBe(profile !== "local-editor-v9");
+            name = "plan_edit_stages";
+            args = { requirements: f.requirements, captionPairs: [] };
+          } else {
+            expect(context.activeStage.kind).toBe("assemble");
+            expect(context.preparedCommands).toBe(false);
+            expect(tools.some((tool) => tool.name === "plan_edit_stages")).toBe(
+              profile !== "local-editor-v9",
+            );
+            expect(
+              tools.some((tool) => tool.name === "save_caption_batch"),
+            ).toBe(profile !== "local-editor-v9");
+            const reviewed = messages.some(
+              (message) =>
+                message.role === "tool" &&
+                JSON.parse(String(message.content)).completionPreflight
+                  ?.status === "passed",
+            );
+            name = reviewed ? "propose_edit" : "review_edit";
+            args = reviewed
+              ? profile === "local-editor-v7"
+                ? f.edit
+                : { reviewed: true }
+              : { edit: f.edit };
+          }
+          expect(tools.some((tool) => tool.name === name)).toBe(true);
+          const encoded = JSON.stringify(args),
+            outputTokens = Math.ceil(encoded.length / 4);
+          expect(outputTokens).toBeLessThanOrEqual(limits!.maxOutputTokens);
+          return {
+            text: "",
+            calls: [{ id: `call-${calls}`, name, arguments: encoded }],
+            usage: { inputTokens: 100, outputTokens },
+          };
+        },
+      ),
     };
-  const started = await agent.start(initial.id, body);
-  const deadline = performance.now() + 10000;
-  let ready = await f.store.read(initial.id);
-  while (
-    ["queued", "running"].includes(ready.runs.at(-1)!.status) &&
-    performance.now() < deadline
-  ) {
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    ready = await f.store.read(initial.id);
-  }
-  const run = ready.runs.at(-1)!;
-  expect(run.status, JSON.stringify(run.error)).toBe("awaiting_review");
-  expect(run.agentProfile).toBe("local-editor-v7");
-  expect(ready.editStagePlans![run.id].plan.status).toBe("completed");
-  expect(
-    ready.editStagePlans![run.id].plan.stages.map((stage) => stage.kind),
-  ).toEqual(["evidence", "assemble", "verify"]);
-  expect(calls).toBe(3);
-  const beforeReplay = calls;
-  expect((await agent.start(initial.id, body)).run.id).toBe(run.id);
-  expect((await f.store.read(initial.id)).runs).toHaveLength(1);
-  expect(calls).toBe(beforeReplay);
-  const review = await agent.review(initial.id, started.run.id);
-  await agent.apply(initial.id, started.run.id, {
-    operationId: "apply-general",
-    baseRevision: ready.revision,
-    baseHash: ready.documentHash,
-    reviewBasis: review.review.basis,
-  });
-  const reopened = await new ProjectStore(f.store.directory).read(initial.id);
-  expect(
-    reopened.document.items.find((item) => item.id === "captions-en")?.caption
-      ?.language,
-  ).toBe("en");
-  expect(
-    reopened.document.items.filter((item) => item.id.startsWith("chart-")),
-  ).toHaveLength(3);
-  expect(reopened.document.evidence).toEqual(f.document.evidence);
-  expect(calls).toBe(beforeReplay);
-  await agent.undo(initial.id, started.run.id, {
-    operationId: "undo-general",
-    baseRevision: reopened.revision,
-    baseHash: reopened.documentHash,
-  });
-  const undone = await f.store.read(initial.id);
-  expect(undone.document.items).toEqual(f.document.items);
-  expect(undone.document.evidence).toEqual(f.document.evidence);
-  expect(undone.document.sources).toEqual(f.document.sources);
-  expect(undone.document.format).toEqual(f.document.format);
-  expect(calls).toBe(beforeReplay);
-});
+    const agent = new AgentService(
+      f.store,
+      model,
+      builtInSkills(),
+      undefined,
+      "review",
+      undefined,
+      profile,
+    );
+    const initial = await f.store.read(f.project.id),
+      body = {
+        operationId: "normal-general-request",
+        instruction: f.request.instruction!,
+        baseRevision: initial.revision,
+        baseHash: initial.documentHash,
+        context: { selectedItemIds: [], playheadFrame: 0 },
+        scope: { kind: "project" as const },
+      };
+    const started = await agent.start(initial.id, body);
+    const deadline = performance.now() + 10000;
+    let ready = await f.store.read(initial.id);
+    while (
+      ["queued", "running"].includes(ready.runs.at(-1)!.status) &&
+      performance.now() < deadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      ready = await f.store.read(initial.id);
+    }
+    const run = ready.runs.at(-1)!;
+    expect(run.status, JSON.stringify(run.error)).toBe("awaiting_review");
+    expect(run.agentProfile).toBe(profile);
+    expect(ready.editStagePlans![run.id].plan.status).toBe("completed");
+    expect(
+      ready.editStagePlans![run.id].plan.stages.map((stage) => stage.kind),
+    ).toEqual(["evidence", "assemble", "verify"]);
+    expect(calls).toBe(3);
+    const beforeReplay = calls;
+    expect((await agent.start(initial.id, body)).run.id).toBe(run.id);
+    expect((await f.store.read(initial.id)).runs).toHaveLength(1);
+    expect(calls).toBe(beforeReplay);
+    const review = await agent.review(initial.id, started.run.id);
+    await agent.apply(initial.id, started.run.id, {
+      operationId: "apply-general",
+      baseRevision: ready.revision,
+      baseHash: ready.documentHash,
+      reviewBasis: review.review.basis,
+    });
+    const reopened = await new ProjectStore(f.store.directory).read(initial.id);
+    expect(
+      reopened.document.items.find((item) => item.id === "captions-en")?.caption
+        ?.language,
+    ).toBe("en");
+    expect(
+      reopened.document.items.filter((item) => item.id.startsWith("chart-")),
+    ).toHaveLength(3);
+    expect(reopened.document.evidence).toEqual(f.document.evidence);
+    expect(calls).toBe(beforeReplay);
+    await agent.undo(initial.id, started.run.id, {
+      operationId: "undo-general",
+      baseRevision: reopened.revision,
+      baseHash: reopened.documentHash,
+    });
+    const undone = await f.store.read(initial.id);
+    expect(undone.document.items).toEqual(f.document.items);
+    expect(undone.document.evidence).toEqual(f.document.evidence);
+    expect(undone.document.sources).toEqual(f.document.sources);
+    expect(undone.document.format).toEqual(f.document.format);
+    expect(calls).toBe(beforeReplay);
+  },
+);
 
-it("new-profile recovery and same-operation replay retain an accepted v6 profile and checkpoint byte-for-byte", async () => {
-  const f = await fixture();
-  await f.store.transaction(f.project.id, (project) => {
-    project.runs = [];
-  });
-  const { AgentService } = await import("../apps/server/src/agent-service");
-  const oldComplete = vi.fn(async () => ({
-    text: "The project contains one narration source.",
-    calls: [],
-    usage: { inputTokens: 20, outputTokens: 10 },
-  }));
-  const old = new AgentService(
-    f.store,
-    { identity: "frozen-old-model", complete: oldComplete },
-    builtInSkills(),
-    undefined,
-    "review",
-    undefined,
-    "local-editor-v6",
-  );
-  const initial = await f.store.read(f.project.id),
-    body = {
-      operationId: "accepted-old-description",
-      instruction:
-        "Describe the project's existing sources without changing anything.",
-      baseRevision: initial.revision,
-      baseHash: initial.documentHash,
-      context: { selectedItemIds: [], playheadFrame: 0 },
-      scope: { kind: "project" as const },
-    };
-  await old.start(initial.id, body);
-  const deadline = performance.now() + 10000;
-  let saved = await f.store.read(initial.id);
-  while (
-    ["queued", "running"].includes(saved.runs.at(-1)!.status) &&
-    performance.now() < deadline
-  ) {
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    saved = await f.store.read(initial.id);
-  }
-  const before = structuredClone(saved.runs.at(-1)!);
-  expect(before.status).toBe("completed");
-  expect(before.agentProfile).toBe("local-editor-v6");
-  expect(before.loopCheckpoint?.toolInventoryHash).toBeTruthy();
-  expect(oldComplete).toHaveBeenCalledTimes(1);
-  const neverComplete = vi.fn(async () => {
-    throw new Error("An accepted old run must not adopt a new model/profile.");
-  });
-  const current = new AgentService(
-    f.store,
-    { identity: "new-model-configuration", complete: neverComplete },
-    builtInSkills(),
-    undefined,
-    "review",
-    undefined,
-    "local-editor-v7",
-  );
-  await current.recover();
-  expect((await current.start(initial.id, body)).run.id).toBe(before.id);
-  const restored = (await f.store.read(initial.id)).runs.at(-1)!;
-  expect(restored.agentProfile).toBe("local-editor-v6");
-  expect(restored.loopCheckpoint).toEqual(before.loopCheckpoint);
-  expect(restored.request).toEqual(before.request);
-  expect(restored.requestHash).toBe(before.requestHash);
-  expect(neverComplete).not.toHaveBeenCalled();
-});
+it.each(["local-editor-v6", "local-editor-v7", "local-editor-v8"] as const)(
+  "new-profile recovery retains accepted %s checkpoint byte-for-byte",
+  async (profile) => {
+    const f = await fixture();
+    await f.store.transaction(f.project.id, (project) => {
+      project.runs = [];
+    });
+    const { AgentService } = await import("../apps/server/src/agent-service");
+    const oldComplete = vi.fn(async () => ({
+      text: "The project contains one narration source.",
+      calls: [],
+      usage: { inputTokens: 20, outputTokens: 10 },
+    }));
+    const old = new AgentService(
+      f.store,
+      { identity: "frozen-old-model", complete: oldComplete },
+      builtInSkills(),
+      undefined,
+      "review",
+      undefined,
+      profile,
+    );
+    const initial = await f.store.read(f.project.id),
+      body = {
+        operationId: "accepted-old-description",
+        instruction:
+          "Describe the project's existing sources without changing anything.",
+        baseRevision: initial.revision,
+        baseHash: initial.documentHash,
+        context: { selectedItemIds: [], playheadFrame: 0 },
+        scope: { kind: "project" as const },
+      };
+    await old.start(initial.id, body);
+    const deadline = performance.now() + 10000;
+    let saved = await f.store.read(initial.id);
+    while (
+      ["queued", "running"].includes(saved.runs.at(-1)!.status) &&
+      performance.now() < deadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      saved = await f.store.read(initial.id);
+    }
+    const before = structuredClone(saved.runs.at(-1)!);
+    expect(before.status).toBe("completed");
+    expect(before.agentProfile).toBe(profile);
+    expect(before.loopCheckpoint?.toolInventoryHash).toBeTruthy();
+    expect(oldComplete).toHaveBeenCalledTimes(1);
+    const neverComplete = vi.fn(async () => {
+      throw new Error(
+        "An accepted old run must not adopt a new model/profile.",
+      );
+    });
+    const current = new AgentService(
+      f.store,
+      { identity: "new-model-configuration", complete: neverComplete },
+      builtInSkills(),
+      undefined,
+      "review",
+      undefined,
+      "local-editor-v9",
+    );
+    await current.recover();
+    expect((await current.start(initial.id, body)).run.id).toBe(before.id);
+    const restored = (await f.store.read(initial.id)).runs.at(-1)!;
+    expect(restored.agentProfile).toBe(profile);
+    expect(restored.loopCheckpoint).toEqual(before.loopCheckpoint);
+    expect(restored.request).toEqual(before.request);
+    expect(restored.requestHash).toBe(before.requestHash);
+    expect(neverComplete).not.toHaveBeenCalled();
+  },
+);
 
 it("preserves typed error/recovery metadata from the retained v6 coordinator package", async () => {
   const f = await fixture();
@@ -811,49 +840,132 @@ it("new native path validation rejects an impossible plan before persistence and
 
 it("the reviewed-edit marker resolves one prepared bilingual prefix without duplicating captions", async () => {
   const f = await fixture("local-editor-v8");
-  const { createCaptionBatchManifest, captionBatchManifestSchema, prepareCaptionTranslationBatch, assembleCaptionTranslationBatches, captionBatchModelContext } = await import("../packages/core/src/lib/video-project/caption-batches");
-  const { captionPairSettingsSchema } = await import("../packages/core/src/lib/video-project/caption-pair");
-  const { readNativeCaptionCues } = await import("../packages/core/src/lib/video-project/agent-readers");
-  const { validateNativeCompletionRequirements } = await import("../packages/core/src/lib/video-project/completion-preflight");
-  const pair = { sourceItemId: "narration", evidenceId: "speech", originalItemId: "en", translatedItemId: "zh", trackId: "visual", originalLanguage: "en", translatedLanguage: "zh", originalColor: "#ffffff", translatedColor: "#22d3ee" };
-  const requirements = [{ id: "bilingual", kind: "caption_pair", ...pair }, { id: "chart", kind: "item_present", itemId: "chart-0" }];
+  const {
+    createCaptionBatchManifest,
+    captionBatchManifestSchema,
+    prepareCaptionTranslationBatch,
+    assembleCaptionTranslationBatches,
+    captionBatchModelContext,
+  } = await import("../packages/core/src/lib/video-project/caption-batches");
+  const { captionPairSettingsSchema } = await import(
+    "../packages/core/src/lib/video-project/caption-pair"
+  );
+  const { readNativeCaptionCues } = await import(
+    "../packages/core/src/lib/video-project/agent-readers"
+  );
+  const { validateNativeCompletionRequirements } = await import(
+    "../packages/core/src/lib/video-project/completion-preflight"
+  );
+  const pair = {
+    sourceItemId: "narration",
+    evidenceId: "speech",
+    originalItemId: "en",
+    translatedItemId: "zh",
+    trackId: "visual",
+    originalLanguage: "en",
+    translatedLanguage: "zh",
+    originalColor: "#ffffff",
+    translatedColor: "#22d3ee",
+  };
+  const requirements = [
+    { id: "bilingual", kind: "caption_pair", ...pair },
+    { id: "chart", kind: "item_present", itemId: "chart-0" },
+  ];
   delete (requirements[0] as Record<string, unknown>).trackId;
-  const edit = { outcome: "proposal", summary: "Caption pair and one editable diagram", commands: [f.edit.commands[1]] };
+  const edit = {
+    outcome: "proposal",
+    summary: "Caption pair and one editable diagram",
+    commands: [f.edit.commands[1]],
+  };
   let invocations = 0;
-  const input = { ...f.input, generalEditing: true as const, reviewReferences: true as const, native: {
-    ...f.input.native,
-    validateRequirements: (requirements: CompletionRequirement[]) => { validateNativeCompletionRequirements(requirements); },
-    parsePair: (raw: unknown) => captionPairSettingsSchema.parse(raw),
-    parseManifest: (raw: unknown) => captionBatchManifestSchema.parse(raw),
-    createManifest: (settings: any, batchSize: number) => createCaptionBatchManifest(f.document, settings, batchSize),
-    prepareBatch: (manifest: any, batchId: string, raw: unknown) => prepareCaptionTranslationBatch(f.document, manifest, batchId, raw),
-    assembleBatches: (manifest: any, batches: unknown[]) => assembleCaptionTranslationBatches(f.document, manifest, batches),
-    batchContext: (manifest: any, batchId: string) => captionBatchModelContext(manifest, batchId),
-    readCues: (query: any, options?: any) => readNativeCaptionCues(f.request, query, options),
-  }, invoke: async (options: StageModelInvocation<NativeAgentResult>) => {
-    invocations++;
-    const toolset = createVideoToolset(f.request, builtInSkills(), [], { profile: "local-editor-v8", stages: options.stages });
-    const call = (name: string, args: unknown) => toolset.tools.find(tool => tool.name === name)!.execute(args, f.input.signal);
-    if (!options.stageContext) return (await call("plan_edit_stages", { requirements, captionPairs: [pair] }) as { result: NativeAgentResult }).result;
-    if ((options.stageContext as any).activeStage.kind === "caption_batch") {
-      const page = await call("read_caption_cues", { sourceItemId: "narration", evidenceId: "speech" }) as { value: { cues: Array<{ cueId: string }> } };
-      return (await call("save_caption_batch", { translations: page.value.cues.map((cue, index) => ({ cueId: cue.cueId, text: `译${index}` })) }) as { result: NativeAgentResult }).result;
-    }
-    expect(options.stageContext).toMatchObject({ activeStage: { kind: "assemble" }, preparedCommands: true });
-    const reviewed = await call("review_edit", { edit }) as any;
-    expect(reviewed.value.completionPreflight.status).toBe("passed");
-    expect(reviewed.value.completionPreflight.reviewRef).toBeDefined();
-    return (await call("propose_edit", { reviewed: true }) as { result: NativeAgentResult }).result;
-  } };
+  const input = {
+    ...f.input,
+    generalEditing: true as const,
+    reviewReferences: true as const,
+    native: {
+      ...f.input.native,
+      validateRequirements: (requirements: CompletionRequirement[]) => {
+        validateNativeCompletionRequirements(requirements);
+      },
+      parsePair: (raw: unknown) => captionPairSettingsSchema.parse(raw),
+      parseManifest: (raw: unknown) => captionBatchManifestSchema.parse(raw),
+      createManifest: (settings: any, batchSize: number) =>
+        createCaptionBatchManifest(f.document, settings, batchSize),
+      prepareBatch: (manifest: any, batchId: string, raw: unknown) =>
+        prepareCaptionTranslationBatch(f.document, manifest, batchId, raw),
+      assembleBatches: (manifest: any, batches: unknown[]) =>
+        assembleCaptionTranslationBatches(f.document, manifest, batches),
+      batchContext: (manifest: any, batchId: string) =>
+        captionBatchModelContext(manifest, batchId),
+      readCues: (query: any, options?: any) =>
+        readNativeCaptionCues(f.request, query, options),
+    },
+    invoke: async (options: StageModelInvocation<NativeAgentResult>) => {
+      invocations++;
+      const toolset = createVideoToolset(f.request, builtInSkills(), [], {
+        profile: "local-editor-v8",
+        stages: options.stages,
+      });
+      const call = (name: string, args: unknown) =>
+        toolset.tools
+          .find((tool) => tool.name === name)!
+          .execute(args, f.input.signal);
+      if (!options.stageContext)
+        return (
+          (await call("plan_edit_stages", {
+            requirements,
+            captionPairs: [pair],
+          })) as { result: NativeAgentResult }
+        ).result;
+      if ((options.stageContext as any).activeStage.kind === "caption_batch") {
+        const page = (await call("read_caption_cues", {
+          sourceItemId: "narration",
+          evidenceId: "speech",
+        })) as { value: { cues: Array<{ cueId: string }> } };
+        return (
+          (await call("save_caption_batch", {
+            translations: page.value.cues.map((cue, index) => ({
+              cueId: cue.cueId,
+              text: `译${index}`,
+            })),
+          })) as { result: NativeAgentResult }
+        ).result;
+      }
+      expect(options.stageContext).toMatchObject({
+        activeStage: { kind: "assemble" },
+        preparedCommands: true,
+      });
+      const reviewed = (await call("review_edit", { edit })) as any;
+      expect(reviewed.value.completionPreflight.status).toBe("passed");
+      expect(reviewed.value.completionPreflight.reviewRef).toBeDefined();
+      return (
+        (await call("propose_edit", { reviewed: true })) as {
+          result: NativeAgentResult;
+        }
+      ).result;
+    },
+  };
   const result = await runEditingStages(input);
   expect(result.outcome).toBe("proposal");
-  const after = executeVideoProjectCommands(f.document, result.proposal!.commands).document;
-  expect(after.items.filter(item => item.caption).map(item => item.id).sort()).toEqual(["en", "zh"]);
-  expect(after.items.filter(item => item.id === "chart-0")).toHaveLength(1);
+  const after = executeVideoProjectCommands(
+    f.document,
+    result.proposal!.commands,
+  ).document;
+  expect(
+    after.items
+      .filter((item) => item.caption)
+      .map((item) => item.id)
+      .sort(),
+  ).toEqual(["en", "zh"]);
+  expect(after.items.filter((item) => item.id === "chart-0")).toHaveLength(1);
   expect(after.evidence).toEqual(f.document.evidence);
   const calls = invocations;
-  const noMoreModel = vi.fn(async () => { throw new Error("Known reviewed candidate must replay without model work"); });
-  expect(await runEditingStages({ ...input, invoke: noMoreModel })).toEqual(result);
+  const noMoreModel = vi.fn(async () => {
+    throw new Error("Known reviewed candidate must replay without model work");
+  });
+  expect(await runEditingStages({ ...input, invoke: noMoreModel })).toEqual(
+    result,
+  );
   expect(noMoreModel).not.toHaveBeenCalled();
   expect(invocations).toBe(calls);
 });

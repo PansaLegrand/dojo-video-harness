@@ -10,6 +10,7 @@ import {
 } from "../../../packages/agent-kit/src/index";
 import { runEditingStages as runRetainedEditingStages } from "@dojo-video/agent-kit-v20";
 import { runEditingStages as runRetainedAuthoringEditingStages } from "@dojo-video/agent-kit-v21";
+import { runEditingStages as runRetainedReviewedEditingStages } from "@dojo-video/agent-kit-v22";
 import {
   parseLoopCheckpoint,
   type LoopCheckpointPort,
@@ -100,11 +101,13 @@ export async function runStagedEditing(input: {
   );
   const port = createLocalEditStagePort({ ...input, binding });
   const coordinate =
-    run.agentProfile === "local-editor-v8"
+    run.agentProfile === "local-editor-v9"
       ? runEditingStages
-      : run.agentProfile === "local-editor-v7"
-        ? runRetainedAuthoringEditingStages
-        : runRetainedEditingStages;
+      : run.agentProfile === "local-editor-v8"
+        ? runRetainedReviewedEditingStages
+        : run.agentProfile === "local-editor-v7"
+          ? runRetainedAuthoringEditingStages
+          : runRetainedEditingStages;
   return coordinate({
     port,
     binding,
@@ -225,14 +228,21 @@ export async function runStagedEditing(input: {
         };
       },
     },
-    ...(["local-editor-v7", "local-editor-v8"].includes(run.agentProfile ?? "")
+    ...(["local-editor-v7", "local-editor-v8", "local-editor-v9"].includes(
+      run.agentProfile ?? "",
+    )
       ? { generalEditing: true as const }
       : {}),
-    ...(run.agentProfile === "local-editor-v8"
+    ...(["local-editor-v8", "local-editor-v9"].includes(run.agentProfile ?? "")
       ? { reviewReferences: true as const }
       : {}),
+    ...(run.agentProfile === "local-editor-v9"
+      ? { phaseScopedTools: true as const }
+      : {}),
     native: {
-      ...(run.agentProfile === "local-editor-v8"
+      ...(["local-editor-v8", "local-editor-v9"].includes(
+        run.agentProfile ?? "",
+      )
         ? {
             validateRequirements: (requirements: CompletionRequirement[]) => {
               validateNativeCompletionRequirements(requirements);
