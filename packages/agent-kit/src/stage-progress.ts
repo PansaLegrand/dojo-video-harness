@@ -36,7 +36,9 @@ export function editStageProgress(
       0,
       plan.limits.outputTokens - plan.usage.outputTokens,
     ),
-    usageKnown: plan.usage.usageKnown,
+    usageKnown:
+      plan.usage.usageKnown &&
+      !plan.stages.some((stage) => stage.failure?.code === "UNKNOWN_OUTCOME"),
     modelContinuationAvailable: false,
   };
   remainingBudget.modelContinuationAvailable =
