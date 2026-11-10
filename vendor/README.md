@@ -10,3 +10,7 @@ while new authoring capabilities use a separately versioned kit. Never repack it
 `028e467acbc88263d2c7d17e500ad2e525c5c0c7`, SHA-256
 `be124e6595b7f15a963a6a934157c12062a69f5f39f429bb9fca2ec4323a051f`.
 It preserves local v7/commercial v8 contracts and the known paid trial.
+
+`dojo-video-agent-kit-0.2.2.tgz` retains reviewed-reference candidate contracts from
+`c35129c9b25317c0a80a3d08401d40fa7f0207ae`, SHA-256
+`a7e3b1d80e2a5d28a9058f429d16a4b6cf46984b05b8b2dc01209ed288fe8a73`.
