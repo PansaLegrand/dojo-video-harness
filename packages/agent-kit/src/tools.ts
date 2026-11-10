@@ -17,6 +17,7 @@ import {
   usesStagedEditing,
   usesAuthoringContracts,
   usesReviewedEditReferences,
+  usesPhaseScopedTools,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -275,6 +276,10 @@ export function createEditorToolset<T>(input: {
   const authoring = usesAuthoringContracts(input.profile);
   const reviewReferences = usesReviewedEditReferences(input.profile);
   const stages = usesStagedEditing(input.profile) ? ports.stages : undefined;
+  const phaseScoped = usesPhaseScopedTools(input.profile),
+    phase = stages?.phase ?? "planning";
+  if (phaseScoped && !["planning", "caption_batch", "assemble"].includes(phase))
+    throw new Error("The host supplied an unknown editing phase.");
   if (usesStagedEditing(input.profile) && !stages)
     throw new Error("Staged profiles require their durable host ports.");
   if (completion && (!ports.reviewEdit || !input.snapshotHash))
@@ -336,7 +341,7 @@ export function createEditorToolset<T>(input: {
     kind: "observation" as const,
     value,
   });
-  const tools: AgentTool<T>[] = [
+  let tools: AgentTool<T>[] = [
     {
       ...toolMetadata("inspect_project"),
       parameters: object({
@@ -987,6 +992,14 @@ export function createEditorToolset<T>(input: {
   );
   if (new Set(tools.map((tool) => tool.name)).size !== tools.length)
     throw new Error("Tool names must be unique.");
+  if (phaseScoped)
+    tools = tools.filter((tool) => {
+      if (tool.name === "plan_edit_stages") return phase === "planning";
+      if (tool.name === "save_caption_batch") return phase === "caption_batch";
+      if (["review_edit", "propose_edit"].includes(tool.name))
+        return phase !== "caption_batch";
+      return true;
+    });
   skills = selectSkills(
     input.skills,
     tools.map((tool) => tool.name),

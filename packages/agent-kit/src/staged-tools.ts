@@ -8,7 +8,10 @@ import {
 } from "./completion.js";
 import type { EditArtifactRef } from "./stages.js";
 import type { CaptionCueQuery } from "./tools.js";
+export type EditorStagePhase = "planning" | "caption_batch" | "assemble";
 export type EditorStagePorts<T> = {
+  /** Host-derived active stage; model arguments cannot select their permissions. */
+  phase?: EditorStagePhase;
   /** New profiles may plan monolingual/creative edits without a translation pair. */
   generalEditing?: boolean;
   planEditStages(input: unknown, signal: AbortSignal): Promise<T>;

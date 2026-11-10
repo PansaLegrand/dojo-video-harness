@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.2.2" as const;
+export const AGENT_KIT_VERSION = "0.2.3" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -193,7 +193,9 @@ export type AgentProfile =
   | "local-editor-v7"
   | "commercial-editing-v8"
   | "local-editor-v8"
-  | "commercial-editing-v9";
+  | "commercial-editing-v9"
+  | "local-editor-v9"
+  | "commercial-editing-v10";
 export const usesCompletionPreflight = (profile: AgentProfile) =>
   [
     "local-editor-v2",
@@ -210,6 +212,8 @@ export const usesCompletionPreflight = (profile: AgentProfile) =>
     "commercial-editing-v8",
     "local-editor-v8",
     "commercial-editing-v9",
+    "local-editor-v9",
+    "commercial-editing-v10",
   ].includes(profile);
 export const usesPagedReaders = (profile: AgentProfile) =>
   [
@@ -225,6 +229,8 @@ export const usesPagedReaders = (profile: AgentProfile) =>
     "commercial-editing-v8",
     "local-editor-v8",
     "commercial-editing-v9",
+    "local-editor-v9",
+    "commercial-editing-v10",
   ].includes(profile);
 export const usesEfficientReaders = (profile: AgentProfile) =>
   [
@@ -238,6 +244,8 @@ export const usesEfficientReaders = (profile: AgentProfile) =>
     "commercial-editing-v8",
     "local-editor-v8",
     "commercial-editing-v9",
+    "local-editor-v9",
+    "commercial-editing-v10",
   ].includes(profile);
 export const usesResolvedEditSchema = (profile: AgentProfile) =>
   [
@@ -249,6 +257,8 @@ export const usesResolvedEditSchema = (profile: AgentProfile) =>
     "commercial-editing-v8",
     "local-editor-v8",
     "commercial-editing-v9",
+    "local-editor-v9",
+    "commercial-editing-v10",
   ].includes(profile);
 export const usesStagedEditing = (profile: AgentProfile) =>
   profile === "local-editor-v6" ||
@@ -261,23 +271,30 @@ export const usesAuthoringContracts = (profile: AgentProfile) =>
   usesReviewedEditReferences(profile);
 /** Saved successful edits are proposed without regenerating their command JSON. */
 export const usesReviewedEditReferences = (profile: AgentProfile) =>
-  profile === "local-editor-v8" || profile === "commercial-editing-v9";
+  profile === "local-editor-v8" ||
+  profile === "commercial-editing-v9" ||
+  usesPhaseScopedTools(profile);
+/** Tool availability follows the host-owned active stage in new profiles only. */
+export const usesPhaseScopedTools = (profile: AgentProfile) =>
+  profile === "local-editor-v9" || profile === "commercial-editing-v10";
 export const profileKitVersion = (profile: AgentProfile) =>
-  usesReviewedEditReferences(profile)
+  usesPhaseScopedTools(profile)
     ? AGENT_KIT_VERSION
-    : usesAuthoringContracts(profile)
-      ? "0.2.1"
-      : usesStagedEditing(profile)
-        ? "0.2.0"
-        : usesResolvedEditSchema(profile)
-          ? "0.1.5"
-          : usesEfficientReaders(profile)
-            ? "0.1.4"
-            : usesPagedReaders(profile)
-              ? "0.1.3"
-              : usesCompletionPreflight(profile)
-                ? "0.1.2"
-                : "0.1.1";
+    : usesReviewedEditReferences(profile)
+      ? "0.2.2"
+      : usesAuthoringContracts(profile)
+        ? "0.2.1"
+        : usesStagedEditing(profile)
+          ? "0.2.0"
+          : usesResolvedEditSchema(profile)
+            ? "0.1.5"
+            : usesEfficientReaders(profile)
+              ? "0.1.4"
+              : usesPagedReaders(profile)
+                ? "0.1.3"
+                : usesCompletionPreflight(profile)
+                  ? "0.1.2"
+                  : "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
@@ -291,6 +308,17 @@ export const profileSkills: Record<
   "local-editor-v6": null,
   "local-editor-v7": null,
   "local-editor-v8": null,
+  "local-editor-v9": null,
+  "commercial-editing-v10": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+    "multi-asset-editing",
+    "staged-editing",
+    "generated-media",
+    "visual-inspection",
+  ],
   "commercial-editing-v9": [
     "precise-editing",
     "motion-design",

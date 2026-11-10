@@ -6,6 +6,7 @@ import {
   type BuiltinSkillName,
   type Skill,
 } from "./catalog.js";
+import { legacySkillsV22 } from "./skills.legacy-v22.generated.js";
 import { legacySkillsV21 } from "./skills.legacy-v21.generated.js";
 import { legacySkillsV20 } from "./skills.legacy-v20.generated.js";
 import { legacySkillsV15 } from "./skills.legacy-v15.generated.js";
@@ -49,21 +50,24 @@ export function selectSkills(
       (skill) => skill.name === inputSkill.name,
     );
     const frozenSkills =
-      profile === "local-editor-v7" || profile === "commercial-editing-v8"
-        ? legacySkillsV21
-        : profile === "local-editor-v6" || profile === "commercial-editing-v7"
-          ? legacySkillsV20
-          : profile === "local-editor-v3" || profile === "commercial-editing-v4"
-            ? legacySkillsV13
-            : profile === "local-editor-v4" ||
-                profile === "commercial-editing-v5"
-              ? legacySkillsV14
-              : profile === "local-editor-v5" ||
-                  profile === "commercial-editing-v6"
-                ? legacySkillsV15
-                : !usesAuthoringContracts(profile)
-                  ? legacySkillsV20
-                  : undefined;
+      profile === "local-editor-v8" || profile === "commercial-editing-v9"
+        ? legacySkillsV22
+        : profile === "local-editor-v7" || profile === "commercial-editing-v8"
+          ? legacySkillsV21
+          : profile === "local-editor-v6" || profile === "commercial-editing-v7"
+            ? legacySkillsV20
+            : profile === "local-editor-v3" ||
+                profile === "commercial-editing-v4"
+              ? legacySkillsV13
+              : profile === "local-editor-v4" ||
+                  profile === "commercial-editing-v5"
+                ? legacySkillsV14
+                : profile === "local-editor-v5" ||
+                    profile === "commercial-editing-v6"
+                  ? legacySkillsV15
+                  : !usesAuthoringContracts(profile)
+                    ? legacySkillsV20
+                    : undefined;
     const frozenBuiltin = frozenSkills?.find(
       (skill) => skill.name === inputSkill.name,
     );

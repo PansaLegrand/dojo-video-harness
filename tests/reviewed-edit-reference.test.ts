@@ -215,14 +215,21 @@ it("a successful staged review resolves its exact large edit after checkpoint re
     history: [],
     generalEditing: true,
     reviewReferences: true,
+    phaseScopedTools: true,
     signal: signal(),
     invoke: async (options) => {
       invocationCount++;
       const session = createVideoToolset(f.request, builtInSkills(), [], {
-        profile: "local-editor-v8",
+        profile: "local-editor-v9",
         stages: options.stages,
         initialCompletionState: options.stages.completionState,
       });
+      expect(
+        session.tools.some((tool) => tool.name === "plan_edit_stages"),
+      ).toBe(false);
+      expect(
+        session.tools.some((tool) => tool.name === "save_caption_batch"),
+      ).toBe(false);
       const reviewArgs = { requirements: f.requirements, edit: f.edit };
       const review = await session.tools
         .find((tool) => tool.name === "review_edit")!
@@ -272,10 +279,11 @@ it("a successful staged review resolves its exact large edit after checkpoint re
       stateBytes = JSON.stringify(restored).length;
       expect(stateBytes).toBeLessThan(3000);
       const resumed = createVideoToolset(f.request, builtInSkills(), [], {
-        profile: "local-editor-v8",
+        profile: "local-editor-v9",
         stages: options.stages,
         initialCompletionState: restored,
       });
+      expect(resumed.inventory).toEqual(session.inventory);
       const propose = resumed.tools.find(
         (tool) => tool.name === "propose_edit",
       )!;
@@ -310,6 +318,7 @@ it("a successful staged review resolves its exact large edit after checkpoint re
     history: [],
     generalEditing: true,
     reviewReferences: true,
+    phaseScopedTools: true,
     signal: signal(),
     invoke: noNewModel,
   });

@@ -183,6 +183,8 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   generalEditing?: true;
   /** New profiles may propose their retained successful review without resending JSON. */
   reviewReferences?: true;
+  /** New profiles advertise only tools valid in the current host-owned phase. */
+  phaseScopedTools?: true;
   policy?: StagedEditPolicy;
   invoke(options: StageModelInvocation<T>): Promise<T>;
   signal: AbortSignal;
@@ -651,6 +653,16 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   ): EditorStagePorts<T> {
     const getPlan = async () => (await port.load())!;
     return {
+      ...(input.phaseScopedTools
+        ? {
+            phase:
+              stage?.kind === "caption_batch"
+                ? ("caption_batch" as const)
+                : stage
+                  ? ("assemble" as const)
+                  : ("planning" as const),
+          }
+        : {}),
       ...(input.generalEditing ? { generalEditing: true as const } : {}),
       preparedCommands: !!frozen?.preparedRef,
       ...(stage
