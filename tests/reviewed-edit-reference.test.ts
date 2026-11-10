@@ -1,3 +1,8 @@
+import { runAgent } from "../packages/agent/src/loop";
+import type {
+  LoopCheckpoint,
+  LoopCheckpointPort,
+} from "../packages/agent-loop/src/index";
 import { expect, it, vi } from "vitest";
 import Ajv from "ajv";
 import {
@@ -535,3 +540,95 @@ it("planning without a persisted stage review keeps the raw proposal form and re
       .execute(f.edit, signal()),
   ).toMatchObject({ kind: "terminal", result: { outcome: "proposal" } });
 });
+
+it.each(["local-editor-v8", "local-editor-v9"] as const)(
+  "actual local runAgent resumes a saved review and retained marker without repeating a model response (%s)",
+  async (profile) => {
+    const f = await fixture();
+    let calls = 0;
+    await runEditingStages({
+      ...f,
+      snapshotHash: f.request.baseHash,
+      modelIdentity: f.binding.modelIdentity,
+      run: {
+        instruction: f.request.instruction!,
+        createdAt: new Date().toISOString(),
+      },
+      history: [],
+      generalEditing: true,
+      reviewReferences: true,
+      ...(profile === "local-editor-v9"
+        ? { phaseScopedTools: true as const }
+        : {}),
+      signal: signal(),
+      invoke: async (options) => {
+        let saved: LoopCheckpoint | null = null,
+          failure: "review" | "marker" | null = "review";
+        const model = {
+          identity: f.binding.modelIdentity,
+          complete: async () => {
+            calls++;
+            return {
+              text: "",
+              usage: { inputTokens: 100, outputTokens: 40 },
+              calls: [
+                {
+                  id: `paid-${calls}`,
+                  name: calls === 1 ? "review_edit" : "propose_edit",
+                  arguments: JSON.stringify(
+                    calls === 1 ? { edit: f.edit } : { reviewed: true },
+                  ),
+                },
+              ],
+            };
+          },
+        };
+        const checkpoint: LoopCheckpointPort = {
+          runId: "actual-local-wrapper",
+          snapshotHash: f.request.baseHash,
+          load: async () => structuredClone(saved),
+          save: async (next, expected) => {
+            expect(expected).toBe(saved?.revision ?? null);
+            saved = structuredClone(next);
+            if (failure === "review" && next.phase === "tool-observations") {
+              failure = "marker";
+              throw Error("Interrupted after durable review");
+            }
+            if (
+              failure === "marker" &&
+              next.phase === "model-returned" &&
+              next.modelCalls === 2
+            ) {
+              failure = null;
+              throw Error("Interrupted after paid marker reply");
+            }
+          },
+        };
+        const input = {
+          request: f.request,
+          model,
+          skills: builtInSkills(),
+          profile,
+          stages: options.stages,
+          checkpoint,
+          signal: signal(),
+        };
+        await expect(runAgent(input)).rejects.toThrow(
+          /Interrupted after durable review/,
+        );
+        expect(calls).toBe(1);
+        await expect(runAgent(input)).rejects.toThrow(
+          /Interrupted after paid marker reply/,
+        );
+        expect(calls).toBe(2);
+        const result = await runAgent(input);
+        expect(calls).toBe(2); // Pending marker executes from its retained paid reply.
+        const beforeReplay = calls;
+        expect(await runAgent(input)).toEqual(result);
+        expect(calls).toBe(beforeReplay);
+        return result;
+      },
+    });
+    expect(calls).toBe(2);
+  },
+);

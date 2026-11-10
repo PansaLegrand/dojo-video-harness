@@ -6,6 +6,7 @@ import {
   usesEfficientReaders,
   usesResolvedEditSchema,
   usesStagedEditing,
+  usesReviewedEditReferences,
   type EditorStagePorts,
   type AgentProfile,
 } from "../../agent-kit/src/index";
@@ -172,6 +173,11 @@ export async function runAgent(input: {
             request.baseHash,
             input.stages
               ? {
+                  ...(usesReviewedEditReferences(
+                    input.profile ?? "local-editor-v1",
+                  )
+                    ? { reviewReferences: true as const }
+                    : {}),
                   resolvePreparedEdit: (edit) =>
                     input.stages!.resolvePreparedEdit(edit, signal),
                 }
