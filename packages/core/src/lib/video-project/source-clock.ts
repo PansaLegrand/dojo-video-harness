@@ -1,5 +1,8 @@
 import { assertNoUntimedWordGap } from "./speech-word-range";
-import type { EditorItem } from "@/lib/editor/document";
+import {
+  sourceClockWindow as sourceWindow,
+  projectSourceClockRange as projectSourceRange,
+} from "@dojo-video/agent-kit";
 import {
   toEditorDocument,
   type VideoProjectDocument,
@@ -7,41 +10,9 @@ import {
 } from "./document";
 import { applyEditorCommand } from "@/lib/editor/commands";
 
-export function sourceWindow(item: EditorItem, fps: number) {
-  const rate = item.node.type === "video" ? (item.node.playbackRate ?? 1) : 1;
-  if (rate <= 0)
-    throw new Error("Source-bound edits require forward playback.");
-  const startMs =
-    (item.node.type === "video"
-      ? (item.node.videoStartTime ?? 0)
-      : (item.node.audioStartTime ?? 0)) * 1000;
-  return {
-    startMs,
-    endMs: startMs + ((item.node.duration! * 1000) / fps) * rate,
-    rate,
-    from: item.node.from ?? 0,
-  };
-}
-export function projectSourceRange(
-  item: EditorItem,
-  fps: number,
-  startMs: number,
-  endMs: number,
-) {
-  const window = sourceWindow(item, fps);
-  const start = Math.max(startMs, window.startMs),
-    end = Math.min(endMs, window.endMs);
-  if (end <= start) return null;
-  const from =
-    window.from +
-    Math.round((((start - window.startMs) / window.rate) * fps) / 1000);
-  const until = Math.min(
-    window.from + item.node.duration!,
-    window.from +
-      Math.round((((end - window.startMs) / window.rate) * fps) / 1000),
-  );
-  return until > from ? { from, duration: until - from } : null;
-}
+// Numeric projection is shared upstream; evidence and document mutation remain host-owned.
+export { sourceWindow, projectSourceRange };
+
 export function resolveSpeechAnchor(
   document: VideoProjectDocument,
   input: {

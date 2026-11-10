@@ -13,3 +13,10 @@ export * from "./staged-coordinator.js";
 export * from "./stage-progress.js";
 
 export * from "./host-tools.js";
+
+export * from "./source-clock.js";
+export * from "./semantic-conformance.js";
+
+export * from "./semantic-conformance-runner.js";
+
+export * from "./semantic-conformance-golden.js";
