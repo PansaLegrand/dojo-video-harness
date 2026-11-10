@@ -378,6 +378,10 @@ describe("new authoring contracts reuse the existing validators and tools", () =
       },
     };
     for (const profile of [
+      "local-editor-v1",
+      "local-editor-v2",
+      "commercial-editing-v2",
+      "commercial-editing-v3",
       "local-editor-v6",
       "commercial-editing-v7",
     ] as const) {

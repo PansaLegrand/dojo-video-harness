@@ -1,6 +1,7 @@
 import {
   skillRequirements,
   profileSkills,
+  usesAuthoringContracts,
   type AgentProfile,
   type BuiltinSkillName,
   type Skill,
@@ -56,7 +57,9 @@ export function selectSkills(
             : profile === "local-editor-v5" ||
                 profile === "commercial-editing-v6"
               ? legacySkillsV15
-              : undefined;
+              : !usesAuthoringContracts(profile)
+                ? legacySkillsV20
+                : undefined;
     const frozenBuiltin = frozenSkills?.find(
       (skill) => skill.name === inputSkill.name,
     );
