@@ -202,3 +202,17 @@ Permanent same-policy failures use `LoopCheckpointCapacityError`, code
 `LOOP_CHECKPOINT_CAPACITY`, with reason `checkpoint-too-large`, `reply-headroom`,
 `protected-context` or `reply-too-large`. Messages contain no raw model/source data.
 A host should fail these fast rather than repeatedly queueing the unchanged input.
+
+Version 0.2 adds durable host waits and a read-only `LanguageModel.prepare` hook.
+Preparation resolves owned pixel references before the paid submission fence;
+checkpoint messages retain metadata rather than image bytes. A waiting replay-safe
+tool resumes at its saved cursor after the exact host receipt exists. A host must
+persist wake delivery and reconcile the active/delayed queue race separately.
+
+New snapshots freeze `preserve-known-rejection-v1`. Adapters may throw
+`LoopKnownModelRejectionError` only for qualified pre-execution HTTP
+400/401/403/404/422 rejections. The loop saves a sanitized `model-rejected` receipt
+before surfacing it; subsequent replay sends no new request. Timeout, 5xx,
+malformed output and missing usage remain distinct uncertain outcomes. A known
+rejection does not authorize fallback or assert that the request had no provider
+cost. Existing snapshots retain their original policies and package behavior.

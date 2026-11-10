@@ -75,3 +75,24 @@ conformance corpus checks both host kernels, including source/evidence preservat
 scope, rebase, selective Undo and segmentation receipts. See
 [`docs/semantic-conformance.md`](../../docs/semantic-conformance.md) for the exact
 fixture boundary, intentional host differences and reference-update policy.
+
+Kit 0.2 adds `local-editor-v6` / `commercial-editing-v7`. The portable
+`runEditingStages` coordinator persists dependencies, immutable artifacts, absolute
+usage and one final reviewed candidate. The standard policy allows 32 model calls,
+64 tool calls and 32,000 output tokens for the original request, with a 16-call
+planning phase, 100-cue caption batches and 8/24/16,000 per later invocation.
+Hosts atomically save each checkpoint with its absolute usage. Questions, source
+inspection and approved external jobs pause that same funded request; they do not
+reset its allowance. Source/model/scope changes fail closed before further model
+work. The original instruction and completed artifacts remain reusable.
+
+`createEditorHostTools` registers only supplied trusted ports in these new profiles.
+Image/frame inspection, saved visual retrieval, generation quotes and browser
+preview/export are contracts, not built-in cloud services. Their two conditional
+skills load only when the required executors exist. Credentials, ownership,
+consent, prices, provider submission, storage and application stay in each host.
+The local harness does not advertise commercial HTTP adapters it does not own.
+A preview is not a general autonomous visual-repair guarantee.
+
+See [the host adapter contract](../../docs/staged-editing-host-api.md) for CAS,
+canonical JSON, float-preserving storage, continuation and receipt boundaries.
