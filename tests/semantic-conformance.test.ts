@@ -1,20 +1,20 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { completionHash } from "../packages/agent-kit/src/completion";
-import { semanticConformanceGoldenV1 } from "../packages/agent-kit/src/semantic-conformance-golden";
+import { completionHash } from "@dojo-video/agent-kit";
+import { semanticConformanceGoldenV1 } from "@dojo-video/agent-kit";
 import { mkdir, writeFile } from "node:fs/promises";
 import {
   sourceClockConformanceV1,
   semanticKernelConformanceV1,
   SEMANTIC_CONFORMANCE_VERSION,
-} from "../packages/agent-kit/src/semantic-conformance";
+} from "@dojo-video/agent-kit";
 import {
   sourceClockWindow,
   projectSourceClockRange,
-} from "../packages/agent-kit/src/source-clock";
+} from "@dojo-video/agent-kit";
 import {
   runSemanticKernelCase,
   type SemanticKernelAdapter,
-} from "../packages/agent-kit/src/semantic-conformance-runner";
+} from "@dojo-video/agent-kit";
 import {
   createVideoProjectDocument,
   parseVideoProjectDocument,
@@ -117,6 +117,7 @@ afterAll(async () => {
   );
 });
 describe("portable source-clock v1 corpus before and after shared extraction", () => {
+  it("the actual host clock aliases are the shared package functions",()=>{expect(sourceWindow).toBe(sourceClockWindow);expect(projectSourceRange).toBe(projectSourceClockRange);});
   for (const vector of sourceClockConformanceV1)
     it(vector.id, () => {
       const before = JSON.stringify(vector.item),
