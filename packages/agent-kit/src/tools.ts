@@ -13,6 +13,7 @@ import {
   usesEfficientReaders,
   usesResolvedEditSchema,
   usesStagedEditing,
+  usesAuthoringContracts,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -21,6 +22,7 @@ import {
   validateCompletionReceipt,
   completionRequirementsSchema,
   pagedCompletionRequirementsSchema,
+  authoringCompletionRequirementsSchema,
   type CompletionRequirement,
   type CompletionReceipt,
   type CompletionCheck,
@@ -83,7 +85,13 @@ export type EditorToolPorts<T> = {
     args: { itemIds?: string[] },
     signal: AbortSignal,
   ): MaybePromise<unknown>;
-  inspectGraphicsSchema(signal: AbortSignal): MaybePromise<unknown>;
+  inspectGraphicsSchema(
+    signal: AbortSignal,
+    query?: {
+      kind: "native" | "macro" | "three";
+      macro?: string;
+    },
+  ): MaybePromise<unknown>;
   searchTranscript(
     args: TranscriptQuery,
     signal: AbortSignal,
@@ -127,6 +135,31 @@ const placement = {
   from: { type: "integer", minimum: 0 },
   duration: { type: "integer", minimum: 1 },
 };
+function authoringValidationMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "Preflight failed";
+  const diagnostic =
+    error && typeof error === "object" && "diagnostic" in error
+      ? (error as { diagnostic?: unknown }).diagnostic
+      : undefined;
+  if (!diagnostic || typeof diagnostic !== "object")
+    return message.slice(0, 1800);
+  const value = diagnostic as {
+    issues?: Array<{ path?: unknown[]; message?: string }>;
+    operation?: string;
+  };
+  const details = (value.issues ?? []).slice(0, 3).map((issue) => {
+    const path = (issue.path ?? [])
+      .slice(0, 16)
+      .map((part) => String(part).slice(0, 80))
+      .join(".");
+    return `${path || "edit"}: ${String(issue.message ?? "Invalid value").slice(0, 250)}`;
+  });
+  const hint =
+    value.operation === "insertGraphic"
+      ? "For installed macros use node:{macro:'kineticText',text,from,duration,...documented parameters}; native node.type must be an installed primitive. Native animations need kind:'keyframes',property,frames. Read inspect_graphics_schema for valid installed examples."
+      : "Correct these fields in the complete edit and review again.";
+  return [message, ...details, hint].join(" ").slice(0, 2000);
+}
 function record(
   value: unknown,
   keys: readonly string[],
@@ -233,6 +266,7 @@ export function createEditorToolset<T>(input: {
 }) {
   const { ports } = input;
   const completion = usesCompletionPreflight(input.profile);
+  const authoring = usesAuthoringContracts(input.profile);
   const stages = usesStagedEditing(input.profile) ? ports.stages : undefined;
   if (usesStagedEditing(input.profile) && !stages)
     throw new Error("Staged profiles require their durable host ports.");
@@ -357,10 +391,53 @@ export function createEditorToolset<T>(input: {
     },
     {
       ...toolMetadata("inspect_graphics_schema"),
-      parameters: object(),
+      ...(authoring
+        ? {
+            description:
+              "Read authoritative installed native 2D node/animation and macro descriptors with valid JSON examples, plus editable 3D scene schema. Use before authoring custom charts or unfamiliar graphics. Macro nodes use macro:'kineticText' with its documented fields; native node.type is never a macro name. Native animations use kind:'keyframes', property and frames:[{frame,value}], never invented preset objects.",
+          }
+        : {}),
+      parameters: authoring
+        ? object({
+            kind: {
+              type: "string",
+              enum: ["native", "macro", "three"],
+              description:
+                "Defaults to native 2D primitives and keyframe syntax; request only the missing kind.",
+            },
+            macro: {
+              type: "string",
+              minLength: 1,
+              maxLength: 64,
+              description:
+                "Installed macro name, only with kind:macro; omit for its compact index.",
+            },
+          })
+        : object(),
       execute: async (args, signal) => {
-        record(args, []);
-        return observed(await ports.inspectGraphicsSchema(signal));
+        const value = record(args, authoring ? ["kind", "macro"] : []);
+        if (!authoring)
+          return observed(await ports.inspectGraphicsSchema(signal));
+        const kind = value.kind ?? "native";
+        if (
+          !["native", "macro", "three"].includes(String(kind)) ||
+          (value.macro !== undefined &&
+            (kind !== "macro" ||
+              typeof value.macro !== "string" ||
+              !value.macro.length ||
+              value.macro.length > 64))
+        )
+          throw new Error(
+            "Choose kind:native, kind:macro with an optional installed macro name, or kind:three.",
+          );
+        return observed(
+          await ports.inspectGraphicsSchema(signal, {
+            kind: kind as "native" | "macro" | "three",
+            ...(value.macro === undefined
+              ? {}
+              : { macro: value.macro as string }),
+          }),
+        );
       },
     },
     {
@@ -435,11 +512,19 @@ export function createEditorToolset<T>(input: {
   if (completion) {
     tools.push({
       ...toolMetadata("review_edit"),
+      ...(authoring
+        ? {
+            description:
+              "Review the complete intended edit WITHOUT applying or saving a draft. Call with {requirements:[supported typed checks],edit:{outcome:'proposal',summary:'...',commands:[all commands]}}. The first valid requirement list freezes. Repair failed checks by reviewing the full repaired edit again. On success call propose_edit with that exact edit object. A rejected propose_edit does not save commands: reviewing commands:[] cannot recover them. Empty additional commands are allowed only when the host explicitly reports preparedCommands.",
+          }
+        : {}),
       parameters: object(
         {
-          requirements: usesPagedReaders(input.profile)
-            ? pagedCompletionRequirementsSchema
-            : completionRequirementsSchema,
+          requirements: authoring
+            ? authoringCompletionRequirementsSchema
+            : usesPagedReaders(input.profile)
+              ? pagedCompletionRequirementsSchema
+              : completionRequirementsSchema,
           edit: usesResolvedEditSchema(input.profile)
             ? embedEditingSchema(input.proposalSchema, {
                 preparedCommands: stages?.preparedCommands,
@@ -519,10 +604,12 @@ export function createEditorToolset<T>(input: {
             {
               id: "preflight",
               passed: false,
-              message: (error instanceof Error
-                ? error.message
-                : "Preflight failed"
-              ).slice(0, 2000),
+              message: authoring
+                ? authoringValidationMessage(error)
+                : (error instanceof Error
+                    ? error.message
+                    : "Preflight failed"
+                  ).slice(0, 2000),
             },
           ];
         }
@@ -530,6 +617,13 @@ export function createEditorToolset<T>(input: {
           kind: "observation",
           pinned: true,
           value: {
+            ...(authoring
+              ? {
+                  nextAction: receipt
+                    ? "Call propose_edit with the exact edit object from this successful review; do not send the requirements or receipt yourself."
+                    : "No edit was saved or applied. Keep every frozen requirement, repair the complete command list, and call review_edit again with that full edit. Do not use commands:[] unless the host explicitly supplies preparedCommands.",
+                }
+              : {}),
             completionPreflight: {
               version: 1,
               snapshotHash: state.snapshotHash,
@@ -700,24 +794,30 @@ export function createEditorToolset<T>(input: {
   }
   if (stages)
     tools.push(
-      ...createStagedEditorTools({
-        ...stages,
-        planEditStages: async (raw, signal) => {
-          await checkedState();
-          const requirements = parseCompletionRequirements(
-            (raw as { requirements?: unknown }).requirements,
-            { assetSequence: true, speechCallout: true },
-          );
-          if (
-            state &&
-            (await completionHash(requirements)) !== state.requirementsHash
-          )
-            throw new Error(
-              "The staged plan must preserve every frozen completion requirement.",
+      ...createStagedEditorTools(
+        {
+          ...stages,
+          generalEditing: authoring && stages.generalEditing === true,
+          planEditStages: async (raw, signal) => {
+            await checkedState();
+            const requirements = parseCompletionRequirements(
+              (raw as { requirements?: unknown }).requirements,
+              { assetSequence: true, speechCallout: true },
             );
-          return stages.planEditStages(raw, signal);
+            if (
+              state &&
+              (await completionHash(requirements)) !== state.requirementsHash
+            )
+              throw new Error(
+                "The staged plan must preserve every frozen completion requirement.",
+              );
+            return stages.planEditStages(raw, signal);
+          },
         },
-      }),
+        authoring
+          ? { requirementsSchema: authoringCompletionRequirementsSchema }
+          : undefined,
+      ),
     );
   if (stages && ports.readCaptionTrack)
     tools.push({
@@ -750,6 +850,12 @@ export function createEditorToolset<T>(input: {
   tools.push(
     {
       ...toolMetadata("propose_edit"),
+      ...(authoring
+        ? {
+            description:
+              "Finish an edit only AFTER review_edit passed for the same complete edit. Send the exact reviewed {outcome:'proposal',summary,commands} object. This call does not save an unreviewed draft. A failed attempt changes no document or draft, so retain your full commands and review them before trying again.",
+          }
+        : {}),
       parameters: usesResolvedEditSchema(input.profile)
         ? editingOnlyProposalSchema(input.proposalSchema, {
             preparedCommands: stages?.preparedCommands,
@@ -778,7 +884,9 @@ export function createEditorToolset<T>(input: {
             (await completionHash((args as { commands?: unknown })?.commands))
         )
           throw new Error(
-            "Run review_edit successfully for these exact commands before propose_edit. Do not omit or weaken requirements.",
+            authoring
+              ? "propose_edit saved and applied nothing. Call review_edit with {requirements:[supported concrete checks],edit:{outcome:'proposal',summary,commands:[the full intended commands]}}. After success send that exact edit to propose_edit. Do not replace your rejected command list with commands:[]."
+              : "Run review_edit successfully for these exact commands before propose_edit. Do not omit or weaken requirements.",
           );
         const result = await ports.proposeEdit(args, signal, {
           requirements: state.requirements,

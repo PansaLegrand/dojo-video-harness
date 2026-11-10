@@ -1,11 +1,18 @@
 # Staged editing
 
-Complete source-bound caption batches and assemble one guarded edit using durable owned artifacts.
+Complete a bounded edit, with optional source-bound translation batches, using durable owned artifacts.
 
-Preserve the original instruction and declare every requested outcome. Use
-`plan_edit_stages` for caption work requiring multiple batches or several sources.
-Bind each pair to its exact source, evidence, requested sourceRange, stable item IDs,
-languages and colors. The host fixes the complete cue plan before translation.
+Preserve the original instruction and declare every requested outcome with supported
+concrete completion kinds (`kind`, never `type`). `plan_edit_stages` accepts
+`captionPairs:[]` for original-language captions and general graphic edits. That
+plan creates an editing basis and assembly/review stages, not caption commands.
+In assembly include the actual source-bound `captionSource` and graphic commands.
+Never invent an English-to-English pair just to create a plan.
+
+For requested translation requiring multiple batches or several sources, bind each
+real distinct-language pair to its exact source, evidence, requested sourceRange,
+stable item IDs, languages and colors. Every pair needs its matching `caption_pair`
+requirement. The host fixes the complete cue plan before translation.
 
 Work only on the active caption batch. Read its exact ranged host cues, preserve
 each genuine cue ID, and supply one translation per cue to `save_caption_batch`.
@@ -13,7 +20,7 @@ The host saves that batch and continues the next stage. Completed batches remain
 reusable after interruption, cancellation or provider failure; never regenerate
 siblings or replace immutable speech evidence with caption display text.
 
-The assembly stage includes the host's complete prepared caption commands. Supply
+For translation plans, assembly includes the host's complete prepared caption commands. Supply
 the remaining media placements, graphics or corrections. An empty model command
 list is useful only when durableStages explicitly confirms preparedCommands.
 `review_edit` checks the expanded complete candidate. Repair failed checks, then

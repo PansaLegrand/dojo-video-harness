@@ -1,6 +1,11 @@
+import { macroDefinitions } from "@dojo-video-engine/presets/macros";
 import { z } from "zod/v3";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { sceneNodeSchema, styleSchema } from "@dojo-video-engine/schema";
+import {
+  animationSchema,
+  sceneNodeSchema,
+  styleSchema,
+} from "@dojo-video-engine/schema";
 import { motionControlPatchSchema } from "@/lib/motion-graphics/catalog";
 import {
   captionCueSchema,
@@ -563,4 +568,149 @@ export function nativeAgentResponseFormat(
         },
       }
     : { type: "json_object" };
+}
+
+/** A schema projection of installed 2D primitives, not another authoring representation. */
+function native2dGraphicsSchema() {
+  const installed = unwrap(sceneNodeSchema);
+  if (!(installed instanceof z.ZodObject))
+    throw new Error("Installed native node schema is unavailable.");
+  const node = shallowSchema(
+    installed.pick({
+      id: true,
+      type: true,
+      from: true,
+      duration: true,
+      style: true,
+      text: true,
+      runs: true,
+      shape: true,
+      animations: true,
+      children: true,
+    }),
+    0,
+  );
+  const properties = node.properties as Record<string, JsonSchema>;
+  const allowed = (properties.type.enum as string[]).filter((value) =>
+    ["div", "text", "shape"].includes(value),
+  );
+  properties.type = { ...properties.type, enum: allowed };
+  properties.children = {
+    ...properties.children,
+    items: { $ref: "#" },
+    description:
+      "Nested native 2D nodes use this same schema; their from/animation frames are parent-local.",
+  };
+  properties.animations = {
+    ...properties.animations,
+    items: shallowSchema(animationSchema, -1),
+  };
+  return node;
+}
+
+/** Read-only discovery from the installed engine. No registry mutation or execution surface. */
+export function nativeAgentGraphicsSchema(
+  query: { kind?: "native" | "macro"; macro?: string } = {},
+) {
+  const macros = macroDefinitions().filter(
+    (definition) => !["captions", "subtitles"].includes(definition.name),
+  );
+  if (query.kind === "macro") {
+    if (!query.macro)
+      return {
+        version: 1,
+        kind: "macro",
+        macros: macros.map(({ name, description }) => ({ name, description })),
+      };
+    const found = macros.find((definition) => definition.name === query.macro);
+    if (!found)
+      throw new Error(
+        `Unknown installed graphic macro. Choose: ${macros.map((definition) => definition.name).join(", ")}. Use captionSource with genuine evidence for speech captions.`,
+      );
+    return {
+      version: 1,
+      kind: "macro",
+      name: found.name,
+      description: found.description,
+      parameters: shallowSchema(found.params, -1),
+      example: JSON.parse(found.usage),
+      usage:
+        "Place this macro object in insertGraphic.node. The discriminator is macro, never type; fields are at the macro object's top level, not inside params. Review the complete edit before propose_edit.",
+    };
+  }
+  return {
+    version: 1,
+    kind: "native",
+    node: native2dGraphicsSchema(),
+    animation: shallowSchema(animationSchema, -1),
+    units: {
+      from: "integer frames; nested nodes are parent-local",
+      duration: "positive frame count",
+      animationFrames: "integer frames local to the animated node",
+      style: "numeric lengths are composition pixels",
+    },
+    examples: {
+      animatedGroup: {
+        type: "div",
+        id: "comparison",
+        from: 0,
+        duration: 120,
+        style: {
+          position: "absolute",
+          left: 80,
+          top: 80,
+          width: 500,
+          height: 240,
+        },
+        children: [
+          {
+            id: "comparison-heading",
+            type: "text",
+            text: "Comparison",
+            style: {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 500,
+              height: 48,
+              fontSize: 36,
+              color: "#ffffff",
+            },
+          },
+          {
+            id: "comparison-bar",
+            type: "shape",
+            shape: { kind: "rect" },
+            style: {
+              position: "absolute",
+              left: 0,
+              top: 72,
+              width: 240,
+              height: 48,
+              fill: "#22d3ee",
+            },
+            animations: [
+              {
+                kind: "keyframes",
+                property: "width",
+                frames: [
+                  { frame: 0, value: 0 },
+                  { frame: 24, value: 240 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      captionCommand: {
+        type: "captionSource",
+        sourceItemId: "existing-source-item",
+        evidenceId: "existing-evidence",
+        itemId: "captions-en",
+        trackId: "visual",
+      },
+    },
+    usage:
+      "Use native types such as div, text and shape. Macro names such as kineticText are not native types. Native animations use kind:keyframes, property and frames:[{frame,value}]; never preset objects. Use kind:macro for a compact installed index or a named macro's schema, or kind:three for 3D. Example source/evidence IDs are placeholders: use actual owned IDs. Give each copied group and child a unique item-specific stable ID. Keep financial values/units/bases and readable caption bounds explicit.",
+  };
 }

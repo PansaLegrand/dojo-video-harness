@@ -34,3 +34,22 @@ plate bounded, place text inside it, and inspect the rendered preview.
 For original SVG, use prepare_svg_graphic and retain its stable editable part IDs.
 For editable 3D, read inspect_graphics_schema before prepare_three_scene. Use the
 installed declarative scene schema; never substitute arbitrary JavaScript.
+
+For custom 2D graphics or quantitative diagrams, read `inspect_graphics_schema`
+for the installed native-node, animation and macro descriptors. A macro example
+is `node:{macro:"kineticText",text:"A clear heading",from:0,duration:120,look:"wordPop",palette:"berry"}`.
+It is never `node:{type:"kineticText",params:{...}}`. Native nodes use types such
+as `div`, `text` and `shape`; keep real values, axis units and comparison bases
+explicit rather than decorating a static heading and calling it a chart.
+
+A native 2D animation is
+`{kind:"keyframes",property:"opacity",frames:[{frame:0,value:0},{frame:12,value:1}]}`.
+Frames are node-local. A child with from:60 begins 60 frames after its parent,
+not at composition frame 60. Macros expand into editable native parts; returned
+SVG/3D/text helper commands still need the ordinary complete edit review.
+
+`review_edit` takes the full `edit:{outcome:"proposal",summary,commands}` and
+concrete requirements. A rejected `propose_edit` saves no draft. Keep your full
+commands, correct field-specific errors, review the entire repaired edit, and
+then propose that exact successfully reviewed edit. Never replace the commands
+with an empty list because an earlier proposal was rejected.

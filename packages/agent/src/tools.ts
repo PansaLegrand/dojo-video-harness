@@ -14,6 +14,7 @@ import {
   usesCompletionPreflight,
   usesPagedReaders,
   usesStagedEditing,
+  usesAuthoringContracts,
   type EditorStagePorts,
 } from "../../agent-kit/src/index";
 import {
@@ -21,7 +22,10 @@ import {
   type NativeAgentRequest,
   type NativeAgentResult,
 } from "../../core/src/lib/video-project/agent-runtime";
-import { nativeAgentResponseSchema } from "../../core/src/lib/video-project/agent-schema";
+import {
+  nativeAgentGraphicsSchema,
+  nativeAgentResponseSchema,
+} from "../../core/src/lib/video-project/agent-schema";
 import {
   searchNativeTranscript,
   nativeTranscriptScopedSourceItemIds,
@@ -118,10 +122,18 @@ export function createVideoToolset(
                 : readNativeCaptionCues(request, args),
           }
         : {}),
-      inspectGraphicsSchema: () => ({
-        three: zodToJsonSchema(threeSceneSchema, { $refStrategy: "none" }),
-        extension: THREE_EXTENSION,
-      }),
+      inspectGraphicsSchema: (_signal, query) =>
+        usesAuthoringContracts(options.profile ?? "local-editor-v1") &&
+        query?.kind !== "three"
+          ? nativeAgentGraphicsSchema(
+              query as { kind?: "native" | "macro"; macro?: string },
+            )
+          : {
+              three: zodToJsonSchema(threeSceneSchema, {
+                $refStrategy: "none",
+              }),
+              extension: THREE_EXTENSION,
+            },
       inspectProject: (query) => ({
         ...(usesCompletionPreflight(options.profile ?? "local-editor-v1")
           ? {

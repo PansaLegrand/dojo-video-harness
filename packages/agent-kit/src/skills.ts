@@ -5,6 +5,7 @@ import {
   type BuiltinSkillName,
   type Skill,
 } from "./catalog.js";
+import { legacySkillsV20 } from "./skills.legacy-v20.generated.js";
 import { legacySkillsV15 } from "./skills.legacy-v15.generated.js";
 import { legacySkillsV14 } from "./skills.legacy-v14.generated.js";
 import { legacySkillsV13 } from "./skills.legacy-v13.generated.js";
@@ -46,13 +47,16 @@ export function selectSkills(
       (skill) => skill.name === inputSkill.name,
     );
     const frozenSkills =
-      profile === "local-editor-v3" || profile === "commercial-editing-v4"
-        ? legacySkillsV13
-        : profile === "local-editor-v4" || profile === "commercial-editing-v5"
-          ? legacySkillsV14
-          : profile === "local-editor-v5" || profile === "commercial-editing-v6"
-            ? legacySkillsV15
-            : undefined;
+      profile === "local-editor-v6" || profile === "commercial-editing-v7"
+        ? legacySkillsV20
+        : profile === "local-editor-v3" || profile === "commercial-editing-v4"
+          ? legacySkillsV13
+          : profile === "local-editor-v4" || profile === "commercial-editing-v5"
+            ? legacySkillsV14
+            : profile === "local-editor-v5" ||
+                profile === "commercial-editing-v6"
+              ? legacySkillsV15
+              : undefined;
     const frozenBuiltin = frozenSkills?.find(
       (skill) => skill.name === inputSkill.name,
     );

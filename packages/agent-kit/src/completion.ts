@@ -544,3 +544,89 @@ export const pagedCompletionRequirementsSchema = {
     ],
   },
 };
+
+/** The existing parser's kinds and targets, made explicit for new authoring profiles.
+ * Legacy schema objects remain unchanged because accepted tool inventories are hashed. */
+export const authoringCompletionRequirementsSchema = {
+  ...pagedCompletionRequirementsSchema,
+  description:
+    'Declare 1–12 concrete checks with unique id and kind (never type). Supported kinds are item_present, item_absent, property, property_absent, caption_pair, speech_highlight, speech_callout, appended_ending and asset_sequence. Use item/property checks for original-language captions and graphics; caption_pair requires two distinct languages. Example: [{"id":"captions","kind":"item_present","itemId":"captions-en"},{"id":"width","kind":"property","target":{"kind":"format"},"path":["width"],"equals":1280}]. An ending inside existing narration uses item/property checks, not appended_ending. Do not invent semantic kinds such as animated_chapters or financial_accuracy; retain those user outcomes in the edit and verify them with supported concrete checks and visual inspection.',
+  items: {
+    oneOf: pagedCompletionRequirementsSchema.items.oneOf.map((branch) => {
+      const properties = branch.properties as Record<
+        string,
+        Record<string, unknown>
+      >;
+      return {
+        ...branch,
+        properties: {
+          ...properties,
+          kind: { type: "string", ...properties.kind },
+          ...(properties.target
+            ? {
+                target: {
+                  description:
+                    "Exact native property target; use stable IDs from the project or the proposed edit.",
+                  oneOf: [
+                    obj({
+                      kind: { type: "string", enum: ["format", "project"] },
+                    }),
+                    obj({
+                      kind: { type: "string", const: "track" },
+                      trackId: str,
+                    }),
+                    obj({
+                      kind: { type: "string", enum: ["item", "caption"] },
+                      itemId: str,
+                    }),
+                    obj({
+                      kind: { type: "string", const: "node" },
+                      itemId: str,
+                      nodeId: str,
+                    }),
+                    obj({
+                      kind: { type: "string", const: "cue" },
+                      itemId: str,
+                      cueId: str,
+                    }),
+                  ],
+                },
+              }
+            : {}),
+          ...(properties.wordIds
+            ? { wordIds: { ...properties.wordIds, uniqueItems: true } }
+            : {}),
+          ...(properties.exactText
+            ? { exactText: { ...properties.exactText, minLength: 1 } }
+            : {}),
+          ...(properties.originalLanguage
+            ? {
+                originalLanguage: {
+                  ...properties.originalLanguage,
+                  maxLength: 64,
+                  pattern: "^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+                },
+                translatedLanguage: {
+                  ...properties.translatedLanguage,
+                  maxLength: 64,
+                  pattern: "^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+                },
+                originalColor: {
+                  ...properties.originalColor,
+                  minLength: 7,
+                  maxLength: 7,
+                  pattern: "^#[a-fA-F0-9]{6}$",
+                },
+                translatedColor: {
+                  ...properties.translatedColor,
+                  minLength: 7,
+                  maxLength: 7,
+                  pattern: "^#[a-fA-F0-9]{6}$",
+                },
+              }
+            : {}),
+        },
+      };
+    }),
+  },
+};
