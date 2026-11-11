@@ -60,27 +60,31 @@ export function editingOnlyProposalSchema(
   ];
   return schema;
 }
-/** Nested local references resolve against the advertised tool root. Rebase the
- * complete schema so recursive definitions continue to point inside edit. */
+/** Rebase the same grammar when embedded under a tool object or union branch. */
+function rebaseEditingSchema(value: unknown, prefix: string): unknown {
+  if (Array.isArray(value))
+    return value.map((child) => rebaseEditingSchema(child, prefix));
+  if (!object(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      key === "$ref" &&
+      typeof child === "string" &&
+      (child === "#" || child.startsWith("#/"))
+        ? `${prefix}${child.slice(1)}`
+        : rebaseEditingSchema(child, prefix),
+    ]),
+  );
+}
+/** Nested local references resolve against the advertised tool root. */
 export function embedEditingSchema(
   input: JsonSchema,
   options: { preparedCommands?: boolean } = {},
 ): JsonSchema {
-  const visit = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(visit);
-    if (!object(value)) return value;
-    return Object.fromEntries(
-      Object.entries(value).map(([key, child]) => [
-        key,
-        key === "$ref" &&
-        typeof child === "string" &&
-        (child === "#" || child.startsWith("#/"))
-          ? `#/properties/edit${child.slice(1)}`
-          : visit(child),
-      ]),
-    );
-  };
-  return visit(editingOnlyProposalSchema(input, options)) as JsonSchema;
+  return rebaseEditingSchema(
+    editingOnlyProposalSchema(input, options),
+    "#/properties/edit",
+  ) as JsonSchema;
 }
 export function assertEditingProposal(raw: unknown): void {
   if (
@@ -94,4 +98,28 @@ export function assertEditingProposal(raw: unknown): void {
     throw new Error(
       "Assemble a nonempty editing proposal from prepared commands and placements. Requirements stay frozen; repair the commands after a failed review.",
     );
+}
+
+/** A new-profile union over the same edit grammar; local refs remain inside raw branch. */
+export function reviewedProposalSchema(
+  input: JsonSchema,
+  options: { preparedCommands?: boolean } = {},
+): JsonSchema {
+  return {
+    type: "object",
+    anyOf: [
+      rebaseEditingSchema(
+        editingOnlyProposalSchema(input, options),
+        "#/anyOf/0",
+      ),
+      {
+        type: "object",
+        properties: { reviewed: { type: "boolean", const: true } },
+        required: ["reviewed"],
+        additionalProperties: false,
+        description:
+          "Propose the latest successful owned review without resending its command JSON. No model-supplied artifact reference is accepted.",
+      },
+    ],
+  };
 }

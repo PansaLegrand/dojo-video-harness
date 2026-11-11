@@ -1,3 +1,4 @@
+import { runEditingStages as runRetainedPreviewEditingStages } from "@dojo-video/agent-kit-v24";
 import {
   runEditingStages,
   assertEditStageBinding,
@@ -5,8 +6,13 @@ import {
   STAGED_EDIT_POLICY,
   type EditorStagePorts,
   type EditStagePlan,
+  type CompletionRequirement,
   type StageModelInvocation,
 } from "../../../packages/agent-kit/src/index";
+import { runEditingStages as runRetainedEditingStages } from "@dojo-video/agent-kit-v20";
+import { runEditingStages as runRetainedAuthoringEditingStages } from "@dojo-video/agent-kit-v21";
+import { runEditingStages as runRetainedReviewedEditingStages } from "@dojo-video/agent-kit-v22";
+import { runEditingStages as runRetainedPhaseEditingStages } from "@dojo-video/agent-kit-v23";
 import {
   parseLoopCheckpoint,
   type LoopCheckpointPort,
@@ -17,7 +23,10 @@ import {
   type NativeAgentResult,
 } from "../../../packages/core/src/lib/video-project/agent-runtime";
 import { parseVideoProjectDocument } from "../../../packages/core/src/lib/video-project/document";
-import { compileNativeCompletionResponse } from "../../../packages/core/src/lib/video-project/completion-preflight";
+import {
+  compileNativeCompletionResponse,
+  validateNativeCompletionRequirements,
+} from "../../../packages/core/src/lib/video-project/completion-preflight";
 import { captionPairSettingsSchema } from "../../../packages/core/src/lib/video-project/caption-pair";
 import {
   assembleCaptionTranslationBatches,
@@ -93,7 +102,19 @@ export async function runStagedEditing(input: {
     { modelCalls: 0, toolCalls: 0, inputTokens: 0, outputTokens: 0 },
   );
   const port = createLocalEditStagePort({ ...input, binding });
-  return runEditingStages({
+  const coordinate =
+    run.agentProfile === "local-editor-v11"
+      ? runEditingStages
+      : run.agentProfile === "local-editor-v10"
+        ? runRetainedPreviewEditingStages
+      : run.agentProfile === "local-editor-v9"
+        ? runRetainedPhaseEditingStages
+      : run.agentProfile === "local-editor-v8"
+        ? runRetainedReviewedEditingStages
+        : run.agentProfile === "local-editor-v7"
+          ? runRetainedAuthoringEditingStages
+          : runRetainedEditingStages;
+  return coordinate({
     port,
     binding,
     modelIdentity: input.modelIdentity,
@@ -104,10 +125,13 @@ export async function runStagedEditing(input: {
     ...(input.onTransition ? { onTransition: input.onTransition } : {}),
     policy: {
       ...STAGED_EDIT_POLICY,
+      ...(["local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "") ? { stageModelCalls: 16 } : {}),
+      ...(run.agentProfile === "local-editor-v11" ? { stageOutputTokens: 32000 } : {}),
       ...(input.policy?.captionBatchSize === undefined
         ? {}
         : { captionBatchSize: input.policy.captionBatchSize }),
     },
+    ...(["local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "") ? { previewRepair: true as const } : {}),
     records: {
       read: async () =>
         (await input.store.read(input.projectId)).editStagePlans?.[
@@ -213,7 +237,27 @@ export async function runStagedEditing(input: {
         };
       },
     },
+    ...(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(
+      run.agentProfile ?? "",
+    )
+      ? { generalEditing: true as const }
+      : {}),
+    ...(["local-editor-v8", "local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "")
+      ? { reviewReferences: true as const }
+      : {}),
+    ...(["local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "")
+      ? { phaseScopedTools: true as const }
+      : {}),
     native: {
+      ...(["local-editor-v8", "local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(
+        run.agentProfile ?? "",
+      )
+        ? {
+            validateRequirements: (requirements: CompletionRequirement[]) => {
+              validateNativeCompletionRequirements(requirements);
+            },
+          }
+        : {}),
       readableSourceItemIds: nativeTranscriptScopedSourceItemIds({
         ...input.request,
         document,

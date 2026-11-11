@@ -1,3 +1,4 @@
+import type { PreviewRepairClaim } from "./preview-repair.js";
 import { toolMetadata, type AgentTool } from "./catalog.js";
 import {
   pagedCompletionRequirementsSchema,
@@ -6,8 +7,14 @@ import {
   type CompletionReceipt,
   type CompletionRequirement,
 } from "./completion.js";
+import type { EditArtifactRef } from "./stages.js";
 import type { CaptionCueQuery } from "./tools.js";
+export type EditorStagePhase = "planning" | "caption_batch" | "assemble";
 export type EditorStagePorts<T> = {
+  /** Host-derived active stage; model arguments cannot select their permissions. */
+  phase?: EditorStagePhase;
+  /** New profiles may plan monolingual/creative edits without a translation pair. */
+  generalEditing?: boolean;
   planEditStages(input: unknown, signal: AbortSignal): Promise<T>;
   saveCaptionBatch(input: unknown, signal: AbortSignal): Promise<T>;
   readEditArtifact(
@@ -17,6 +24,11 @@ export type EditorStagePorts<T> = {
   /** Host-bound prepared commands are fixed before the assembly checkpoint starts. */
   resolvePreparedEdit(input: unknown, signal: AbortSignal): Promise<unknown>;
   preparedCommands: boolean;
+  /** Atomically retained by the existing artifact host before evaluating a correction. */
+  claimPreviewRepair?(
+    claim: PreviewRepairClaim,
+    signal: AbortSignal,
+  ): Promise<void>;
   completionState?: CompletionState;
   readCaptionCues?(
     input: CaptionCueQuery,
@@ -30,7 +42,7 @@ export type EditorStagePorts<T> = {
       receipt?: CompletionReceipt;
     },
     signal: AbortSignal,
-  ): Promise<void>;
+  ): Promise<void | { reviewRef: EditArtifactRef }>;
   completeEditing?(result: T, signal: AbortSignal): Promise<T>;
 };
 const id = { type: "string", minLength: 1, maxLength: 191 },
@@ -85,16 +97,22 @@ function input(raw: unknown, keys: string[]) {
 }
 export function createStagedEditorTools<T>(
   ports: EditorStagePorts<T>,
+  options?: {
+    requirementsSchema?: Record<string, unknown>;
+    description?: string;
+  },
 ): AgentTool<T>[] {
   return [
     {
       ...toolMetadata("plan_edit_stages"),
+      ...(options?.description ? { description: options.description } : {}),
       parameters: object(
         {
-          requirements: pagedCompletionRequirementsSchema,
+          requirements:
+            options?.requirementsSchema ?? pagedCompletionRequirementsSchema,
           captionPairs: {
             type: "array",
-            minItems: 1,
+            minItems: ports.generalEditing ? 0 : 1,
             maxItems: 12,
             items: pair,
           },

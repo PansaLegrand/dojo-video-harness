@@ -734,3 +734,66 @@ it("keeps consent and receipt prerequisites for mixed supplied-text and genuine 
   expect(f.port.start).not.toHaveBeenCalled();
   expect(f.model.complete).not.toHaveBeenCalled();
 });
+
+it("excludes original silent video while retaining muted speech and duplicate source instances", async () => {
+  const f = await fixture();
+  await f.store.transaction(f.p.id, async (p) => {
+    const document = structuredClone(p.document),
+      hash = "a".repeat(64),
+      silentHash = "b".repeat(64);
+    document.tracks[0]!.muted = true;
+    document.items[0]!.node.volume = 0;
+    document.assets.speech!.mediaMetadata = {
+      contentHash: hash,
+      hasAudio: true,
+    };
+    document.sources.speech = {
+      assetId: "speech",
+      revision: `sha256:${hash}`,
+      contentHash: hash,
+    };
+    document.assets.silent = {
+      id: "silent",
+      name: "B-roll",
+      type: "video",
+      source: "local",
+      mediaMetadata: { hasAudio: false, contentHash: silentHash },
+    };
+    document.sources.silent = {
+      assetId: "silent",
+      revision: `sha256:${silentHash}`,
+      contentHash: silentHash,
+    };
+    document.items.push(
+      {
+        id: "silent",
+        name: "B-roll",
+        trackId: "visual",
+        node: {
+          id: "silent",
+          type: "video",
+          assetId: "silent",
+          from: 0,
+          duration: 90,
+        },
+      },
+      {
+        ...document.items[0]!,
+        id: "duplicate",
+        node: { ...document.items[0]!.node, id: "duplicate" },
+      },
+    );
+    await commitDocument(p, document, false);
+  });
+  const current = await f.store.read(f.p.id);
+  await f.agent.start(current.id, {
+    ...f.input,
+    baseRevision: current.revision,
+    baseHash: current.documentHash,
+    context: { selectedItemIds: [], playheadFrame: 0 },
+  });
+  expect(await waitFor(f, "needs_evidence")).toMatchObject({
+    prerequisites: { assetIds: ["speech"], status: "consent_required" },
+  });
+  expect(f.port.start).not.toHaveBeenCalled();
+});

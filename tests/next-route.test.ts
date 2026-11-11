@@ -66,4 +66,17 @@ describe("Next API boundary", () => {
       code: "NOT_FOUND",
     });
   });
+  it("exposes pending browser input codes to the shared receipt client", async () => {
+    state.handler = async () => {
+      throw new HttpError("Receipt pending", 409, "BROWSER_INPUT_PENDING");
+    };
+    const response = await handleLocalRequest(
+      new Request("http://localhost:4310/api/receipt"),
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: "BROWSER_INPUT_PENDING",
+      error_code: "BROWSER_INPUT_PENDING",
+    });
+  });
 });

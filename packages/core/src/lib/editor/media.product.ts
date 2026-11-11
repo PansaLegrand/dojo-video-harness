@@ -1,4 +1,4 @@
-import { EDITOR_MEDIA_ADMISSION, inspectEditorVideo, type AdmittedEditorVideo } from "@/lib/dojo-video-engine-browser/media-admission";
+import { EDITOR_MEDIA_ADMISSION, inspectEditorVideo, probeOriginalAudioTrack, type AdmittedEditorVideo } from "@/lib/dojo-video-engine-browser/media-admission";
 
 export const EDITOR_MEDIA_ACCEPT = "video/*,audio/*,image/*";
 export const EDITOR_MAX_FILE_BYTES = EDITOR_MEDIA_ADMISSION.maxFileBytes;
@@ -78,7 +78,7 @@ export async function probeEditorMedia(
       media.preload = "metadata";
       signal?.addEventListener("abort", abort, { once: true });
       if (signal?.aborted) { abort(); return; }
-      media.onloadedmetadata = () => {
+      media.onloadedmetadata = async () => {
         const duration = media.duration;
         const width =
           media instanceof HTMLVideoElement ? media.videoWidth : undefined;
@@ -89,7 +89,11 @@ export async function probeEditorMedia(
           reject(new Error("The media file has no readable duration."));
           return;
         }
-        resolve({ type, duration, ...(width ? { width, height } : {}) });
+        try {
+          const hasAudio = await probeOriginalAudioTrack(file, signal);
+          signal?.throwIfAborted();
+          resolve({ type, duration, ...(width ? { width, height } : {}), ...(hasAudio === undefined ? {} : { mediaMetadata: { hasAudio } }) });
+        } catch (error) { reject(error); }
       };
       media.onerror = () => {
         cleanup();

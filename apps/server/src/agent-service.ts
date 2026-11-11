@@ -1,4 +1,9 @@
+import { EditStageError as RetainedV24EditStageError } from "@dojo-video/agent-kit-v24";
+import { EditStageError as RetainedV23EditStageError } from "@dojo-video/agent-kit-v23";
+import { EditStageError as RetainedV21EditStageError } from "@dojo-video/agent-kit-v21";
+import { EditStageError as RetainedV22EditStageError } from "@dojo-video/agent-kit-v22";
 import { randomUUID } from "node:crypto";
+import { EditStageError as RetainedEditStageError } from "@dojo-video/agent-kit-v20";
 import { z } from "zod/v3";
 import {
   runAgent,
@@ -67,6 +72,7 @@ import {
   type EditStagePlan,
   completionHash,
   editStageProgress,
+  usesStagedEditing,
 } from "../../../packages/agent-kit/src/index";
 import {
   LoopHostInputRequiredError,
@@ -76,6 +82,21 @@ import {
   localEditStageRecovery,
   putLocalEditStageArtifact,
 } from "./edit-stage-store";
+const isStageError = (
+  cause: unknown,
+): cause is
+  | EditStageError
+  | RetainedEditStageError
+  | RetainedV21EditStageError
+  | RetainedV22EditStageError
+  | RetainedV23EditStageError
+  | RetainedV24EditStageError =>
+  cause instanceof EditStageError ||
+  cause instanceof RetainedEditStageError ||
+  cause instanceof RetainedV21EditStageError ||
+  cause instanceof RetainedV22EditStageError ||
+  cause instanceof RetainedV23EditStageError ||
+  cause instanceof RetainedV24EditStageError;
 export class AgentService {
   private active = new Map<string, AbortController>();
   private deadlines = new Map<string, ReturnType<typeof setTimeout>>();
@@ -97,10 +118,36 @@ export class AgentService {
       | "local-editor-v3"
       | "local-editor-v4"
       | "local-editor-v5"
-      | "local-editor-v6" = "local-editor-v1",
+      | "local-editor-v6"
+      | "local-editor-v7"
+      | "local-editor-v8"
+      | "local-editor-v9"
+      | "local-editor-v10"
+      | "local-editor-v11" = "local-editor-v1",
     private stagedOptions: {
       captionBatchSize?: number;
       onTransition?: (plan: EditStagePlan) => Promise<void>;
+      browser?: {
+        tools(
+          projectId: string,
+          runId: string,
+          request: NativeAgentRequest,
+        ): AgentTool[];
+        model(
+          projectId: string,
+          runId: string,
+          model: LanguageModel,
+        ): LanguageModel;
+        previewEvidence(
+          projectId: string,
+          runId: string,
+          requestId: string,
+          signal: AbortSignal,
+        ): Promise<
+          import("../../../packages/agent-kit/src/index").PreviewRepairEvidence
+        >;
+        cancel(projectId: string, runId: string): Promise<void>;
+      };
     } = {},
   ) {}
   /** Explicit startup recovery: only durable, checked boundaries are launched.
@@ -164,6 +211,10 @@ export class AgentService {
         scope,
         reviewBasisRequired: true,
         agentProfile: this.agentProfile,
+        ...(this.stagedOptions.browser &&
+        ["local-editor-v10", "local-editor-v11"].includes(this.agentProfile)
+          ? { browserToolsEnabled: true as const }
+          : {}),
         events: [],
         requestHash: hash,
         request: {
@@ -209,8 +260,15 @@ export class AgentService {
     this.active.set(id, controller);
     this.armDeadline(id, controller);
     void (async () => {
-      const model =
+      const configuredModel =
         typeof this.model === "function" ? this.model() : this.model;
+      const stored = (await this.store.read(projectId)).runs.find(
+        (run) => run.id === id,
+      )!;
+      const model =
+        stored.browserToolsEnabled && this.stagedOptions.browser
+          ? this.stagedOptions.browser.model(projectId, id, configuredModel)
+          : configuredModel;
       await this.execute(projectId, id, controller.signal, model);
     })()
       .catch(async (cause) => {
@@ -257,7 +315,7 @@ export class AgentService {
                 cause instanceof AgentCheckpointConflict ||
                 cause instanceof LoopCheckpointCapacityError ||
                 cause instanceof ProviderReplyByteBudgetError ||
-                cause instanceof EditStageError
+                isStageError(cause)
                   ? cause.code
                   : "AGENT_FAILED",
               message: cause instanceof Error ? cause.message : "Agent failed",
@@ -270,10 +328,7 @@ export class AgentService {
               run.stageRecovery = {
                 canResume:
                   recovery.safe &&
-                  !(
-                    cause instanceof EditStageError &&
-                    cause.code === "STAGE_CONFLICT"
-                  ),
+                  !(isStageError(cause) && cause.code === "STAGE_CONFLICT"),
                 canReuseSavedResult:
                   !!staged.savedCandidateRef &&
                   staged.plan.status !== "cancelled",
@@ -291,7 +346,7 @@ export class AgentService {
           const project = await this.store.read(projectId),
             run = runOf(project, id);
           if (
-            run.agentProfile === "local-editor-v6" &&
+            usesStagedEditing(run.agentProfile ?? "local-editor-v1") &&
             run.status === "queued" &&
             run.phase === "stage_resume"
           )
@@ -323,7 +378,7 @@ export class AgentService {
     if (initialRun.status === "cancelled") return;
     const history = agentCheckpointHistory(initial, initialRun, {
       stagePlanOwnsCurrentBinding:
-        initialRun.agentProfile === "local-editor-v6" &&
+        usesStagedEditing(initialRun.agentProfile ?? "local-editor-v1") &&
         !!initial.editStagePlans?.[id],
     });
     // A checkpoint resume may consume only existing ASR receipts. It cannot
@@ -354,13 +409,43 @@ export class AgentService {
       return run;
     });
     const project = await this.store.read(projectId);
+    const firstCheckpoint = run.preludeCheckpoints?.[0] ?? run.loopCheckpoint;
+    const frozenTools = firstCheckpoint
+      ? new Set(
+          parseLoopCheckpoint(firstCheckpoint.checkpoint).snapshot.tools.map(
+            (tool) => tool.name,
+          ),
+        )
+      : undefined;
+    const browserTools = run.browserToolsEnabled
+      ? (
+          this.stagedOptions.browser?.tools(projectId, id, request) ?? []
+        ).filter((tool) => !frozenTools || frozenTools.has(tool.name))
+      : [];
     const invoke = async (invocation?: EditingStageInvocation) =>
       runAgent({
         request,
         profile: run.agentProfile ?? "local-editor-v1",
         model,
         skills: this.skills,
-        extraTools: this.extraTools?.(projectId, id, request),
+        extraTools: [
+          ...(this.extraTools?.(projectId, id, request) ?? []),
+          ...browserTools,
+        ],
+        ...(run.browserToolsEnabled && this.stagedOptions.browser
+          ? {
+              previewEvidence: (
+                requestId: string,
+                evidenceSignal: AbortSignal,
+              ) =>
+                this.stagedOptions.browser!.previewEvidence(
+                  projectId,
+                  id,
+                  requestId,
+                  evidenceSignal,
+                ),
+            }
+          : {}),
         signal,
         maxSteps: ["local-editor-v4", "local-editor-v5"].includes(
           run.agentProfile ?? "",
@@ -431,47 +516,44 @@ export class AgentService {
             }
           : {}),
       });
-    const result =
-      run.agentProfile === "local-editor-v6"
-        ? await runStagedEditing({
-            store: this.store,
-            projectId,
-            runId: id,
-            request,
-            modelIdentity: model.identity ?? "",
-            signal,
-            policy: this.stagedOptions,
-            invoke,
-            onTransition: async (plan) => {
-              await this.store.transaction(projectId, (p) => {
-                const r = runOf(p, id);
-                if (r.status === "running") {
-                  const active = plan.stages.find(
-                    (stage) =>
-                      stage.status === "running" || stage.status === "waiting",
-                  );
-                  r.phase = active
-                    ? `stage:${active.kind}`
-                    : "stage:continuing";
-                  r.updatedAt = new Date().toISOString();
-                }
-                r.stageProgress = editStageProgress(plan);
-                const saved = p.editStagePlans?.[id];
-                if (saved) {
-                  const recovery = localEditStageRecovery(saved);
-                  r.stageRecovery = {
-                    canResume: recovery.safe,
-                    canReuseSavedResult:
-                      !!saved.savedCandidateRef && plan.status !== "cancelled",
-                  };
-                }
-              });
-              const controller = this.active.get(id);
-              if (controller) this.armDeadline(id, controller);
-              await this.stagedOptions.onTransition?.(plan);
-            },
-          })
-        : await invoke();
+    const result = usesStagedEditing(run.agentProfile ?? "local-editor-v1")
+      ? await runStagedEditing({
+          store: this.store,
+          projectId,
+          runId: id,
+          request,
+          modelIdentity: model.identity ?? "",
+          signal,
+          policy: this.stagedOptions,
+          invoke,
+          onTransition: async (plan) => {
+            await this.store.transaction(projectId, (p) => {
+              const r = runOf(p, id);
+              if (r.status === "running") {
+                const active = plan.stages.find(
+                  (stage) =>
+                    stage.status === "running" || stage.status === "waiting",
+                );
+                r.phase = active ? `stage:${active.kind}` : "stage:continuing";
+                r.updatedAt = new Date().toISOString();
+              }
+              r.stageProgress = editStageProgress(plan);
+              const saved = p.editStagePlans?.[id];
+              if (saved) {
+                const recovery = localEditStageRecovery(saved);
+                r.stageRecovery = {
+                  canResume: recovery.safe,
+                  canReuseSavedResult:
+                    !!saved.savedCandidateRef && plan.status !== "cancelled",
+                };
+              }
+            });
+            const controller = this.active.get(id);
+            if (controller) this.armDeadline(id, controller);
+            await this.stagedOptions.onTransition?.(plan);
+          },
+        })
+      : await invoke();
     signal.throwIfAborted();
     await this.store.transaction(projectId, async (p) => {
       const r = runOf(p, id);
@@ -643,6 +725,11 @@ export class AgentService {
       }
     });
     this.active.get(id)?.abort();
+    if (
+      (await this.store.read(projectId)).runs.find((run) => run.id === id)
+        ?.browserToolsEnabled
+    )
+      await this.stagedOptions.browser?.cancel(projectId, id);
     return { cancelled: true };
   }
   async review(projectId: string, id: string) {
@@ -777,6 +864,12 @@ export class AgentService {
       r.appliedBefore = p.document;
       r.appliedAfter = comparison.afterDocument;
       await commitDocument(p, comparison.afterDocument);
+      if (r.browserToolsEnabled)
+        r.appliedReceipt = {
+          operationId: input.operationId,
+          revision: p.revision,
+          documentHash: p.documentHash,
+        };
       r.status = "applied";
       r.phase = "applied";
       r.updatedAt = new Date().toISOString();
@@ -885,7 +978,10 @@ export class AgentService {
         created = true;
         return parent;
       }
-      if (parent.agentProfile === "local-editor-v6" && parent.loopCheckpoint) {
+      if (
+        usesStagedEditing(parent.agentProfile ?? "local-editor-v1") &&
+        parent.loopCheckpoint
+      ) {
         const checkpoint = parseLoopCheckpoint(
           parent.loopCheckpoint.checkpoint,
         );
@@ -981,6 +1077,8 @@ export class AgentService {
         events: [],
         loopCheckpoint: undefined,
         completion: undefined,
+        hostRequests: undefined,
+        outputRequests: undefined,
         scope,
         requestHash: hash,
         answers: undefined,

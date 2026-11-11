@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   createEditStagePlan,
+  completionHash,
   parseEditStageEvent,
   parseEditStagePlan,
   type EditStagePlan,
@@ -27,7 +28,7 @@ afterEach(async () => {
   );
 });
 const now = "2026-11-10T00:00:00.000Z";
-async function fixture() {
+async function fixture(profile: StoredRun["agentProfile"] = "local-editor-v5") {
   const directory = await mkdtemp(path.join(os.tmpdir(), "dojo-stages-"));
   roots.push(directory);
   const store = new ProjectStore(directory);
@@ -63,7 +64,7 @@ async function fixture() {
     updatedAt: now,
     scope: { kind: "project" },
     reviewBasisRequired: true,
-    agentProfile: "local-editor-v5",
+    agentProfile: profile,
     events: [],
     requestHash: "original-request",
     request: {
@@ -498,4 +499,19 @@ it("preserves exact fractional canonical artifact bytes through disk reload", as
   expect(JSON.stringify(await reopened.readArtifact(ref))).toContain(
     "0.30000000000000004",
   );
+});
+
+it("serializes one visual correction claim across concurrent writers and disk recovery", async () => {
+  const f = await fixture("local-editor-v10");
+  const basisRef = await f.port.putArtifact("verification", { fixture: "reviewed basis" });
+  const claim = { kind: "preview-repair", basisRef, requestId: "owned-preview", receiptHash: "a".repeat(64), renderHash: f.binding.baseHash, commandsHash: await completionHash(["first"]), issues: [{ frame: 0, description: "Clipped title" }] };
+  await expect(f.port.putArtifact("creative-decision", { ...claim, basisRef: { ...basisRef, runId: "foreign" } })).rejects.toThrow(/another editing basis/);
+  const results = await Promise.allSettled([claim, { ...claim, commandsHash: await completionHash(["second"]) }].map(value => f.port.putArtifact("creative-decision", value)));
+  expect(results.filter(value => value.status === "fulfilled")).toHaveLength(1);
+  const accepted = results.find(value => value.status === "fulfilled")!;
+  if (accepted.status !== "fulfilled") throw new Error("Expected one saved correction");
+  const restored = createLocalEditStagePort({ ...f.input, store: new ProjectStore(f.store.directory) });
+  const value = await restored.readArtifact(accepted.value);
+  expect(await restored.putArtifact("creative-decision", value)).toEqual(accepted.value);
+  await expect(restored.putArtifact("creative-decision", { ...claim, commandsHash: await completionHash(["third"]) })).rejects.toThrow(/one visual correction/);
 });

@@ -1,11 +1,15 @@
+import { parsePreviewRepairClaim } from "./preview-repair.js";
 import {
   completionCanonical,
   completionHash,
   parseCompletionRequirements,
+  validateCompletionReceipt,
   type CompletionContract,
+  type CompletionRequirement,
 } from "./completion.js";
 import {
   createEditStagePlan,
+  parseEditArtifactRef,
   EditStageError,
   type EditArtifactRef,
   type EditStage,
@@ -78,6 +82,10 @@ export type StageNativeResult = {
   proposal?: { commands: unknown[] } | null;
 };
 export type StageNativePorts<T extends StageNativeResult> = {
+  /** New contracts reject impossible declaration paths before plan persistence. */
+  validateRequirements?(
+    requirements: CompletionRequirement[],
+  ): void | Promise<void>;
   readableSourceItemIds: string[] | null;
   parsePair(raw: unknown): StageCaptionPair;
   parseManifest(raw: unknown): StageCaptionManifest;
@@ -172,6 +180,13 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     text: string;
   }>;
   native: StageNativePorts<T>;
+  /** Opted in only by new profiles; retained profiles require bilingual pairs. */
+  generalEditing?: true;
+  /** New profiles may propose their retained successful review without resending JSON. */
+  reviewReferences?: true;
+  /** New profiles advertise only tools valid in the current host-owned phase. */
+  phaseScopedTools?: true;
+  previewRepair?: true;
   policy?: StagedEditPolicy;
   invoke(options: StageModelInvocation<T>): Promise<T>;
   signal: AbortSignal;
@@ -468,11 +483,17 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     }
     if (stage.id === plan.stages[0].id)
       await input.records.accountPlanning(stage.id, stage.attemptId!);
-    const manifest = manifestFor(plan, stage),
-      ref = await port.putArtifact("evidence", {
-        kind: "caption-manifest",
-        manifest,
-      });
+    const ref = await port.putArtifact(
+      "evidence",
+      input.generalEditing && stage.descriptor?.kind === "editing-basis"
+        ? {
+            kind: "editing-basis",
+            snapshotHash: input.snapshotHash,
+            bindingHash: plan.bindingHash,
+            requirementsHash: plan.requirementsHash,
+          }
+        : { kind: "caption-manifest", manifest: manifestFor(plan, stage) },
+    );
     await complete(stage, [ref]);
   }
   async function initialize(raw: unknown) {
@@ -481,12 +502,17 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       assetSequence: true,
       speechCallout: true,
     });
+    await input.native.validateRequirements?.(requirements);
     if (
       !Array.isArray(value.captionPairs) ||
-      !value.captionPairs.length ||
+      (!input.generalEditing && !value.captionPairs.length) ||
       value.captionPairs.length > 12
     )
-      throw new Error("Plan 1–12 exact caption pairs.");
+      throw new Error(
+        input.generalEditing
+          ? "Plan 0–12 exact caption pairs; use an empty array for monolingual captions or graphics."
+          : "Plan 1–12 exact caption pairs.",
+      );
     const scope = input.native.readableSourceItemIds,
       manifests: StageCaptionManifest[] = [];
     for (const rawPair of value.captionPairs) {
@@ -532,6 +558,15 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     if (new Set(ids).size !== ids.length)
       throw new Error("Caption pairs need distinct stable item identities.");
     const stages: Parameters<typeof createEditStagePlan>[0]["stages"] = [];
+    if (!manifests.length)
+      stages.push({
+        id: "evidence:editing",
+        kind: "evidence",
+        execution: "host",
+        dependencies: [],
+        inputs: [],
+        descriptor: { kind: "editing-basis" },
+      });
     for (const [index, manifest] of manifests.entries()) {
       const evidenceId = `evidence:${index}`;
       stages.push({
@@ -609,7 +644,9 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
     });
     await ensureEvidence(plan.stages[0]);
     return answer(
-      "The exact caption plan is saved. Continuing its bounded batches under the original overall allowance.",
+      manifests.length
+        ? "The exact caption plan is saved. Continuing its bounded batches under the original overall allowance."
+        : "The editing outcomes and original source basis are saved. Continuing native captions and graphics under the original overall allowance.",
     );
   }
   function stages(
@@ -618,6 +655,17 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   ): EditorStagePorts<T> {
     const getPlan = async () => (await port.load())!;
     return {
+      ...(input.phaseScopedTools
+        ? {
+            phase:
+              stage?.kind === "caption_batch"
+                ? ("caption_batch" as const)
+                : stage
+                  ? ("assemble" as const)
+                  : ("planning" as const),
+          }
+        : {}),
+      ...(input.generalEditing ? { generalEditing: true as const } : {}),
       preparedCommands: !!frozen?.preparedRef,
       ...(stage
         ? {
@@ -684,6 +732,76 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
         });
       },
       resolvePreparedEdit: async (raw) => {
+        if (
+          input.reviewReferences &&
+          raw &&
+          typeof raw === "object" &&
+          !Array.isArray(raw) &&
+          Object.keys(raw).length === 1 &&
+          "reviewRef" in raw
+        ) {
+          if (!stage || stage.kind !== "assemble")
+            throw new Error(
+              "Saved-review proposals require the active assembly stage. Review and propose the exact raw edit during planning.",
+            );
+          const ref = parseEditArtifactRef(
+            (raw as { reviewRef: unknown }).reviewRef,
+          );
+          if (
+            ref.kind !== "verification" ||
+            ref.runId !== binding.runId ||
+            ref.bindingHash !== (await completionHash(binding))
+          )
+            throw new Error(
+              "Saved review belongs to another editing attempt or source binding.",
+            );
+          const review = (await artifact(ref)) as ReviewRecord & {
+            kind?: string;
+            requirements?: unknown;
+          };
+          if (
+            (await completionHash(review)) !== ref.sha256 ||
+            new TextEncoder().encode(completionCanonical(review)).byteLength !==
+              ref.sizeBytes ||
+            review.kind !== "editing-review" ||
+            !review.receipt
+          )
+            throw new Error(
+              "The immutable successful review failed its content check.",
+            );
+          const receipt = await validateCompletionReceipt(review.receipt),
+            requirements = parseCompletionRequirements(review.requirements, {
+              assetSequence: true,
+              speechCallout: true,
+            });
+          await input.native.validateRequirements?.(requirements);
+          const commands =
+            review.edit && typeof review.edit === "object"
+              ? (review.edit as { commands?: unknown }).commands
+              : undefined;
+          if (
+            receipt.snapshotHash !== input.snapshotHash ||
+            receipt.requirementsHash !== (await completionHash(requirements)) ||
+            !Array.isArray(review.checks) ||
+            !review.checks.length ||
+            review.checks.some(
+              (check) =>
+                !check ||
+                typeof check !== "object" ||
+                (check as { passed?: unknown }).passed !== true,
+            ) ||
+            receipt.checksHash !== (await completionHash(review.checks)) ||
+            !Array.isArray(commands) ||
+            !commands.length ||
+            receipt.commandsHash !== (await completionHash(commands))
+          )
+            throw new Error(
+              "Saved review no longer matches its successful checks, requirements or exact edit.",
+            );
+          // The immutable record contains the full already-expanded edit. Do not
+          // append prepared caption commands a second time.
+          return structuredClone(review.edit);
+        }
         if (!stage) return raw;
         if (stage.kind !== "assemble")
           throw new Error(
@@ -700,6 +818,25 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           commands: [...(source?.commands ?? []), ...edit.commands],
         };
       },
+      ...(input.previewRepair
+        ? {
+            claimPreviewRepair: async (claim: unknown) => {
+              if (!stage || stage.kind !== "assemble")
+                throw new Error("Preview correction requires final assembly.");
+              const parsed = parsePreviewRepairClaim(claim);
+              if (
+                parsed.basisRef.runId !== binding.runId ||
+                parsed.basisRef.bindingHash !== (await completionHash(binding))
+              )
+                throw new Error(
+                  "Preview correction belongs to another editing basis.",
+                );
+              // The artifact host atomically accepts one exact marker per run. Replaying
+              // the same immutable claim is safe after a checkpoint interruption.
+              await port.putArtifact("creative-decision", parsed);
+            },
+          }
+        : {}),
       recordReview: async (review) => {
         if (!stage || stage.kind !== "assemble") return;
         const ref = await port.putArtifact(
@@ -707,6 +844,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           { kind: "editing-review", ...review },
         );
         await input.records.saveReview(stage.id, ref);
+        if (input.reviewReferences && review.receipt) return { reviewRef: ref };
       },
       completeEditing: async (result) => {
         if (!stage) return result;
@@ -732,7 +870,9 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           );
         const finalRef = await port.putArtifact("verification", {
           kind: "final-candidate",
-          edit: review.edit,
+          edit: input.previewRepair
+            ? { ...(review.edit as object), summary: result.summary }
+            : review.edit,
           completion: result.completion,
         } satisfies Candidate);
         await input.records.saveCandidate(finalRef);
@@ -828,7 +968,10 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       if (stage.kind === "assemble") {
         const commands: unknown[] = [];
         for (const evidence of plan.stages.filter(
-          (value) => value.kind === "evidence",
+          (value) =>
+            value.kind === "evidence" &&
+            (!input.generalEditing ||
+              value.descriptor?.kind !== "editing-basis"),
         )) {
           const manifest = manifestFor(plan, evidence),
             related = plan.stages.filter(
@@ -850,11 +993,12 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
             ...(await input.native.assembleBatches(manifest, batches)).commands,
           );
         }
-        preparedRef = await port.putArtifact("commands", {
-          summary:
-            "All exact caption batches, source trims, reciprocal pairing and styles",
-          commands,
-        });
+        if (plan.stages[0].descriptor?.kind !== "editing-basis")
+          preparedRef = await port.putArtifact("commands", {
+            summary:
+              "All exact caption batches, source trims, reciprocal pairing and styles",
+            commands,
+          });
       }
       const state = await saved(),
         contextRefs = Object.values(state.artifacts)
@@ -942,6 +1086,29 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       requirements: plan.requirements,
       requirementsHash: plan.requirementsHash,
     };
+    if (input.previewRepair) {
+      const records = await saved();
+      for (const { ref } of Object.values(records.artifacts)) {
+        if (ref.kind !== "creative-decision") continue;
+        const value = await artifact(ref);
+        if (
+          value &&
+          typeof value === "object" &&
+          (value as { kind?: string }).kind === "preview-repair"
+        ) {
+          const claim = parsePreviewRepairClaim(value);
+          if (
+            stagePorts.completionState.previewRepair &&
+            completionCanonical(stagePorts.completionState.previewRepair) !==
+              completionCanonical(claim)
+          )
+            throw new Error(
+              "The original preview correction allowance is exhausted.",
+            );
+          stagePorts.completionState.previewRepair = claim;
+        }
+      }
+    }
     const checkpointRef = { stageId: stage.id, attemptId: attempt.id };
     let result: T;
     try {

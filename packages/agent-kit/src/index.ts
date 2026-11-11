@@ -20,3 +20,5 @@ export * from "./semantic-conformance.js";
 export * from "./semantic-conformance-runner.js";
 
 export * from "./semantic-conformance-golden.js";
+
+export * from "./preview-repair.js";

@@ -6,6 +6,9 @@ import {
   usesEfficientReaders,
   usesResolvedEditSchema,
   usesStagedEditing,
+  usesReviewedEditReferences,
+  usesPreviewRepair,
+  type PreviewRepairEvidence,
   type EditorStagePorts,
   type AgentProfile,
 } from "../../agent-kit/src/index";
@@ -57,6 +60,10 @@ export async function runAgent(input: {
   extraTools?: AgentTool[];
   profile?: AgentProfile;
   stages?: EditorStagePorts<NativeAgentResult>;
+  previewEvidence?: (
+    requestId: string,
+    signal: AbortSignal,
+  ) => Promise<PreviewRepairEvidence>;
   stageContext?: unknown;
 }): Promise<NativeAgentResult> {
   const { request, model, skills, signal } = input;
@@ -114,6 +121,9 @@ export async function runAgent(input: {
   const toolset = createVideoToolset(request, skills, input.extraTools ?? [], {
     profile: input.profile,
     ...(input.stages ? { stages: input.stages } : {}),
+    ...(input.previewEvidence
+      ? { previewEvidence: input.previewEvidence }
+      : {}),
   });
   const tools = toolset.tools;
   const system =
@@ -122,6 +132,7 @@ export async function runAgent(input: {
       editingGuide: prompts.systemPrompt,
       toolNames: tools.map((tool) => tool.name),
       skills: toolset.skills,
+      phase: input.stages?.phase,
     }) +
     (usesPagedReaders(input.profile ?? "local-editor-v1")
       ? "\n\nFor an explicitly edited montage declared by asset_sequence, an appended ending follows the complete edited non-ending content, including retained unrelated items. Set final composition duration to the ending end. For other ending requests preserve the original full timeline basis."
@@ -171,6 +182,14 @@ export async function runAgent(input: {
             request.baseHash,
             input.stages
               ? {
+                  ...(usesReviewedEditReferences(
+                    input.profile ?? "local-editor-v1",
+                  )
+                    ? { reviewReferences: true as const }
+                    : {}),
+                  ...(usesPreviewRepair(input.profile ?? "local-editor-v1")
+                    ? { previewRepair: true as const }
+                    : {}),
                   resolvePreparedEdit: (edit) =>
                     input.stages!.resolvePreparedEdit(edit, signal),
                 }

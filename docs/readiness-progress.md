@@ -1,6 +1,41 @@
 # Readiness execution ledger
 
-Started: 2026-11-01. Last updated: 2026-11-04. The harness plan remains the acceptance contract.
+Started on 2026-11-01. Last updated on 2026-11-12. The harness plan remains the acceptance contract.
+
+## November 12 local runtime and browser adapters
+
+New local runs select `local-editor-v11`, kit **0.2.5**, loop **0.2.0** and engine
+**1.2.3**. The kit's immutable source is `e822993`, independent from later host,
+test and documentation commits. Earlier accepted profiles retain their archived
+coordinators, model/tool/skill identity and original allowances.
+
+The coordinated `npm run check` gate passed **914 tests**, full TypeScript,
+integrity checks and the production build. **66 actual browser checks** passed
+with scripted local providers. Source commit `3e84c24` adds installed grammar
+discovery and archive compatibility coverage. Test-only `8c08424` subsequently
+passed **16 staged-service tests** and TypeScript, covering latest-profile
+planning/assembly output bounds, review/Apply/reload/replay/Undo, and exact old
+checkpoint recovery with zero replacement model calls. Public CI for the pushed
+candidate is pending. Live-provider and human creative acceptance have separate
+records and denominators.
+
+LH-R07 and LH-R20 have owned local HTTP/browser adapters. The retained source
+inspection browser proof includes exact consent, original-file sampling, restart
+and duplicate delivery. The output proof includes two actual rendered previews,
+one correction, a decoded 1280×720/180-frame/six-second MP4 and cached-file
+publication after later editing and restart. One encoding, two publication
+attempts and one upload were observed. Reports are retained under
+`test-results/local-inspection-browser-1794414088805` and
+`test-results/local-outputs-browser-1794414090053`.
+
+A read-only inventory check of the actual local browser tool factory and latest
+native toolset found the four inspection/preview/export tools. Available tools,
+skills and prompt omit `prepare_generated_media`. The existing approved music
+workflow remains separate. General local image/video generation is the optional
+bounded LH-R15 adapter follow-up in [localhost scope](managed-ui-host-followups.md).
+
+The earlier dated records below retain their original providers, limits and
+observed outcomes.
 
 ## November 3 follow-up
 

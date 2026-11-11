@@ -67,7 +67,12 @@
     "tailwind-merge": "2.6.0",
     "tailwindcss-animate": "1.0.7",
     "zod": "4.6.7",
-    "zod-to-json-schema": "3.25.2"
+    "zod-to-json-schema": "3.25.2",
+    "@dojo-video/agent-kit-v20": "file:vendor/dojo-video-agent-kit-0.2.0.tgz",
+    "@dojo-video/agent-kit-v21": "file:vendor/dojo-video-agent-kit-0.2.1.tgz",
+    "@dojo-video/agent-kit-v22": "file:vendor/dojo-video-agent-kit-0.2.2.tgz",
+    "@dojo-video/agent-kit-v23": "file:vendor/dojo-video-agent-kit-0.2.3.tgz",
+    "@dojo-video/agent-kit-v24": "file:vendor/dojo-video-agent-kit-0.2.4.tgz"
   },
   "devDependencies": {
     "@types/node": "22.20.2",

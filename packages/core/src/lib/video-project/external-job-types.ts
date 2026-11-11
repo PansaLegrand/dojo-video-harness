@@ -3,28 +3,34 @@ const object = (value: unknown): Record<string, any> =>
     ? (value as Record<string, any>)
     : {};
 
-export function serializeEditorExternalJob(job: {
-  id: string;
-  runId: string;
-  kind: string;
-  model: string;
-  status: string;
-  inputJson: unknown;
-  quoteJson: unknown;
-  quoteHash: string;
-  placementJson: unknown;
-  assetId: string | null;
-  outputJson: unknown;
-  insertionJson: unknown;
-  errorJson: unknown;
-  cancellationRequestedAt: Date | null;
-}) {
+export function serializeEditorExternalJob(
+  job: {
+    id: string;
+    runId: string;
+    kind: string;
+    model: string;
+    status: string;
+    inputJson: unknown;
+    quoteJson: unknown;
+    quoteHash: string;
+    placementJson: unknown;
+    assetId: string | null;
+    outputJson: unknown;
+    insertionJson: unknown;
+    errorJson: unknown;
+    cancellationRequestedAt: Date | null;
+  },
+  options: { modelChoices?: readonly { value: string; label: string }[] } = {},
+) {
   const input = object(job.inputJson),
     output = object(job.outputJson),
     quote = object(job.quoteJson),
     insertion = object(job.insertionJson);
   const spec = object(input.outputSpecification);
   return {
+    ...(options.modelChoices
+      ? { modelChoices: options.modelChoices.map((choice) => ({ ...choice })) }
+      : {}),
     id: job.id,
     runId: job.runId,
     kind: job.kind,

@@ -39,6 +39,95 @@ import { normalizeCompletionNumber } from "./completion-number";
 import { captionTimingDiagnostics } from "./caption-source-range";
 import { normalizeCaptionLanguage } from "./caption-pair";
 
+import { z } from "zod/v3";
+import { nativeAgentTargetSchema } from "./agent-schema";
+
+/** Check declaration paths against the real target schemas before a host freezes
+ * them. This validates shape, not current existence/value: future graphics and
+ * optional absent fields are legitimate outcomes of the pending edit. */
+export function validateNativeCompletionRequirements(
+  raw: unknown,
+): CompletionRequirement[] {
+  const requirements = parseCompletionRequirements(raw, {
+    assetSequence: true,
+    speechCallout: true,
+  });
+  const unwrap = (input: z.ZodTypeAny): z.ZodTypeAny => {
+    if (input instanceof z.ZodEffects) return unwrap(input.innerType());
+    if (input instanceof z.ZodOptional || input instanceof z.ZodNullable)
+      return unwrap(input.unwrap());
+    if (input instanceof z.ZodDefault) return unwrap(input.removeDefault());
+    if (input instanceof z.ZodLazy) return unwrap(input.schema);
+    return input;
+  };
+  const keyedElement = (input: z.ZodTypeAny): boolean => {
+    const schema = unwrap(input);
+    if (schema instanceof z.ZodObject) return Object.hasOwn(schema.shape, "id");
+    if (
+      schema instanceof z.ZodUnion ||
+      schema instanceof z.ZodDiscriminatedUnion
+    )
+      return schema.options.some((option: z.ZodTypeAny) =>
+        keyedElement(option),
+      );
+    if (schema instanceof z.ZodIntersection)
+      return keyedElement(schema._def.left) || keyedElement(schema._def.right);
+    return false;
+  };
+  const hasPath = (input: z.ZodTypeAny, path: readonly string[]): boolean => {
+    if (!path.length) return true;
+    const schema = unwrap(input),
+      [key, ...rest] = path;
+    if (schema instanceof z.ZodObject) {
+      const next = schema.shape[key!];
+      return !!next && hasPath(next, rest);
+    }
+    if (schema instanceof z.ZodRecord)
+      return (
+        schema.keySchema.safeParse(key).success &&
+        hasPath(schema.valueSchema, rest)
+      );
+    if (
+      schema instanceof z.ZodUnion ||
+      schema instanceof z.ZodDiscriminatedUnion
+    )
+      return schema.options.some((option: z.ZodTypeAny) =>
+        hasPath(option, path),
+      );
+    if (schema instanceof z.ZodIntersection)
+      return (
+        hasPath(schema._def.left, path) || hasPath(schema._def.right, path)
+      );
+    if (schema instanceof z.ZodArray) {
+      // readVideoProjectPath resolves arrays by stable entry IDs, never indexes.
+      // Arrays of unkeyed words/animations can be checked as a whole only.
+      return keyedElement(schema.element) && hasPath(schema.element, rest);
+    }
+    // Extension params and project metadata deliberately admit opaque JSON. Their
+    // actual presence/value still belongs to the ordinary candidate review.
+    return schema instanceof z.ZodAny || schema instanceof z.ZodUnknown;
+  };
+  for (const requirement of requirements) {
+    if (
+      requirement.kind !== "property" &&
+      requirement.kind !== "property_absent"
+    )
+      continue;
+    const kind = requirement.target.kind,
+      schema = nativeAgentTargetSchema(kind);
+    if (hasPath(schema, requirement.path)) continue;
+    const hint =
+      kind === "item" &&
+      hasPath(nativeAgentTargetSchema("node"), requirement.path)
+        ? `Use a node target with itemId ${"itemId" in requirement.target ? JSON.stringify(requirement.target.itemId) : "from the source"} and its actual nodeId from inspect_project.nodeTarget, with path ${JSON.stringify(requirement.path)}, or keep the item target with path ${JSON.stringify(["node", ...requirement.path])}.`
+        : `Valid ${kind} roots are ${Object.keys(schema.shape).join(", ")}; nested paths must follow the declared native fields, using stable IDs for keyed arrays.`;
+    throw new Error(
+      `Completion requirement ${requirement.id} has invalid ${kind} property path ${JSON.stringify(requirement.path)}. ${hint}`,
+    );
+  }
+  return requirements;
+}
+
 const spanEnd = (document: VideoProjectDocument) =>
   Math.max(
     document.format.durationInFrames,

@@ -1,0 +1,824 @@
+import { runAgent } from "../packages/agent/src/loop";
+import type {
+  LoopCheckpoint,
+  LoopCheckpointPort,
+} from "../packages/agent-loop/src/index";
+import { expect, it, vi } from "vitest";
+import Ajv from "ajv";
+import {
+  builtInSkills,
+  completionCanonical,
+  completionHash,
+  createCompletionReceipt,
+  createEditorHostTools,
+  type PreviewRepairEvidence,
+  createEditStagePlan,
+  runEditingStages,
+  transitionEditStagePlan,
+  restoreCompletionStateFromMessages,
+  type EditArtifactRef,
+  type EditStagePlan,
+  type EditStagePort,
+  type StageCoordinatorState,
+  type StageNativePorts,
+} from "../packages/agent-kit/src/index";
+import { createVideoToolset } from "../packages/agent/src/tools";
+import {
+  createVideoProjectDocument,
+  hashVideoProjectDocument,
+} from "../packages/core/src/lib/video-project/document";
+import {
+  compileNativeAgentResult,
+  type NativeAgentRequest,
+  type NativeAgentResult,
+} from "../packages/core/src/lib/video-project/agent-runtime";
+import { compileNativeCompletionResponse } from "../packages/core/src/lib/video-project/completion-preflight";
+
+async function fixture() {
+  const document = createVideoProjectDocument({
+    width: 1280,
+    height: 720,
+    fps: 30,
+    durationInFrames: 360,
+  });
+  const request: NativeAgentRequest = {
+    contract: "video-project-commands",
+    version: 1,
+    baseRevision: 0,
+    baseHash: await hashVideoProjectDocument(document),
+    document,
+    instruction: "Create a comparison",
+    context: { selectedItemIds: [], playheadFrame: 0 },
+  };
+  const requirements = [
+    { id: "first", kind: "item_present" as const, itemId: "shape0" },
+    { id: "last", kind: "item_present" as const, itemId: "shape23" },
+  ];
+  const edit = {
+    outcome: "proposal",
+    summary: "Complete comparison",
+    commands: Array.from({ length: 24 }, (_, index) => ({
+      type: "insertGraphic",
+      itemId: `shape${index}`,
+      trackId: "visual",
+      name: `Editable shape ${index} ${"descriptive ".repeat(25)}`,
+      node: {
+        type: "shape",
+        from: 0,
+        duration: 360,
+        shape: { kind: "rect" },
+        style: {
+          position: "absolute",
+          left: index * 45,
+          top: 80,
+          width: 30,
+          height: 100,
+          fill: "#22d3ee",
+        },
+      },
+    })),
+  };
+  const binding = {
+    projectId: "project",
+    runId: "run",
+    baseHash: request.baseHash,
+    instructionHash: await completionHash(request.instruction),
+    sourceHash: await completionHash(document.sources),
+    scopeHash: await completionHash({ kind: "project" }),
+    profile: "local-editor-v8",
+    modelIdentity: "known-model",
+  };
+  let plan = await createEditStagePlan({
+    id: "plan",
+    binding,
+    instruction: request.instruction!,
+    requirements,
+    limits: {
+      modelCalls: 32,
+      toolCalls: 64,
+      outputTokens: 32000,
+      attempts: 64,
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      perStage: { modelCalls: 8, toolCalls: 24, outputTokens: 16000 },
+    },
+    stages: [
+      {
+        id: "assemble",
+        kind: "assemble",
+        execution: "model",
+        inputs: [],
+        dependencies: [],
+        descriptor: { kind: "editing-basis" },
+      },
+      {
+        id: "verify",
+        kind: "verify",
+        execution: "host",
+        inputs: [],
+        dependencies: ["assemble"],
+      },
+    ],
+  });
+  const values = new Map<string, unknown>(),
+    refs: Record<string, { ref: EditArtifactRef }> = {};
+  const state: StageCoordinatorState = { plan, artifacts: refs };
+  const port: EditStagePort = {
+    load: async () => structuredClone(plan),
+    initialize: async () => {
+      throw Error("Already initialized");
+    },
+    transition: async (event, expectedRevision) => {
+      const result = await transitionEditStagePlan(plan, event, {
+        expectedRevision,
+        now: new Date().toISOString(),
+      });
+      plan = result.plan;
+      state.plan = plan;
+      return result;
+    },
+    putArtifact: async (kind, value) => {
+      const sha256 = await completionHash(value),
+        ref: EditArtifactRef = {
+          version: 1,
+          id: `artifact:${sha256.slice(7)}`,
+          runId: binding.runId,
+          bindingHash: await completionHash(binding),
+          kind,
+          sha256,
+          sizeBytes: new TextEncoder().encode(completionCanonical(value))
+            .byteLength,
+        };
+      values.set(ref.id, structuredClone(value));
+      refs[ref.id] = { ref };
+      return ref;
+    },
+    // Deliberately return raw bytes in this unit adapter: coordinator must still
+    // reject corrupt content rather than trusting a storage implementation.
+    readArtifact: async (ref) => structuredClone(values.get(ref.id)),
+  };
+  const noTranslation = () => {
+    throw Error("No translation or synthetic speech in this test");
+  };
+  const native: StageNativePorts<NativeAgentResult> = {
+    readableSourceItemIds: [],
+    parsePair: noTranslation,
+    parseManifest: noTranslation,
+    createManifest: noTranslation,
+    prepareBatch: noTranslation,
+    assembleBatches: noTranslation,
+    batchContext: noTranslation,
+    readCues: async () => ({}),
+    compileAnswer: (summary) =>
+      compileNativeAgentResult(request, {
+        outcome: "answer",
+        summary,
+        commands: [],
+      }),
+    compileFinal: (edit, completion) =>
+      compileNativeCompletionResponse(request, {
+        ...(edit as object),
+        completion,
+      }),
+  };
+  const records = {
+    read: async () => state,
+    accountPlanning: async () => {},
+    saveReview: async (stageId: string, ref: EditArtifactRef) => {
+      state.lastReviews ??= {};
+      state.lastReviews[stageId] = ref;
+    },
+    saveCandidate: async (ref: EditArtifactRef) => {
+      state.savedCandidateRef = ref;
+    },
+    checkpoint: async () => undefined,
+  };
+  return {
+    request,
+    requirements,
+    edit,
+    binding,
+    values,
+    port,
+    records,
+    native,
+  };
+}
+const signal = () => new AbortController().signal;
+
+it("a successful staged review resolves its exact large edit after checkpoint restoration without model JSON repetition", async () => {
+  const f = await fixture(),
+    before = JSON.stringify(f.request);
+  let ref: EditArtifactRef | undefined,
+    stateBytes = 0,
+    invocationCount = 0;
+  const result = await runEditingStages({
+    ...f,
+    snapshotHash: f.request.baseHash,
+    modelIdentity: f.binding.modelIdentity,
+    run: {
+      instruction: f.request.instruction!,
+      createdAt: new Date().toISOString(),
+    },
+    history: [],
+    generalEditing: true,
+    reviewReferences: true,
+    phaseScopedTools: true,
+    signal: signal(),
+    invoke: async (options) => {
+      invocationCount++;
+      const session = createVideoToolset(f.request, builtInSkills(), [], {
+        profile: "local-editor-v9",
+        stages: options.stages,
+        initialCompletionState: options.stages.completionState,
+      });
+      expect(
+        session.tools.some((tool) => tool.name === "plan_edit_stages"),
+      ).toBe(false);
+      expect(
+        session.tools.some((tool) => tool.name === "save_caption_batch"),
+      ).toBe(false);
+      const reviewArgs = { requirements: f.requirements, edit: f.edit };
+      const review = await session.tools
+        .find((tool) => tool.name === "review_edit")!
+        .execute(reviewArgs, signal());
+      expect(review).toMatchObject({
+        kind: "observation",
+        value: {
+          completionPreflight: { status: "passed" },
+          nextAction: expect.stringContaining("{reviewed:true}"),
+        },
+      });
+      if (review.kind !== "observation")
+        throw Error("Review observation required");
+      ref = (
+        review.value as { completionPreflight: { reviewRef: EditArtifactRef } }
+      ).completionPreflight.reviewRef;
+      expect(ref.kind).toBe("verification");
+      const restored = await restoreCompletionStateFromMessages(
+        [
+          {
+            role: "assistant",
+            tool_calls: [
+              {
+                id: "review",
+                function: {
+                  name: "review_edit",
+                  arguments: JSON.stringify(reviewArgs),
+                },
+              },
+            ],
+          },
+          {
+            role: "tool",
+            tool_call_id: "review",
+            content: JSON.stringify(review.value),
+          },
+        ],
+        f.request.baseHash,
+        {
+          reviewReferences: true,
+          resolvePreparedEdit: (edit) =>
+            options.stages.resolvePreparedEdit(edit, signal()),
+        },
+      );
+      expect(restored?.successfulReviewRef).toEqual(ref);
+      expect(restored).not.toHaveProperty("commands");
+      stateBytes = JSON.stringify(restored).length;
+      expect(stateBytes).toBeLessThan(3000);
+      const resumed = createVideoToolset(f.request, builtInSkills(), [], {
+        profile: "local-editor-v9",
+        stages: options.stages,
+        initialCompletionState: restored,
+      });
+      expect(resumed.inventory).toEqual(session.inventory);
+      const propose = resumed.tools.find(
+        (tool) => tool.name === "propose_edit",
+      )!;
+      const validate = new Ajv({ strict: false }).compile(propose.parameters);
+      expect(validate({ reviewed: true })).toBe(true);
+      expect(validate(f.edit)).toBe(true);
+      expect(validate({ reviewed: true, commands: [] })).toBe(false);
+      expect(validate({ reviewRef: ref })).toBe(false);
+      expect(JSON.stringify(f.edit).length).toBeGreaterThan(12000);
+      expect(JSON.stringify({ reviewed: true }).length).toBeLessThan(32);
+      const terminal = await propose.execute({ reviewed: true }, signal());
+      if (terminal.kind !== "terminal") throw Error("Proposal required");
+      return terminal.result;
+    },
+  });
+  expect(
+    result.proposal?.commands.filter((command) => command.type === "addItem"),
+  ).toHaveLength(24);
+  expect(invocationCount).toBe(1);
+  expect(JSON.stringify(f.request)).toBe(before);
+  const noNewModel = vi.fn(async () => {
+    throw Error("Saved candidate replay must not call a model");
+  });
+  const replay = await runEditingStages({
+    ...f,
+    snapshotHash: f.request.baseHash,
+    modelIdentity: f.binding.modelIdentity,
+    run: {
+      instruction: f.request.instruction!,
+      createdAt: new Date().toISOString(),
+    },
+    history: [],
+    generalEditing: true,
+    reviewReferences: true,
+    phaseScopedTools: true,
+    signal: signal(),
+    invoke: noNewModel,
+  });
+  expect(replay).toEqual(result);
+  expect(noNewModel).not.toHaveBeenCalled();
+});
+
+it("failed and error reviews clear compact eligibility in memory and restored checkpoints", async () => {
+  const f = await fixture();
+  await expect(
+    runEditingStages({
+      ...f,
+      snapshotHash: f.request.baseHash,
+      modelIdentity: f.binding.modelIdentity,
+      run: {
+        instruction: f.request.instruction!,
+        createdAt: new Date().toISOString(),
+      },
+      history: [],
+      generalEditing: true,
+      reviewReferences: true,
+      signal: signal(),
+      invoke: async (options) => {
+        const session = createVideoToolset(f.request, builtInSkills(), [], {
+          profile: "local-editor-v8",
+          stages: options.stages,
+        });
+        const tool = (name: string) =>
+          session.tools.find((tool) => tool.name === name)!;
+        await expect(
+          tool("propose_edit").execute({ reviewed: true }, signal()),
+        ).rejects.toThrow(/No latest successful/);
+        const args = { requirements: f.requirements, edit: f.edit },
+          passed = await tool("review_edit").execute(args, signal());
+        const failed = await tool("review_edit").execute(
+          { edit: { ...f.edit, commands: [] } },
+          signal(),
+        );
+        expect(failed).toMatchObject({
+          kind: "observation",
+          value: { completionPreflight: { status: "failed" } },
+        });
+        await expect(
+          tool("propose_edit").execute({ reviewed: true }, signal()),
+        ).rejects.toThrow(/No latest successful/);
+        if (passed.kind !== "observation")
+          throw Error("Expected successful review");
+        for (const reply of [
+          failed.kind === "observation" ? failed.value : {},
+          { error: "Invalid native requirement path" },
+        ]) {
+          const restored = await restoreCompletionStateFromMessages(
+            [
+              {
+                role: "assistant",
+                tool_calls: [
+                  {
+                    id: "pass",
+                    function: {
+                      name: "review_edit",
+                      arguments: JSON.stringify(args),
+                    },
+                  },
+                  {
+                    id: "fail",
+                    function: {
+                      name: "review_edit",
+                      arguments: JSON.stringify({
+                        edit: { ...f.edit, commands: [] },
+                      }),
+                    },
+                  },
+                ],
+              },
+              {
+                role: "tool",
+                tool_call_id: "pass",
+                content: JSON.stringify(passed.value),
+              },
+              {
+                role: "tool",
+                tool_call_id: "fail",
+                content: JSON.stringify(reply),
+              },
+            ],
+            f.request.baseHash,
+            {
+              reviewReferences: true,
+              resolvePreparedEdit: (edit) =>
+                options.stages.resolvePreparedEdit(edit, signal()),
+            },
+          );
+          expect(restored?.successfulReceipt).toBeUndefined();
+          expect(restored?.successfulReviewRef).toBeUndefined();
+        }
+        throw Error("Done after negative reference checks");
+      },
+    }),
+  ).rejects.toThrow(/Done after negative/);
+});
+
+it.each(["payload", "run", "binding", "receipt", "checks"])(
+  "saved review rejects changed %s before proposing",
+  async (mode) => {
+    const f = await fixture();
+    await expect(
+      runEditingStages({
+        ...f,
+        snapshotHash: f.request.baseHash,
+        modelIdentity: f.binding.modelIdentity,
+        run: {
+          instruction: f.request.instruction!,
+          createdAt: new Date().toISOString(),
+        },
+        history: [],
+        generalEditing: true,
+        reviewReferences: true,
+        signal: signal(),
+        invoke: async (options) => {
+          const session = createVideoToolset(f.request, builtInSkills(), [], {
+            profile: "local-editor-v8",
+            stages: options.stages,
+          });
+          const review = await session.tools
+            .find((tool) => tool.name === "review_edit")!
+            .execute({ requirements: f.requirements, edit: f.edit }, signal());
+          if (review.kind !== "observation") throw Error("Review required");
+          const ref = structuredClone(
+            (
+              review.value as {
+                completionPreflight: { reviewRef: EditArtifactRef };
+              }
+            ).completionPreflight.reviewRef,
+          );
+          const record = f.values.get(ref.id) as {
+            edit: { commands: unknown[] };
+            receipt: Record<string, unknown>;
+            checks: Array<{ passed: boolean }>;
+          };
+          if (mode === "run") ref.runId = "other-run";
+          if (mode === "binding") ref.bindingHash = "sha256:" + "f".repeat(64);
+          if (mode === "payload") record.edit.commands.pop();
+          if (mode === "receipt")
+            record.receipt.snapshotHash = "sha256:" + "f".repeat(64);
+          if (mode === "checks") record.checks[0].passed = false;
+          if (["payload", "receipt", "checks"].includes(mode)) {
+            if (mode === "receipt" || mode === "checks") {
+              const {
+                version: _version,
+                receiptHash: _receiptHash,
+                ...fields
+              } = record.receipt;
+              record.receipt = await createCompletionReceipt({
+                ...fields,
+                ...(mode === "checks"
+                  ? { checksHash: await completionHash(record.checks) }
+                  : {}),
+              } as Parameters<typeof createCompletionReceipt>[0]);
+            }
+            // Self-consistent transport bytes still cannot change source/command
+            // receipt bindings or turn failed checks into a saved success.
+            ref.sha256 = await completionHash(record);
+            ref.sizeBytes = new TextEncoder().encode(
+              completionCanonical(record),
+            ).byteLength;
+          }
+          f.values.set(ref.id, record);
+          await expect(
+            options.stages.resolvePreparedEdit({ reviewRef: ref }, signal()),
+          ).rejects.toThrow(/review|binding|content|checks/i);
+          throw Error("Done after corruption check");
+        },
+      }),
+    ).rejects.toThrow(/Done after corruption/);
+  },
+);
+
+it("planning without a persisted stage review keeps the raw proposal form and rejects the compact marker", async () => {
+  const f = await fixture(),
+    stages = {
+      preparedCommands: false,
+      generalEditing: true,
+      planEditStages: async () => {
+        throw Error("No plan");
+      },
+      saveCaptionBatch: async () => {
+        throw Error("No translation");
+      },
+      readEditArtifact: async () => ({}),
+      resolvePreparedEdit: async (edit: unknown) => edit,
+    };
+  const session = createVideoToolset(f.request, builtInSkills(), [], {
+    profile: "local-editor-v8",
+    stages,
+  });
+  const review = await session.tools
+    .find((tool) => tool.name === "review_edit")!
+    .execute({ requirements: f.requirements, edit: f.edit }, signal());
+  expect(review).toMatchObject({
+    kind: "observation",
+    value: {
+      completionPreflight: { status: "passed" },
+      nextAction: expect.stringContaining("exact edit object"),
+    },
+  });
+  await expect(
+    session.tools
+      .find((tool) => tool.name === "propose_edit")!
+      .execute({ reviewed: true }, signal()),
+  ).rejects.toThrow(/No latest successful/);
+  expect(
+    await session.tools
+      .find((tool) => tool.name === "propose_edit")!
+      .execute(f.edit, signal()),
+  ).toMatchObject({ kind: "terminal", result: { outcome: "proposal" } });
+});
+
+it.each(["local-editor-v8", "local-editor-v9"] as const)(
+  "actual local runAgent resumes a saved review and retained marker without repeating a model response (%s)",
+  async (profile) => {
+    const f = await fixture();
+    let calls = 0;
+    await runEditingStages({
+      ...f,
+      snapshotHash: f.request.baseHash,
+      modelIdentity: f.binding.modelIdentity,
+      run: {
+        instruction: f.request.instruction!,
+        createdAt: new Date().toISOString(),
+      },
+      history: [],
+      generalEditing: true,
+      reviewReferences: true,
+      ...(profile === "local-editor-v9"
+        ? { phaseScopedTools: true as const }
+        : {}),
+      signal: signal(),
+      invoke: async (options) => {
+        let saved: LoopCheckpoint | null = null,
+          failure: "review" | "marker" | null = "review";
+        const model = {
+          identity: f.binding.modelIdentity,
+          complete: async () => {
+            calls++;
+            return {
+              text: "",
+              usage: { inputTokens: 100, outputTokens: 40 },
+              calls: [
+                {
+                  id: `paid-${calls}`,
+                  name: calls === 1 ? "review_edit" : "propose_edit",
+                  arguments: JSON.stringify(
+                    calls === 1 ? { edit: f.edit } : { reviewed: true },
+                  ),
+                },
+              ],
+            };
+          },
+        };
+        const checkpoint: LoopCheckpointPort = {
+          runId: "actual-local-wrapper",
+          snapshotHash: f.request.baseHash,
+          load: async () => structuredClone(saved),
+          save: async (next, expected) => {
+            expect(expected).toBe(saved?.revision ?? null);
+            saved = structuredClone(next);
+            if (failure === "review" && next.phase === "tool-observations") {
+              failure = "marker";
+              throw Error("Interrupted after durable review");
+            }
+            if (
+              failure === "marker" &&
+              next.phase === "model-returned" &&
+              next.modelCalls === 2
+            ) {
+              failure = null;
+              throw Error("Interrupted after paid marker reply");
+            }
+          },
+        };
+        const input = {
+          request: f.request,
+          model,
+          skills: builtInSkills(),
+          profile,
+          stages: options.stages,
+          checkpoint,
+          signal: signal(),
+        };
+        await expect(runAgent(input)).rejects.toThrow(
+          /Interrupted after durable review/,
+        );
+        expect(calls).toBe(1);
+        await expect(runAgent(input)).rejects.toThrow(
+          /Interrupted after paid marker reply/,
+        );
+        expect(calls).toBe(2);
+        const result = await runAgent(input);
+        expect(calls).toBe(2); // Pending marker executes from its retained paid reply.
+        const beforeReplay = calls;
+        expect(await runAgent(input)).toEqual(result);
+        expect(calls).toBe(beforeReplay);
+        return result;
+      },
+    });
+    expect(calls).toBe(2);
+  },
+);
+
+it.each([
+  ["local-editor-v9", false],
+  ["local-editor-v10", true],
+] as const)(
+  "malformed reviews invalidate compact eligibility only in the new profile (%s)",
+  async (profile, clears) => {
+    for (const malformed of [null, { edit: {}, unexpected: true }]) {
+      const f = await fixture();
+      const run = runEditingStages({
+        ...f,
+        snapshotHash: f.request.baseHash,
+        modelIdentity: f.binding.modelIdentity,
+        run: {
+          instruction: f.request.instruction!,
+          createdAt: new Date().toISOString(),
+        },
+        history: [],
+        generalEditing: true,
+        reviewReferences: true,
+        signal: signal(),
+        invoke: async (options) => {
+          const session = createVideoToolset(f.request, builtInSkills(), [], {
+            profile,
+            stages: options.stages,
+          });
+          const review = session.tools.find(
+            (tool) => tool.name === "review_edit",
+          )!;
+          await review.execute(
+            { requirements: f.requirements, edit: f.edit },
+            signal(),
+          );
+          await expect(review.execute(malformed, signal())).rejects.toThrow();
+          const proposed = session.tools
+            .find((tool) => tool.name === "propose_edit")!
+            .execute({ reviewed: true }, signal());
+          if (clears)
+            await expect(proposed).rejects.toThrow(/No latest successful/);
+          else
+            expect(await proposed).toMatchObject({
+              kind: "terminal",
+              result: { outcome: "proposal" },
+            });
+          throw Error("Completed eligibility check");
+        },
+      });
+      if (clears)
+        await expect(run).rejects.toThrow("Completed eligibility check");
+      else expect(await run).toMatchObject({ outcome: "proposal" });
+    }
+  },
+);
+
+it("actual stage coordinator retains one correction claim and the unresolved report in its replayed native candidate", async () => {
+  const f = await fixture();
+  const evidence = new Map<string, PreviewRepairEvidence>();
+  let invocations = 0;
+  const input = {
+    ...f,
+    snapshotHash: f.request.baseHash,
+    modelIdentity: f.binding.modelIdentity,
+    run: {
+      instruction: f.request.instruction!,
+      createdAt: new Date().toISOString(),
+    },
+    history: [],
+    generalEditing: true as const,
+    reviewReferences: true as const,
+    phaseScopedTools: true as const,
+    previewRepair: true as const,
+    signal: signal(),
+  };
+  const result = await runEditingStages({
+    ...input,
+    invoke: async (options) => {
+      invocations++;
+      const extraTools = createEditorHostTools<NativeAgentResult>({
+        profile: "local-editor-v10",
+        ports: {
+          request_project_preview: async (args) => {
+            const ref = args.candidateRef as EditArtifactRef;
+            const saved = f.values.get(ref.id) as {
+              receipt: { previewHash: string };
+            };
+            const requestId = `preview-${ref.sha256}`;
+            evidence.set(requestId, {
+              requestId,
+              receiptHash: "b".repeat(64),
+              candidateRef: ref,
+              snapshotHash: f.request.baseHash,
+              renderHash: saved.receipt.previewHash,
+              frames: args.frames as number[],
+              audio: "not-inspected",
+            });
+            return { kind: "observation", value: { requestId } };
+          },
+        },
+      });
+      const session = createVideoToolset(
+        f.request,
+        builtInSkills(),
+        extraTools,
+        {
+          profile: "local-editor-v10",
+          stages: options.stages,
+          previewEvidence: async (id) => evidence.get(id)!,
+        },
+      );
+      const invoke = (name: string, args: unknown) =>
+        session.tools
+          .find((tool) => tool.name === name)!
+          .execute(args, signal());
+      expect(await invoke("review_edit", { edit: f.edit })).toMatchObject({
+        kind: "observation",
+        value: { completionPreflight: { status: "passed" } },
+      });
+      await invoke("request_project_preview", {
+        reviewed: true,
+        frames: [0, 120],
+      });
+      const first = [...evidence.values()].at(-1)!;
+      const repaired = structuredClone(f.edit);
+      repaired.commands[0].node.style.fill = "#ff0000";
+      expect(
+        await invoke("review_edit", {
+          edit: repaired,
+          previewRepair: {
+            requestId: first.requestId,
+            receiptHash: first.receiptHash,
+            issues: [
+              {
+                frame: 120,
+                description: "Comparison bar needs the requested red",
+              },
+            ],
+          },
+        }),
+      ).toMatchObject({
+        kind: "observation",
+        value: { completionPreflight: { status: "passed" } },
+      });
+      const claimed = await f.records.read();
+      const markers = Object.values(claimed.artifacts).filter(
+        (record) => record.ref.kind === "creative-decision",
+      );
+      expect(markers).toHaveLength(1);
+      expect(await f.port.readArtifact(markers[0].ref)).toMatchObject({
+        kind: "preview-repair",
+        requestId: first.requestId,
+      });
+      await invoke("request_project_preview", {
+        reviewed: true,
+        frames: [0, 120],
+      });
+      const second = [...evidence.values()].at(-1)!;
+      const proposed = await invoke("propose_edit", {
+        reviewed: true,
+        previewReport: {
+          requestId: second.requestId,
+          receiptHash: second.receiptHash,
+          issues: [
+            {
+              frame: 120,
+              description: "Source image identity still needs confirmation",
+            },
+          ],
+        },
+      });
+      if (proposed.kind !== "terminal")
+        throw Error("Expected saved native proposal");
+      return proposed.result;
+    },
+  });
+  expect(result).toMatchObject({
+    outcome: "proposal",
+    summary: expect.stringContaining("image identity still needs confirmation"),
+  });
+  expect(result.summary).toContain("Audio was not inspected");
+  const replay = await runEditingStages({
+    ...input,
+    invoke: async () => {
+      throw Error("Saved candidate must replay without model work");
+    },
+  });
+  expect(replay).toEqual(result);
+  expect(invocations).toBe(1);
+});

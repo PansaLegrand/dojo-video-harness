@@ -1,3 +1,4 @@
+import { sourceAudioTrackPresence } from "../../core/src/lib/video-project/source-audio";
 import { importSvgGraphic } from "@dojo-video-engine/interchange/svg";
 import {
   parseThreeScene,
@@ -14,6 +15,11 @@ import {
   usesCompletionPreflight,
   usesPagedReaders,
   usesStagedEditing,
+  usesAuthoringContracts,
+  usesReviewedEditReferences,
+  usesPreviewRepair,
+  usesInstalledGraphicsGrammar,
+  type PreviewRepairEvidence,
   type EditorStagePorts,
 } from "../../agent-kit/src/index";
 import {
@@ -21,7 +27,11 @@ import {
   type NativeAgentRequest,
   type NativeAgentResult,
 } from "../../core/src/lib/video-project/agent-runtime";
-import { nativeAgentResponseSchema } from "../../core/src/lib/video-project/agent-schema";
+import {
+  nativeCompletionTargetHints,
+  nativeAgentGraphicsSchema,
+  nativeAgentResponseSchema,
+} from "../../core/src/lib/video-project/agent-schema";
 import {
   searchNativeTranscript,
   nativeTranscriptScopedSourceItemIds,
@@ -30,6 +40,7 @@ import { nativeClarificationSchema } from "../../core/src/lib/video-project/agen
 import { parseVideoProjectDocument } from "../../core/src/lib/video-project/document";
 import { prepareReadableOverlay } from "../../core/src/lib/video-project/readable-overlay";
 import {
+  validateNativeCompletionRequirements,
   reviewNativeCompletionEdit,
   compileNativeCompletionResponse,
 } from "../../core/src/lib/video-project/completion-preflight";
@@ -79,6 +90,10 @@ export function createVideoToolset(
     profile?: AgentProfile;
     initialCompletionState?: CompletionState;
     stages?: EditorStagePorts<NativeAgentResult>;
+    previewEvidence?: (
+      requestId: string,
+      signal: AbortSignal,
+    ) => Promise<PreviewRepairEvidence>;
   } = {},
 ) {
   const document = parseVideoProjectDocument(request.document);
@@ -86,10 +101,16 @@ export function createVideoToolset(
     ...request,
     document,
   });
+  const audioAssets = Object.values(document.assets).filter((asset) =>
+    ["video", "audio"].includes(asset.type),
+  );
   const toolset = createEditorToolset<NativeAgentResult>({
     skills,
     profile: options.profile ?? "local-editor-v1",
     snapshotHash: request.baseHash,
+    ...(usesPreviewRepair(options.profile ?? "local-editor-v1")
+      ? { previewSnapshotHash: request.visualDocumentHash ?? request.baseHash }
+      : {}),
     initialCompletionState: options.initialCompletionState,
     extraTools,
     proposalSchema: nativeAgentResponseSchema({
@@ -98,6 +119,17 @@ export function createVideoToolset(
       anchorHold: usesCompletionPreflight(options.profile ?? "local-editor-v1"),
     }),
     ports: {
+      ...(usesPreviewRepair(options.profile ?? "local-editor-v1") &&
+      options.previewEvidence
+        ? { previewEvidence: options.previewEvidence }
+        : {}),
+      ...(usesReviewedEditReferences(options.profile ?? "local-editor-v1")
+        ? {
+            validateRequirements: (raw: unknown) => {
+              validateNativeCompletionRequirements(raw);
+            },
+          }
+        : {}),
       ...(usesStagedEditing(options.profile ?? "local-editor-v1")
         ? {
             readCaptionTrack: (
@@ -118,11 +150,37 @@ export function createVideoToolset(
                 : readNativeCaptionCues(request, args),
           }
         : {}),
-      inspectGraphicsSchema: () => ({
-        three: zodToJsonSchema(threeSceneSchema, { $refStrategy: "none" }),
-        extension: THREE_EXTENSION,
-      }),
+      inspectGraphicsSchema: (_signal, query) =>
+        usesAuthoringContracts(options.profile ?? "local-editor-v1") &&
+        query?.kind !== "three"
+          ? nativeAgentGraphicsSchema(
+              query as { kind?: "native" | "macro"; macro?: string },
+              usesInstalledGraphicsGrammar(options.profile ?? "local-editor-v1")
+                ? { installedGrammar: true }
+                : {},
+            )
+          : {
+              three: zodToJsonSchema(threeSceneSchema, {
+                $refStrategy: "none",
+              }),
+              extension: THREE_EXTENSION,
+            },
       inspectProject: (query) => ({
+        ...(usesPreviewRepair(options.profile ?? "local-editor-v1")
+          ? {
+              sourceAudio: {
+                sources: audioAssets.slice(0, 50).map((asset) => ({
+                  sourceId: asset.id,
+                  audioTrack: sourceAudioTrackPresence(document, asset.id),
+                })),
+                omitted: Math.max(0, audioAssets.length - 50),
+                coverage: "listed-sources-only",
+              },
+            }
+          : {}),
+        ...(usesReviewedEditReferences(options.profile ?? "local-editor-v1")
+          ? { completionTargets: nativeCompletionTargetHints(document.items) }
+          : {}),
         ...(usesCompletionPreflight(options.profile ?? "local-editor-v1")
           ? {
               completionCaptionSources: usesStagedEditing(
@@ -265,15 +323,29 @@ export function createVideoToolset(
   });
   return {
     ...toolset,
-    tools: toolset.tools.map(
-      (tool): AgentTool => ({
+    tools: toolset.tools.map((tool): AgentTool => {
+      const host =
+        (options.profile === "local-editor-v10" ||
+          options.profile === "local-editor-v11") &&
+        [
+          "inspect_image",
+          "sample_video_frames",
+          "request_project_preview",
+          "request_project_export",
+        ].includes(tool.name)
+          ? extraTools?.find((extra) => extra.name === tool.name)
+          : undefined;
+      return {
         ...tool,
-        replaySafe: (replaySafeNativeToolNames as readonly string[]).includes(
-          tool.name,
-        ),
-        compactionSafe: ["inspect_project", "read_skill"].includes(tool.name),
-      }),
-    ),
+        replaySafe:
+          (replaySafeNativeToolNames as readonly string[]).includes(
+            tool.name,
+          ) || host?.replaySafe === true,
+        compactionSafe:
+          ["inspect_project", "read_skill"].includes(tool.name) ||
+          host?.compactionSafe === true,
+      };
+    }),
   };
 }
 export function createVideoTools(

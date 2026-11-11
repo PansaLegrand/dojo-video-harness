@@ -4,6 +4,7 @@ import {
   completionHash,
   EditStageError,
   parseEditArtifactRef,
+  parsePreviewRepairClaim,
   parseEditStagePlan,
   transitionEditStagePlan,
   type EditArtifactKind,
@@ -264,6 +265,18 @@ export async function putLocalEditStageArtifact(
   if (saved.artifacts[ref.id]) {
     await readStoredArtifact(saved, ref);
     return ref;
+  }
+  if (["local-editor-v10", "local-editor-v11"].includes(saved.plan.binding.profile) && kind === "creative-decision" &&
+      value && typeof value === "object" && "kind" in value && value.kind === "preview-repair") {
+    const claim = parsePreviewRepairClaim(value);
+    if (["failed", "cancelled"].includes(saved.plan.status)) throw new EditStageError("STAGE_CONFLICT", "This editing request cannot begin a visual correction.");
+    if (claim.basisRef.runId !== saved.plan.binding.runId || claim.basisRef.bindingHash !== saved.plan.bindingHash)
+      throw new EditStageError("STAGE_CONFLICT", "Visual correction belongs to another editing basis.");
+    await readStoredArtifact(saved, claim.basisRef);
+    // ProjectStore serializes the surrounding artifact write transaction.
+    if (Object.values(saved.artifacts).some(artifact => artifact.ref.kind === "creative-decision" &&
+        artifact.value && typeof artifact.value === "object" && "kind" in artifact.value && artifact.value.kind === "preview-repair"))
+      throw new EditStageError("STAGE_CONFLICT", "This editing request has already used its one visual correction.");
   }
   if (
     Object.keys(saved.artifacts).length >= 128 ||

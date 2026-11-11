@@ -1,6 +1,12 @@
+import { macroDefinitions } from "@dojo-video-engine/presets/macros";
 import { z } from "zod/v3";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { sceneNodeSchema, styleSchema } from "@dojo-video-engine/schema";
+import {
+  animationSchema,
+  sceneJsonSchema,
+  sceneNodeSchema,
+  styleSchema,
+} from "@dojo-video-engine/schema";
 import { motionControlPatchSchema } from "@/lib/motion-graphics/catalog";
 import {
   captionCueSchema,
@@ -334,7 +340,9 @@ export function nativeAgentOperationDescriptors(): readonly NativeAgentOperation
   return operationDescriptors;
 }
 
-function targetSchema(kind: VideoProjectTarget["kind"]): z.AnyZodObject {
+export function nativeAgentTargetSchema(
+  kind: VideoProjectTarget["kind"],
+): z.AnyZodObject {
   const definitions: Record<VideoProjectTarget["kind"], z.ZodTypeAny> = {
     node: sceneNodeSchema,
     item: editorItemSchema,
@@ -354,7 +362,7 @@ export function nativeAgentPropertySchema(
 ): z.ZodTypeAny | undefined {
   if (!VIDEO_PROJECT_EDITABLE_FIELDS[kind]?.includes(path[0] ?? ""))
     return undefined;
-  let schema: z.ZodTypeAny | undefined = targetSchema(kind);
+  let schema: z.ZodTypeAny | undefined = nativeAgentTargetSchema(kind);
   for (const key of path) {
     const owner = unwrap(schema!);
     schema =
@@ -369,7 +377,7 @@ export function nativeAgentPropertySchema(
 }
 
 export function nativeAgentTargetDescriptor(kind: VideoProjectTarget["kind"]) {
-  const schema = targetSchema(kind);
+  const schema = nativeAgentTargetSchema(kind);
   const fields = Object.fromEntries(
     VIDEO_PROJECT_EDITABLE_FIELDS[kind]
       .filter((key) => schema.shape[key])
@@ -563,4 +571,315 @@ export function nativeAgentResponseFormat(
         },
       }
     : { type: "json_object" };
+}
+
+function schemaRecord(value: unknown): JsonSchema | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonSchema)
+    : undefined;
+}
+
+/** Resolve selected metadata against its original public schema, retaining ref siblings. */
+function installedSchemaObject(value: unknown, root: JsonSchema): JsonSchema {
+  let schema = schemaRecord(value);
+  if (!schema) throw new Error("Installed graphic grammar is unavailable.");
+  const seen = new Set<string>();
+  while (typeof schema.$ref === "string") {
+    const reference = schema.$ref;
+    if (!reference.startsWith("#/") || seen.has(reference) || seen.size >= 32)
+      throw new Error(
+        "Installed graphic grammar has an unsupported reference.",
+      );
+    seen.add(reference);
+    let target: unknown = root;
+    for (const part of reference.slice(2).split("/")) {
+      const owner = schemaRecord(target);
+      const key = part.replace(/~1/g, "/").replace(/~0/g, "~");
+      if (!owner || !Object.hasOwn(owner, key))
+        throw new Error("Installed graphic grammar reference is unavailable.");
+      target = owner[key];
+    }
+    const resolved = schemaRecord(target);
+    if (!resolved)
+      throw new Error("Installed graphic grammar reference is invalid.");
+    const { $ref: _reference, ...siblings } = schema;
+    schema = { ...resolved, ...siblings };
+  }
+  return schema;
+}
+
+function installedSchemaAt(
+  root: JsonSchema,
+  path: readonly string[],
+): JsonSchema {
+  let value: unknown = root;
+  for (const key of path) value = installedSchemaObject(value, root)[key];
+  return installedSchemaObject(value, root);
+}
+
+/** Metadata follows the existing bounded shape. Validation remains in the native compiler. */
+function mergeInstalledGrammarMetadata(
+  projected: JsonSchema,
+  source: unknown,
+  root: JsonSchema,
+  depth = 0,
+): JsonSchema {
+  if (depth > 16)
+    throw new Error(
+      "Installed graphic grammar metadata exceeds its depth bound.",
+    );
+  const installed = installedSchemaObject(source, root);
+  const result = { ...projected };
+  for (const key of ["description", "format", "examples"])
+    if (installed[key] !== undefined)
+      result[key] = structuredClone(installed[key]);
+  for (const [key, child] of Object.entries(projected)) {
+    const nativeChild = installed[key];
+    if (schemaRecord(child) && schemaRecord(nativeChild))
+      result[key] = mergeInstalledGrammarMetadata(
+        child as JsonSchema,
+        nativeChild,
+        root,
+        depth + 1,
+      );
+    else if (Array.isArray(child) && Array.isArray(nativeChild))
+      result[key] = child.map((entry, index) =>
+        schemaRecord(entry) && schemaRecord(nativeChild[index])
+          ? mergeInstalledGrammarMetadata(
+              entry as JsonSchema,
+              nativeChild[index],
+              root,
+              depth + 1,
+            )
+          : entry,
+      );
+  }
+  return result;
+}
+
+/** A schema projection of installed 2D primitives, not another authoring representation. */
+function native2dGraphicsSchema(options: { installedGrammar?: true } = {}) {
+  const installed = unwrap(sceneNodeSchema);
+  if (!(installed instanceof z.ZodObject))
+    throw new Error("Installed native node schema is unavailable.");
+  const node = shallowSchema(
+    installed.pick({
+      id: true,
+      type: true,
+      from: true,
+      duration: true,
+      style: true,
+      text: true,
+      runs: true,
+      shape: true,
+      animations: true,
+      children: true,
+    }),
+    0,
+  );
+  const properties = node.properties as Record<string, JsonSchema>;
+  const allowed = (properties.type.enum as string[]).filter((value) =>
+    ["div", "text", "shape"].includes(value),
+  );
+  properties.type = { ...properties.type, enum: allowed };
+  properties.children = {
+    ...properties.children,
+    items: { $ref: "#" },
+    description:
+      "Nested native 2D nodes use this same schema; their from/animation frames are parent-local.",
+  };
+  properties.animations = {
+    ...properties.animations,
+    items: shallowSchema(animationSchema, -1),
+  };
+  if (options.installedGrammar) {
+    const published = sceneJsonSchema();
+    const nativeNodePath = [
+      "definitions",
+      "DojoVideoEngineScene",
+      "properties",
+      "nodes",
+      "items",
+      "properties",
+    ];
+    properties.style = mergeInstalledGrammarMetadata(
+      properties.style as JsonSchema,
+      installedSchemaAt(published, [...nativeNodePath, "style"]),
+      published,
+    );
+    const animation = mergeInstalledGrammarMetadata(
+      shallowSchema(animationSchema, -1),
+      installedSchemaAt(published, [...nativeNodePath, "animations", "items"]),
+      published,
+    );
+    const frames = installedSchemaAt(animation, [
+      "properties",
+      "frames",
+      "items",
+      "properties",
+    ]);
+    frames.value = {
+      ...schemaRecord(frames.value),
+      description:
+        "Keyframe values follow the installed grammar of their named animation.property. For style targets, use the matching entry in node.properties.style.properties, including its description and format. Native compilation validates target-specific values.",
+    };
+    properties.animations = { ...properties.animations, items: animation };
+  }
+  return node;
+}
+
+/** Read-only discovery from the installed engine. No registry mutation or execution surface. */
+export function nativeAgentGraphicsSchema(
+  query: { kind?: "native" | "macro"; macro?: string } = {},
+  options: { installedGrammar?: true } = {},
+) {
+  const macros = macroDefinitions().filter(
+    (definition) => !["captions", "subtitles"].includes(definition.name),
+  );
+  if (query.kind === "macro") {
+    if (!query.macro)
+      return {
+        version: 1,
+        kind: "macro",
+        macros: macros.map(({ name, description }) => ({ name, description })),
+      };
+    const found = macros.find((definition) => definition.name === query.macro);
+    if (!found)
+      throw new Error(
+        `Unknown installed graphic macro. Choose: ${macros.map((definition) => definition.name).join(", ")}. Use captionSource with genuine evidence for speech captions.`,
+      );
+    return {
+      version: 1,
+      kind: "macro",
+      name: found.name,
+      description: found.description,
+      parameters: shallowSchema(found.params, -1),
+      example: JSON.parse(found.usage),
+      usage:
+        "Place this macro object in insertGraphic.node. The discriminator is macro, never type; fields are at the macro object's top level, not inside params. Review the complete edit before propose_edit.",
+    };
+  }
+  const node = native2dGraphicsSchema(options);
+  const value = {
+    version: 1,
+    kind: "native",
+    node,
+    animation: options.installedGrammar
+      ? (node.properties as Record<string, JsonSchema>).animations.items
+      : shallowSchema(animationSchema, -1),
+    units: {
+      from: "integer frames; nested nodes are parent-local",
+      duration: "positive frame count",
+      animationFrames: "integer frames local to the animated node",
+      style: "numeric lengths are composition pixels",
+    },
+    examples: {
+      animatedGroup: {
+        type: "div",
+        id: "comparison",
+        from: 0,
+        duration: 120,
+        style: {
+          position: "absolute",
+          left: 80,
+          top: 80,
+          width: 500,
+          height: 240,
+          ...(options.installedGrammar
+            ? { transform: "scale(1)", transformOrigin: "center bottom" }
+            : {}),
+        },
+        children: [
+          {
+            id: "comparison-heading",
+            type: "text",
+            text: "Comparison",
+            style: {
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 500,
+              height: 48,
+              fontSize: 36,
+              color: "#ffffff",
+            },
+          },
+          {
+            id: "comparison-bar",
+            type: "shape",
+            shape: { kind: "rect" },
+            style: {
+              position: "absolute",
+              left: 0,
+              top: 72,
+              width: 240,
+              height: 48,
+              fill: "#22d3ee",
+            },
+            animations: [
+              {
+                kind: "keyframes",
+                property: "width",
+                frames: [
+                  { frame: 0, value: 0 },
+                  { frame: 24, value: 240 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      captionCommand: {
+        type: "captionSource",
+        sourceItemId: "existing-source-item",
+        evidenceId: "existing-evidence",
+        itemId: "captions-en",
+        trackId: "visual",
+      },
+    },
+    usage:
+      "Use native types such as div, text and shape. Macro names such as kineticText are not native types. Native animations use kind:keyframes, property and frames:[{frame,value}]; never preset objects. Use kind:macro for a compact installed index or a named macro's schema, or kind:three for 3D. Example source/evidence IDs are placeholders: use actual owned IDs. Give each copied group and child a unique item-specific stable ID. Keep financial values/units/bases and readable caption bounds explicit.",
+  };
+  if (
+    options.installedGrammar &&
+    new TextEncoder().encode(JSON.stringify(value)).byteLength > 32768
+  )
+    throw new Error(
+      "Installed graphic grammar discovery exceeds its 32KiB bound.",
+    );
+  return value;
+}
+
+/** Clarify existing reader flattening without creating a second target grammar. */
+export function nativeCompletionTargetHints(
+  items: readonly { id: string; node: { id?: string; duration?: number } }[],
+) {
+  const first = items[0];
+  return {
+    note: "The item index flattens node.from/node.duration for reading. Completion target kind:item reads item metadata (for example name, trackId) or an explicit node subtree path; from/duration are not direct item fields. Prefer kind:node with itemId and the root nodeId for timing/style checks.",
+    nodePaths: [
+      ["from"],
+      ["duration"],
+      ["audioStartTime"],
+      ["videoStartTime"],
+      ["volume"],
+      ["style", "color"],
+    ],
+    itemPaths: [["name"], ["trackId"], ["node", "duration"]],
+    ...(first
+      ? {
+          example: {
+            id: "preserve-source-duration",
+            kind: "property",
+            target: {
+              kind: "node",
+              itemId: first.id,
+              nodeId: first.node.id ?? first.id,
+            },
+            path: ["duration"],
+            equals: first.node.duration,
+          },
+        }
+      : {}),
+  };
 }

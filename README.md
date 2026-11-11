@@ -176,8 +176,10 @@ worker infrastructure are outside this local application. Image/video generation
 jobs are an extension point, not a shipped provider integration. Both ordinary
 speech-dependent chat and the combined editing workflow can prepare transcription
 after explicit source/provider consent; standalone caption controls remain available.
-This is a tested extension base, not an autonomous render/inspect/revise agent or
-a guarantee that every long instruction produces a correct, attractive video.
+Registered browser tools support consented source sampling, candidate previews,
+one receipt-bound correction and a second preview before final proposal. Export
+intents bind to guarded Apply and verified local output. See
+[current localhost adapter scope](docs/managed-ui-host-followups.md).
 
 ## Basic workflows and background music
 
@@ -321,8 +323,12 @@ qualification reports used explicit review mode; see the
 [direct-editing checks](docs/direct-editing-2026-11-04.md) for the current browser flow.
 Paired real-media
 human acceptance and broader editing coverage remain open. The agent can correct
-tool validation errors, but does not autonomously render, inspect, and revise its
-own output. Follow the [readiness plan](docs/harness-readiness-plan.md) before a launch.
+tool validation errors and perform the bounded preview workflow described in
+[the current agent map](docs/agent-system.md). New local runs select
+`local-editor-v11` with kit 0.2.5, loop 0.2.0 and engine 1.2.3. The local gate
+passed 914 tests/build and 66 browser checks, with a later 16-test dispatch/recovery
+extension and TypeScript pass. Public CI is pending for the pushed candidate.
+Follow the [readiness plan](docs/harness-readiness-plan.md) before a launch.
 
 The [focused lower-third live gate](docs/lower-third-qualification-2026-11-04.md)
 finished at 11/12 after local fixes; it is not yet qualified. The report retains

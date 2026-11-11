@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceRepository": "dojo-video-web",
-  "sourceCommit": "984338bc93c999ae3083a4ce23aa2e892e7b5c06",
+  "sourceCommit": "1c23c5c4bc0bebe36689fed4350620768f4a4826",
   "transforms": [
     "engine namespace/path rename",
     "local user import boundary",
@@ -252,14 +252,14 @@
     {
       "source": "components/editor/motionforge/editor-generation-actions.ts",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-generation-actions.ts",
-      "sourceHash": "0d5c1500a30bb12abe18ca0660f577f4f82547e1020141ab2c8d7595ba091aba",
-      "outputHash": "0d5c1500a30bb12abe18ca0660f577f4f82547e1020141ab2c8d7595ba091aba"
+      "sourceHash": "cedf8b8641100605c87cf654bed44e37f4bfa33a852a27b3d2fd9011a487b69a",
+      "outputHash": "cedf8b8641100605c87cf654bed44e37f4bfa33a852a27b3d2fd9011a487b69a"
     },
     {
       "source": "components/editor/motionforge/editor-generation-card.tsx",
       "target": "packages/ui/src/components/editor/dojo-video-engine/editor-generation-card.tsx",
-      "sourceHash": "87e7d7c49aabbc90709c4335cdec41c0896ef92575104e46f67297973b9e1d13",
-      "outputHash": "87e7d7c49aabbc90709c4335cdec41c0896ef92575104e46f67297973b9e1d13"
+      "sourceHash": "84738baf56828ca8e2901115f553ffa1e8293f1ca867cfad1e5bab56af4965d7",
+      "outputHash": "84738baf56828ca8e2901115f553ffa1e8293f1ca867cfad1e5bab56af4965d7"
     },
     {
       "source": "components/editor/motionforge/editor-generation-copy.ts",
@@ -336,8 +336,8 @@
     {
       "source": "components/editor/motionforge/editor-media.ts",
       "target": "packages/core/src/lib/editor/media.product.ts",
-      "sourceHash": "80aa827e884e77f965637738519c699a5d71c137fccea8d4dd30204e5031f16c",
-      "outputHash": "99073d4b8bfc75f18b321d75a860de5459a56345a071f8bba57b95d1daeb4486"
+      "sourceHash": "3b81c4126f2999422072e843734cc04131eadf2b645b3886f7ec6f0202ee9583",
+      "outputHash": "59ff2300ba4376b460d698bc6f19bd1b90fd4ee9974dbeb58dd86b6d441efce8"
     },
     {
       "source": "components/editor/motionforge/editor-missing-media-copy.ts",

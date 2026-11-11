@@ -1,6 +1,7 @@
 import {
   completionHash,
   transitionEditStagePlan,
+  usesStagedEditing,
 } from "../../../packages/agent-kit/src/index";
 import { createHash } from "node:crypto";
 import { z } from "zod/v3";
@@ -142,7 +143,7 @@ export function agentCheckpointHistory(
         p,
         run,
         options.stagePlanOwnsCurrentBinding === true &&
-          run.agentProfile === "local-editor-v6" &&
+          usesStagedEditing(run.agentProfile ?? "local-editor-v1") &&
           !!p.editStagePlans?.[run.id],
       ).history
     : undefined;
@@ -155,7 +156,7 @@ export function agentPreludeCheckpointRecovery(
   run: StoredRun,
 ): boolean {
   if (
-    run.agentProfile !== "local-editor-v6" ||
+    !usesStagedEditing(run.agentProfile ?? "local-editor-v1") ||
     run.loopCheckpoint ||
     !run.preludeCheckpoints?.length ||
     run.phase !== "stage_resume" ||
@@ -303,7 +304,8 @@ export async function createAgentCheckpointPort(input: {
         // A returned paid reply is retained even if cancellation/source changes
         // happened during HTTP. Subsequent tools/model fences still fail closed.
         const retainPaid =
-          owner?.agentProfile === "local-editor-v6" &&
+          owner &&
+          usesStagedEditing(owner.agentProfile ?? "local-editor-v1") &&
           checkpoint.phase === "model-returned";
         const { current, saved } = retainPaid
           ? {
@@ -343,10 +345,11 @@ export async function createAgentCheckpointPort(input: {
             MAX_LOCAL_CHECKPOINT_BYTES
         )
           throw new LoopCheckpointCapacityError("checkpoint-too-large");
-        const staged =
-          current.agentProfile === "local-editor-v6"
-            ? p.editStagePlans?.[current.id]
-            : undefined;
+        const staged = usesStagedEditing(
+          current.agentProfile ?? "local-editor-v1",
+        )
+          ? p.editStagePlans?.[current.id]
+          : undefined;
         let planning = staged?.plan.attempts.find(
           (attempt) => attempt.id === "planning",
         );

@@ -26,6 +26,13 @@ Start with:
 Plans are not completed evidence. Verify source and reports before claiming a
 capability is accepted; mark plan items complete only with the required evidence.
 
+The local application starts new runs with `local-editor-v11`, agent kit **0.2.5**
+and loop **0.2.0**, consuming published engine **1.2.3**. Earlier runs use their
+retained profile/coordinator archives. The commercial counterpart is
+`commercial-editing-v12`. Check [the agent map](docs/agent-system.md) and
+[execution ledger](docs/readiness-progress.md) before describing acceptance.
+The frozen 0.2.5 kit source is `e822993`, with separate later host/test/doc commits.
+
 ## Architecture and where to work
 
 ```text
@@ -64,7 +71,12 @@ correction. Ordinary local editor requests apply automatically after the browser
 saves active manual edits. Compare and Undo remain available afterward. The model
 returns validated commands; the host controls application. Headless evaluation
 hosts default to review mode, and paid/cloud workflows retain their approvals.
-This is not an autonomous render/inspect/revise loop. Multiple commands may form one proposal.
+Registered local browser tools support authorized original-source inspection and
+candidate previews. One receipt-bound correction batch can follow an inspected
+preview, and final proposal then requires a second preview. Export intents bind
+to the actual guarded Apply receipt and verified local output file. See
+[localhost adapter scope](docs/managed-ui-host-followups.md).
+Multiple commands may form one proposal.
 Ordinary speech-dependent chat can obtain missing ASR evidence after consent;
 it is not limited to the optional join/logo workflow. Keep the full instruction,
 frozen source identity, task receipts and cancellation/restart fences through continuation.
@@ -159,6 +171,14 @@ Engine changes belong upstream in Dojo Video Engine. Update tested package versi
 `package-lock.json` and `config/engine-release.json` together; never restore engine
 source aliases or a vendored renderer fork. Preserve the compiled Scene and asset
 identities when distinguishing a harness compiler defect from an engine defect.
+
+New-profile graphics discovery copies refined-value descriptions and formats from
+the installed engine's public `sceneJsonSchema()` into its bounded projection.
+Keep native compilation authoritative. For example, `transformOrigin` uses
+horizontal then vertical components, as in `center bottom`. Old profile
+observations and tool/skill/prompt bytes have archive compatibility tests.
+Generated-media skills require a registered host executor. Local image/video job
+integration remains the bounded optional LH-R15 follow-up.
 
 ## Milestones and working discipline
 
