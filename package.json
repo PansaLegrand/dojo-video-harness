@@ -73,7 +73,8 @@
     "@dojo-video/agent-kit-v22": "file:vendor/dojo-video-agent-kit-0.2.2.tgz",
     "@dojo-video/agent-kit-v23": "file:vendor/dojo-video-agent-kit-0.2.3.tgz",
     "@dojo-video/agent-kit-v24": "file:vendor/dojo-video-agent-kit-0.2.4.tgz",
-    "@dojo-video/agent-kit-v25": "file:vendor/dojo-video-agent-kit-0.2.5.tgz"
+    "@dojo-video/agent-kit-v25": "file:vendor/dojo-video-agent-kit-0.2.5.tgz",
+    "@dojo-video/agent-kit-v26": "file:vendor/dojo-video-agent-kit-0.2.6.tgz"
   },
   "devDependencies": {
     "@types/node": "22.20.2",

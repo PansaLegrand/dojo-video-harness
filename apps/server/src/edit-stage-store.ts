@@ -266,7 +266,7 @@ export async function putLocalEditStageArtifact(
     await readStoredArtifact(saved, ref);
     return ref;
   }
-  if (["local-editor-v10", "local-editor-v11", "local-editor-v12"].includes(saved.plan.binding.profile) && kind === "creative-decision" &&
+  if (["local-editor-v10", "local-editor-v11", "local-editor-v12", "local-editor-v13"].includes(saved.plan.binding.profile) && kind === "creative-decision" &&
       value && typeof value === "object" && "kind" in value && value.kind === "preview-repair") {
     const claim = parsePreviewRepairClaim(value);
     if (["failed", "cancelled"].includes(saved.plan.status)) throw new EditStageError("STAGE_CONFLICT", "This editing request cannot begin a visual correction.");
