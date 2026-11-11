@@ -43,7 +43,8 @@ async function fixture(
     | "local-editor-v7"
     | "local-editor-v8"
     | "local-editor-v9"
-    | "local-editor-v10" = "local-editor-v7",
+    | "local-editor-v10"
+    | "local-editor-v11" = "local-editor-v7",
 ) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "dojo-general-edit-"));
   roots.push(directory);
@@ -524,7 +525,13 @@ it("rejects untranslated declared pairs rather than treating an empty array as a
   expect(await f.port.load()).toBeNull();
 });
 
-it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-v10"] as const)(
+it.each([
+  "local-editor-v7",
+  "local-editor-v8",
+  "local-editor-v9",
+  "local-editor-v10",
+  "local-editor-v11",
+] as const)(
   "runs %s through actual AgentService review, Apply, reload, replay and Undo",
   async (profile) => {
     const f = await fixture(profile);
@@ -548,23 +555,45 @@ it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-
           const context = prompt.durableStages;
           let name: string, args: unknown;
           if (!context) {
+            expect(limits!.maxOutputTokens).toBe(
+              profile === "local-editor-v11" ? 32000 : 16000,
+            );
             expect(tools.some((tool) => tool.name === "plan_edit_stages")).toBe(
               true,
             );
             expect(
               tools.some((tool) => tool.name === "save_caption_batch"),
-            ).toBe(!["local-editor-v9", "local-editor-v10"].includes(profile));
+            ).toBe(
+              ![
+                "local-editor-v9",
+                "local-editor-v10",
+                "local-editor-v11",
+              ].includes(profile),
+            );
             name = "plan_edit_stages";
             args = { requirements: f.requirements, captionPairs: [] };
           } else {
+            if (profile === "local-editor-v11")
+              expect(limits!.maxOutputTokens).toBeGreaterThan(16000);
+            else expect(limits!.maxOutputTokens).toBeLessThanOrEqual(16000);
             expect(context.activeStage.kind).toBe("assemble");
             expect(context.preparedCommands).toBe(false);
             expect(tools.some((tool) => tool.name === "plan_edit_stages")).toBe(
-              !["local-editor-v9", "local-editor-v10"].includes(profile),
+              ![
+                "local-editor-v9",
+                "local-editor-v10",
+                "local-editor-v11",
+              ].includes(profile),
             );
             expect(
               tools.some((tool) => tool.name === "save_caption_batch"),
-            ).toBe(!["local-editor-v9", "local-editor-v10"].includes(profile));
+            ).toBe(
+              ![
+                "local-editor-v9",
+                "local-editor-v10",
+                "local-editor-v11",
+              ].includes(profile),
+            );
             const reviewed = messages.some(
               (message) =>
                 message.role === "tool" &&
@@ -622,6 +651,18 @@ it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-
     expect(run.status, JSON.stringify(run.error)).toBe("awaiting_review");
     expect(run.agentProfile).toBe(profile);
     expect(ready.editStagePlans![run.id].plan.status).toBe("completed");
+    expect(ready.editStagePlans![run.id].plan.limits).toMatchObject({
+      modelCalls: 32,
+      toolCalls: 64,
+      outputTokens: 32000,
+      perStage: {
+        modelCalls: ["local-editor-v10", "local-editor-v11"].includes(profile)
+          ? 16
+          : 8,
+        toolCalls: 24,
+        outputTokens: profile === "local-editor-v11" ? 32000 : 16000,
+      },
+    });
     expect(
       ready.editStagePlans![run.id].plan.stages.map((stage) => stage.kind),
     ).toEqual(["evidence", "assemble", "verify"]);
@@ -661,7 +702,13 @@ it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-
   },
 );
 
-it.each(["local-editor-v6", "local-editor-v7", "local-editor-v8", "local-editor-v9"] as const)(
+it.each([
+  "local-editor-v6",
+  "local-editor-v7",
+  "local-editor-v8",
+  "local-editor-v9",
+  "local-editor-v10",
+] as const)(
   "new-profile recovery retains accepted %s checkpoint byte-for-byte",
   async (profile) => {
     const f = await fixture();
@@ -720,7 +767,7 @@ it.each(["local-editor-v6", "local-editor-v7", "local-editor-v8", "local-editor-
       undefined,
       "review",
       undefined,
-      "local-editor-v10",
+      "local-editor-v11",
     );
     await current.recover();
     expect((await current.start(initial.id, body)).run.id).toBe(before.id);
