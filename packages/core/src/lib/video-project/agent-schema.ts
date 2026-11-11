@@ -3,6 +3,7 @@ import { z } from "zod/v3";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
   animationSchema,
+  sceneJsonSchema,
   sceneNodeSchema,
   styleSchema,
 } from "@dojo-video-engine/schema";
@@ -572,8 +573,92 @@ export function nativeAgentResponseFormat(
     : { type: "json_object" };
 }
 
+function schemaRecord(value: unknown): JsonSchema | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonSchema)
+    : undefined;
+}
+
+/** Resolve selected metadata against its original public schema, retaining ref siblings. */
+function installedSchemaObject(value: unknown, root: JsonSchema): JsonSchema {
+  let schema = schemaRecord(value);
+  if (!schema) throw new Error("Installed graphic grammar is unavailable.");
+  const seen = new Set<string>();
+  while (typeof schema.$ref === "string") {
+    const reference = schema.$ref;
+    if (!reference.startsWith("#/") || seen.has(reference) || seen.size >= 32)
+      throw new Error(
+        "Installed graphic grammar has an unsupported reference.",
+      );
+    seen.add(reference);
+    let target: unknown = root;
+    for (const part of reference.slice(2).split("/")) {
+      const owner = schemaRecord(target);
+      const key = part.replace(/~1/g, "/").replace(/~0/g, "~");
+      if (!owner || !Object.hasOwn(owner, key))
+        throw new Error("Installed graphic grammar reference is unavailable.");
+      target = owner[key];
+    }
+    const resolved = schemaRecord(target);
+    if (!resolved)
+      throw new Error("Installed graphic grammar reference is invalid.");
+    const { $ref: _reference, ...siblings } = schema;
+    schema = { ...resolved, ...siblings };
+  }
+  return schema;
+}
+
+function installedSchemaAt(
+  root: JsonSchema,
+  path: readonly string[],
+): JsonSchema {
+  let value: unknown = root;
+  for (const key of path) value = installedSchemaObject(value, root)[key];
+  return installedSchemaObject(value, root);
+}
+
+/** Metadata follows the existing bounded shape. Validation remains in the native compiler. */
+function mergeInstalledGrammarMetadata(
+  projected: JsonSchema,
+  source: unknown,
+  root: JsonSchema,
+  depth = 0,
+): JsonSchema {
+  if (depth > 16)
+    throw new Error(
+      "Installed graphic grammar metadata exceeds its depth bound.",
+    );
+  const installed = installedSchemaObject(source, root);
+  const result = { ...projected };
+  for (const key of ["description", "format", "examples"])
+    if (installed[key] !== undefined)
+      result[key] = structuredClone(installed[key]);
+  for (const [key, child] of Object.entries(projected)) {
+    const nativeChild = installed[key];
+    if (schemaRecord(child) && schemaRecord(nativeChild))
+      result[key] = mergeInstalledGrammarMetadata(
+        child as JsonSchema,
+        nativeChild,
+        root,
+        depth + 1,
+      );
+    else if (Array.isArray(child) && Array.isArray(nativeChild))
+      result[key] = child.map((entry, index) =>
+        schemaRecord(entry) && schemaRecord(nativeChild[index])
+          ? mergeInstalledGrammarMetadata(
+              entry as JsonSchema,
+              nativeChild[index],
+              root,
+              depth + 1,
+            )
+          : entry,
+      );
+  }
+  return result;
+}
+
 /** A schema projection of installed 2D primitives, not another authoring representation. */
-function native2dGraphicsSchema() {
+function native2dGraphicsSchema(options: { installedGrammar?: true } = {}) {
   const installed = unwrap(sceneNodeSchema);
   if (!(installed instanceof z.ZodObject))
     throw new Error("Installed native node schema is unavailable.");
@@ -607,12 +692,46 @@ function native2dGraphicsSchema() {
     ...properties.animations,
     items: shallowSchema(animationSchema, -1),
   };
+  if (options.installedGrammar) {
+    const published = sceneJsonSchema();
+    const nativeNodePath = [
+      "definitions",
+      "DojoVideoEngineScene",
+      "properties",
+      "nodes",
+      "items",
+      "properties",
+    ];
+    properties.style = mergeInstalledGrammarMetadata(
+      properties.style as JsonSchema,
+      installedSchemaAt(published, [...nativeNodePath, "style"]),
+      published,
+    );
+    const animation = mergeInstalledGrammarMetadata(
+      shallowSchema(animationSchema, -1),
+      installedSchemaAt(published, [...nativeNodePath, "animations", "items"]),
+      published,
+    );
+    const frames = installedSchemaAt(animation, [
+      "properties",
+      "frames",
+      "items",
+      "properties",
+    ]);
+    frames.value = {
+      ...schemaRecord(frames.value),
+      description:
+        "Keyframe values follow the installed grammar of their named animation.property. For style targets, use the matching entry in node.properties.style.properties, including its description and format. Native compilation validates target-specific values.",
+    };
+    properties.animations = { ...properties.animations, items: animation };
+  }
   return node;
 }
 
 /** Read-only discovery from the installed engine. No registry mutation or execution surface. */
 export function nativeAgentGraphicsSchema(
   query: { kind?: "native" | "macro"; macro?: string } = {},
+  options: { installedGrammar?: true } = {},
 ) {
   const macros = macroDefinitions().filter(
     (definition) => !["captions", "subtitles"].includes(definition.name),
@@ -640,11 +759,14 @@ export function nativeAgentGraphicsSchema(
         "Place this macro object in insertGraphic.node. The discriminator is macro, never type; fields are at the macro object's top level, not inside params. Review the complete edit before propose_edit.",
     };
   }
-  return {
+  const node = native2dGraphicsSchema(options);
+  const value = {
     version: 1,
     kind: "native",
-    node: native2dGraphicsSchema(),
-    animation: shallowSchema(animationSchema, -1),
+    node,
+    animation: options.installedGrammar
+      ? (node.properties as Record<string, JsonSchema>).animations.items
+      : shallowSchema(animationSchema, -1),
     units: {
       from: "integer frames; nested nodes are parent-local",
       duration: "positive frame count",
@@ -663,6 +785,9 @@ export function nativeAgentGraphicsSchema(
           top: 80,
           width: 500,
           height: 240,
+          ...(options.installedGrammar
+            ? { transform: "scale(1)", transformOrigin: "center bottom" }
+            : {}),
         },
         children: [
           {
@@ -715,6 +840,14 @@ export function nativeAgentGraphicsSchema(
     usage:
       "Use native types such as div, text and shape. Macro names such as kineticText are not native types. Native animations use kind:keyframes, property and frames:[{frame,value}]; never preset objects. Use kind:macro for a compact installed index or a named macro's schema, or kind:three for 3D. Example source/evidence IDs are placeholders: use actual owned IDs. Give each copied group and child a unique item-specific stable ID. Keep financial values/units/bases and readable caption bounds explicit.",
   };
+  if (
+    options.installedGrammar &&
+    new TextEncoder().encode(JSON.stringify(value)).byteLength > 32768
+  )
+    throw new Error(
+      "Installed graphic grammar discovery exceeds its 32KiB bound.",
+    );
+  return value;
 }
 
 /** Clarify existing reader flattening without creating a second target grammar. */

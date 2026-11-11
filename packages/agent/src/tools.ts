@@ -18,6 +18,7 @@ import {
   usesAuthoringContracts,
   usesReviewedEditReferences,
   usesPreviewRepair,
+  usesInstalledGraphicsGrammar,
   type PreviewRepairEvidence,
   type EditorStagePorts,
 } from "../../agent-kit/src/index";
@@ -154,6 +155,9 @@ export function createVideoToolset(
         query?.kind !== "three"
           ? nativeAgentGraphicsSchema(
               query as { kind?: "native" | "macro"; macro?: string },
+              usesInstalledGraphicsGrammar(options.profile ?? "local-editor-v1")
+                ? { installedGrammar: true }
+                : {},
             )
           : {
               three: zodToJsonSchema(threeSceneSchema, {
@@ -321,7 +325,8 @@ export function createVideoToolset(
     ...toolset,
     tools: toolset.tools.map((tool): AgentTool => {
       const host =
-        options.profile === "local-editor-v10" &&
+        (options.profile === "local-editor-v10" ||
+          options.profile === "local-editor-v11") &&
         [
           "inspect_image",
           "sample_video_frames",
