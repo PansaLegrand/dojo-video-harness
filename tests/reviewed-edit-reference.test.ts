@@ -10,6 +10,8 @@ import {
   completionCanonical,
   completionHash,
   createCompletionReceipt,
+  createEditorHostTools,
+  type PreviewRepairEvidence,
   createEditStagePlan,
   runEditingStages,
   transitionEditStagePlan,
@@ -685,3 +687,138 @@ it.each([
     }
   },
 );
+
+it("actual stage coordinator retains one correction claim and the unresolved report in its replayed native candidate", async () => {
+  const f = await fixture();
+  const evidence = new Map<string, PreviewRepairEvidence>();
+  let invocations = 0;
+  const input = {
+    ...f,
+    snapshotHash: f.request.baseHash,
+    modelIdentity: f.binding.modelIdentity,
+    run: {
+      instruction: f.request.instruction!,
+      createdAt: new Date().toISOString(),
+    },
+    history: [],
+    generalEditing: true as const,
+    reviewReferences: true as const,
+    phaseScopedTools: true as const,
+    previewRepair: true as const,
+    signal: signal(),
+  };
+  const result = await runEditingStages({
+    ...input,
+    invoke: async (options) => {
+      invocations++;
+      const extraTools = createEditorHostTools<NativeAgentResult>({
+        profile: "local-editor-v10",
+        ports: {
+          request_project_preview: async (args) => {
+            const ref = args.candidateRef as EditArtifactRef;
+            const saved = f.values.get(ref.id) as {
+              receipt: { previewHash: string };
+            };
+            const requestId = `preview-${ref.sha256}`;
+            evidence.set(requestId, {
+              requestId,
+              receiptHash: "b".repeat(64),
+              candidateRef: ref,
+              snapshotHash: f.request.baseHash,
+              renderHash: saved.receipt.previewHash,
+              frames: args.frames as number[],
+              audio: "not-inspected",
+            });
+            return { kind: "observation", value: { requestId } };
+          },
+        },
+      });
+      const session = createVideoToolset(
+        f.request,
+        builtInSkills(),
+        extraTools,
+        {
+          profile: "local-editor-v10",
+          stages: options.stages,
+          previewEvidence: async (id) => evidence.get(id)!,
+        },
+      );
+      const invoke = (name: string, args: unknown) =>
+        session.tools
+          .find((tool) => tool.name === name)!
+          .execute(args, signal());
+      expect(await invoke("review_edit", { edit: f.edit })).toMatchObject({
+        kind: "observation",
+        value: { completionPreflight: { status: "passed" } },
+      });
+      await invoke("request_project_preview", {
+        reviewed: true,
+        frames: [0, 120],
+      });
+      const first = [...evidence.values()].at(-1)!;
+      const repaired = structuredClone(f.edit);
+      repaired.commands[0].node.style.fill = "#ff0000";
+      expect(
+        await invoke("review_edit", {
+          edit: repaired,
+          previewRepair: {
+            requestId: first.requestId,
+            receiptHash: first.receiptHash,
+            issues: [
+              {
+                frame: 120,
+                description: "Comparison bar needs the requested red",
+              },
+            ],
+          },
+        }),
+      ).toMatchObject({
+        kind: "observation",
+        value: { completionPreflight: { status: "passed" } },
+      });
+      const claimed = await f.records.read();
+      const markers = Object.values(claimed.artifacts).filter(
+        (record) => record.ref.kind === "creative-decision",
+      );
+      expect(markers).toHaveLength(1);
+      expect(await f.port.readArtifact(markers[0].ref)).toMatchObject({
+        kind: "preview-repair",
+        requestId: first.requestId,
+      });
+      await invoke("request_project_preview", {
+        reviewed: true,
+        frames: [0, 120],
+      });
+      const second = [...evidence.values()].at(-1)!;
+      const proposed = await invoke("propose_edit", {
+        reviewed: true,
+        previewReport: {
+          requestId: second.requestId,
+          receiptHash: second.receiptHash,
+          issues: [
+            {
+              frame: 120,
+              description: "Source image identity still needs confirmation",
+            },
+          ],
+        },
+      });
+      if (proposed.kind !== "terminal")
+        throw Error("Expected saved native proposal");
+      return proposed.result;
+    },
+  });
+  expect(result).toMatchObject({
+    outcome: "proposal",
+    summary: expect.stringContaining("image identity still needs confirmation"),
+  });
+  expect(result.summary).toContain("Audio was not inspected");
+  const replay = await runEditingStages({
+    ...input,
+    invoke: async () => {
+      throw Error("Saved candidate must replay without model work");
+    },
+  });
+  expect(replay).toEqual(result);
+  expect(invocations).toBe(1);
+});
