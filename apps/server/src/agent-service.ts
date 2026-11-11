@@ -1,3 +1,4 @@
+import { EditStageError as RetainedV24EditStageError } from "@dojo-video/agent-kit-v24";
 import { EditStageError as RetainedV23EditStageError } from "@dojo-video/agent-kit-v23";
 import { EditStageError as RetainedV21EditStageError } from "@dojo-video/agent-kit-v21";
 import { EditStageError as RetainedV22EditStageError } from "@dojo-video/agent-kit-v22";
@@ -88,12 +89,14 @@ const isStageError = (
   | RetainedEditStageError
   | RetainedV21EditStageError
   | RetainedV22EditStageError
-  | RetainedV23EditStageError =>
+  | RetainedV23EditStageError
+  | RetainedV24EditStageError =>
   cause instanceof EditStageError ||
   cause instanceof RetainedEditStageError ||
   cause instanceof RetainedV21EditStageError ||
   cause instanceof RetainedV22EditStageError ||
-  cause instanceof RetainedV23EditStageError;
+  cause instanceof RetainedV23EditStageError ||
+  cause instanceof RetainedV24EditStageError;
 export class AgentService {
   private active = new Map<string, AbortController>();
   private deadlines = new Map<string, ReturnType<typeof setTimeout>>();
@@ -119,7 +122,8 @@ export class AgentService {
       | "local-editor-v7"
       | "local-editor-v8"
       | "local-editor-v9"
-      | "local-editor-v10" = "local-editor-v1",
+      | "local-editor-v10"
+      | "local-editor-v11" = "local-editor-v1",
     private stagedOptions: {
       captionBatchSize?: number;
       onTransition?: (plan: EditStagePlan) => Promise<void>;
@@ -208,7 +212,7 @@ export class AgentService {
         reviewBasisRequired: true,
         agentProfile: this.agentProfile,
         ...(this.stagedOptions.browser &&
-        this.agentProfile === "local-editor-v10"
+        ["local-editor-v10", "local-editor-v11"].includes(this.agentProfile)
           ? { browserToolsEnabled: true as const }
           : {}),
         events: [],

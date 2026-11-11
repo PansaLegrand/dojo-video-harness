@@ -18,3 +18,7 @@ It preserves local v7/commercial v8 contracts and the known paid trial.
 `dojo-video-agent-kit-0.2.3.tgz` retains phase-scoped contracts from
 `9447bbc53506c5f05f64cca2364e23e70e201959`, SHA-256
 `143bdf34ef79983a61b367cb8f924a365ec8a506334f83471fe26917709cbd8b`.
+
+`dojo-video-agent-kit-0.2.4.tgz` retains preview-repair contracts from
+`a917b1b7f2c6007babd179cda0ab3b39e04b9015`, SHA-256
+`4776d134f4f0d4e0041d9423669658486770fa61bb36e29d192a111d300646fb`.

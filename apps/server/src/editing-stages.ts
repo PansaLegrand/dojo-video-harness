@@ -1,3 +1,4 @@
+import { runEditingStages as runRetainedPreviewEditingStages } from "@dojo-video/agent-kit-v24";
 import {
   runEditingStages,
   assertEditStageBinding,
@@ -102,8 +103,10 @@ export async function runStagedEditing(input: {
   );
   const port = createLocalEditStagePort({ ...input, binding });
   const coordinate =
-    run.agentProfile === "local-editor-v10"
+    run.agentProfile === "local-editor-v11"
       ? runEditingStages
+      : run.agentProfile === "local-editor-v10"
+        ? runRetainedPreviewEditingStages
       : run.agentProfile === "local-editor-v9"
         ? runRetainedPhaseEditingStages
       : run.agentProfile === "local-editor-v8"
@@ -122,12 +125,13 @@ export async function runStagedEditing(input: {
     ...(input.onTransition ? { onTransition: input.onTransition } : {}),
     policy: {
       ...STAGED_EDIT_POLICY,
-      ...(run.agentProfile === "local-editor-v10" ? { stageModelCalls: 16 } : {}),
+      ...(["local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "") ? { stageModelCalls: 16 } : {}),
+      ...(run.agentProfile === "local-editor-v11" ? { stageOutputTokens: 32000 } : {}),
       ...(input.policy?.captionBatchSize === undefined
         ? {}
         : { captionBatchSize: input.policy.captionBatchSize }),
     },
-    ...(run.agentProfile === "local-editor-v10" ? { previewRepair: true as const } : {}),
+    ...(["local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "") ? { previewRepair: true as const } : {}),
     records: {
       read: async () =>
         (await input.store.read(input.projectId)).editStagePlans?.[
@@ -233,19 +237,19 @@ export async function runStagedEditing(input: {
         };
       },
     },
-    ...(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-v10"].includes(
+    ...(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(
       run.agentProfile ?? "",
     )
       ? { generalEditing: true as const }
       : {}),
-    ...(["local-editor-v8", "local-editor-v9", "local-editor-v10"].includes(run.agentProfile ?? "")
+    ...(["local-editor-v8", "local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "")
       ? { reviewReferences: true as const }
       : {}),
-    ...(["local-editor-v9", "local-editor-v10"].includes(run.agentProfile ?? "")
+    ...(["local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(run.agentProfile ?? "")
       ? { phaseScopedTools: true as const }
       : {}),
     native: {
-      ...(["local-editor-v8", "local-editor-v9", "local-editor-v10"].includes(
+      ...(["local-editor-v8", "local-editor-v9", "local-editor-v10", "local-editor-v11"].includes(
         run.agentProfile ?? "",
       )
         ? {
