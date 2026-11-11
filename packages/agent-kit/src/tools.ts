@@ -289,6 +289,10 @@ export function createEditorToolset<T>(input: {
   const completion = usesCompletionPreflight(input.profile);
   const authoring = usesAuthoringContracts(input.profile);
   const previewRepair = usesPreviewRepair(input.profile);
+  const previewAvailable =
+    previewRepair &&
+    !!ports.previewEvidence &&
+    !!input.extraTools?.some((tool) => tool.name === "request_project_preview");
   const reviewReferences = usesReviewedEditReferences(input.profile);
   const stages = usesStagedEditing(input.profile) ? ports.stages : undefined;
   const phaseScoped = usesPhaseScopedTools(input.profile),
@@ -764,11 +768,13 @@ export function createEditorToolset<T>(input: {
                       ? receipt
                         ? "Request a SECOND preview with {frames,reviewed:true}, inspect its actual labeled frames, then call propose_edit({reviewed:true,previewReport:{requestId,receiptHash,issues:[remaining sampled failures]}}). The single correction round is consumed."
                         : "The single preview correction round was claimed and its checks failed. Report these failed checks and remaining sampled issues explicitly. A different correction batch is unavailable under this run's allowance."
-                      : reviewReferences && receipt && reviewRef
-                        ? "Call propose_edit with {reviewed:true}. The host resolves this exact successful review; do not regenerate its command JSON."
-                        : receipt
-                          ? "Call propose_edit with the exact edit object from this successful review; do not send the requirements or receipt yourself."
-                          : "No edit was saved or applied. Keep every frozen requirement, repair the complete command list, and call review_edit again with that full edit. Do not use commands:[] unless the host explicitly supplies preparedCommands.",
+                      : previewAvailable && receipt && reviewRef
+                        ? "For visual uncertainty, request_project_preview({frames,reviewed:true}) for this saved candidate and inspect its actual labeled pixels. If the samples are clean, propose_edit({reviewed:true,previewReport:{requestId,receiptHash,issues:[]}}). Observed failures permit one previewRepair correction and a second preview. A simple edit that needs no visual inspection may finish with {reviewed:true}."
+                        : reviewReferences && receipt && reviewRef
+                          ? "Call propose_edit with {reviewed:true}. The host resolves this exact successful review; do not regenerate its command JSON."
+                          : receipt
+                            ? "Call propose_edit with the exact edit object from this successful review; do not send the requirements or receipt yourself."
+                            : "No edit was saved or applied. Keep every frozen requirement, repair the complete command list, and call review_edit again with that full edit. Do not use commands:[] unless the host explicitly supplies preparedCommands.",
                 }
               : {}),
             completionPreflight: {

@@ -149,16 +149,21 @@ async function fixture() {
   const build = (
     state?: CompletionState,
     profile: "local-editor-v9" | "local-editor-v10" = "local-editor-v10",
+    withPreviewEvidence = true,
   ) =>
     createVideoToolset(request, builtInSkills(), hostTools, {
       profile,
       stages,
       initialCompletionState: state,
-      previewEvidence: async (requestId) => {
-        const item = evidence.get(requestId);
-        if (!item) throw Error("No saved browser receipt");
-        return structuredClone(item);
-      },
+      ...(withPreviewEvidence
+        ? {
+            previewEvidence: async (requestId: string) => {
+              const item = evidence.get(requestId);
+              if (!item) throw Error("No saved browser receipt");
+              return structuredClone(item);
+            },
+          }
+        : {}),
     });
   return {
     request,
@@ -490,4 +495,30 @@ it("actual local loop resumes the claimed correction and second preview without 
   expect(f.prepare).toHaveBeenCalledTimes(2);
   expect(await runAgent(input)).toEqual(result);
   expect(calls).toBe(5);
+});
+
+it("first-review guidance offers preview inspection only when the trusted host provides its tool and receipt reader", async () => {
+  const f = await fixture();
+  const available = await reviewed(f, tools(f.build()));
+  expect(available.result).toMatchObject({
+    kind: "observation",
+    value: {
+      nextAction: expect.stringContaining(
+        "request_project_preview({frames,reviewed:true})",
+      ),
+    },
+  });
+  expect(JSON.stringify(available.result)).toContain("simple edit");
+  const unavailable = await reviewed(
+    f,
+    tools(f.build(undefined, "local-editor-v10", false)),
+  );
+  if (unavailable.result.kind !== "observation")
+    throw Error("Expected successful review");
+  expect(
+    (unavailable.result.value as { nextAction: string }).nextAction,
+  ).not.toContain("request_project_preview");
+  expect(
+    (unavailable.result.value as { nextAction: string }).nextAction,
+  ).toContain("Call propose_edit");
 });
