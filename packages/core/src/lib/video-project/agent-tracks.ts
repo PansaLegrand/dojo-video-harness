@@ -17,6 +17,7 @@ const overlaps = (left: EditorItem, right: EditorItem) =>
 export function generatedTrackCommands(
   before: VideoProjectDocument,
   after: VideoProjectDocument,
+  options: { preserveAuthoredPaintOrder?: boolean } = {},
 ): VideoProjectCommand[] {
   const oldItems = new Map(before.items.map((item) => [item.id, item]));
   // Splits retain their original lane even when an older project used a mixed
@@ -171,6 +172,39 @@ export function generatedTrackCommands(
   const ordered = (
     tracks.some((track) => track.locked) ? tracks : orderedTracks
   ).map((track) => track.id);
+  if (options.preserveAuthoredPaintOrder) {
+    // Organizing timeline lanes must not move an opaque chapter above a chart
+    // (or reverse any other overlapping authored layers). Retain the authored
+    // lanes when typed grouping would change their visible stacking.
+    const visible = after.items.filter(
+      (item) =>
+        item.node.type !== "audio" &&
+        !after.tracks.find((track) => track.id === item.trackId)?.hidden,
+    );
+    const assigned = new Map(placed.map((item) => [item.id, item.trackId]));
+    const authored = after.tracks.flatMap((track) =>
+      visible.filter((item) => item.trackId === track.id),
+    );
+    const proposed = ordered.flatMap((trackId) =>
+      visible.filter(
+        (item) => (assigned.get(item.id) ?? item.trackId) === trackId,
+      ),
+    );
+    const proposedPosition = new Map(
+      proposed.map((item, index) => [item.id, index]),
+    );
+    for (let left = 0; left < authored.length; left++) {
+      const a = authored[left]!;
+      for (let right = left + 1; right < authored.length; right++) {
+        const b = authored[right]!;
+        if (
+          proposedPosition.get(a.id)! > proposedPosition.get(b.id)! &&
+          overlaps(a, b)
+        )
+          return [];
+      }
+    }
+  }
   if (ordered.some((id, index) => id !== appended[index]))
     commands.push({ type: "reorderTracks", ids: ordered });
   return commands;

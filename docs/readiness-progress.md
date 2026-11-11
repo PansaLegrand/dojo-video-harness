@@ -2,7 +2,41 @@
 
 Started on 2026-11-01. Last updated on 2026-11-12. The harness plan remains the acceptance contract.
 
-## November 12 local runtime and browser adapters
+## November 12 append-repair candidate
+
+The 0.2.6 kit source is `664345c`. New runs use local-editor-v12 and its commercial
+counterpart commercial-editing-v13. The host freezes 64 model calls with the
+existing 64-tool and 32,000-output-token totals. Earlier profile allowances and
+archives remain bound to their original runs.
+
+Explicit append mode expands targeted native repair commands against the same
+owned verified candidate. Both repair modes validate the full result before
+claiming their single correction. Recovery binds the expanded command hash and
+requires a second preview. Latest-profile review and final compilation preserve
+authored stacking when typed-lane grouping would invert overlapping visual items.
+
+The 0.2.6 full gate passed 933 tests, full TypeScript, integrity checks and the
+production build. Its focused pre-freeze gate passed 50 tests. The commercial
+native-session/discovery check passed 16 tests against the installed 0.2.6 kit. The kit was frozen once
+from `664345cabd0b6843fc24f040861a4b17ca5e026a` with SHA-256
+`4d2ca043474d04307798eeec5b456680b6e43a7208b416d0c779d3a1bc8a12b5`.
+All 66 actual browser checks passed against the production build, with synthetic
+local provider HTTP and independent output decoding. The report and media remain
+under `test-results/browser-026-664345c`. Standalone commercial-package and live
+provider gates are recorded separately. The 0.2.5 PR remains at
+its own immutable head with public CI queued. Live-provider creative acceptance
+continues under its separate frozen cases, retained failures and provider budget.
+
+Clean-install CI exposed a localhost visual-model import that depended on the
+loop package's cached build output. The host now imports the workspace source
+entry, matching the other local adapters. This host-only correction in `27c7064`
+is present on both release branches and preserves the frozen kit archive.
+A fresh exported tree with no `node_modules` or loop `dist` passed setup, full
+TypeScript and actual startup/editor/private-settings checks. Local proof is
+retained under `test-results/clean-import-026`. Earlier failed CI runs remain
+visible, with replacement checks running against the corrected branch heads.
+
+## November 12 local runtime and browser adapters, 0.2.5 baseline
 
 New local runs select `local-editor-v11`, kit **0.2.5**, loop **0.2.0** and engine
 **1.2.3**. The kit's immutable source is `e822993`, independent from later host,

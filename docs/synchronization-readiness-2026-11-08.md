@@ -2,8 +2,8 @@
 
 ## Current addendum, 2026-11-12
 
-New local runs use `local-editor-v11`, kit 0.2.5, loop 0.2.0 and engine 1.2.3.
-The frozen kit source is `e822993`. The coordinated local gate passed 914
+New local runs use `local-editor-v12`, kit 0.2.6, loop 0.2.0 and engine 1.2.3.
+The frozen kit source is `664345c`. The coordinated 0.2.6 local gate passed 933
 tests/build and 66 scripted-provider browser checks. LH-R07 source inspection and
 LH-R20 receipt-bound preview/correction/export adapters are implemented. General
 local image/video generation remains the optional LH-R15 integration. Public CI

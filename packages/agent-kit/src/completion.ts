@@ -1,5 +1,6 @@
 import {
   parsePreviewRepairClaim,
+  appendPreviewRepairEdit,
   type PreviewRepairClaim,
 } from "./preview-repair.js";
 import { parseEditArtifactRef, type EditArtifactRef } from "./stages.js";
@@ -384,6 +385,7 @@ export async function restoreCompletionStateFromMessages(
     resolvePreparedEdit?: (edit: unknown) => Promise<unknown>;
     reviewReferences?: true;
     previewRepair?: true;
+    appendPreviewRepair?: true;
   } = {},
 ): Promise<CompletionState | undefined> {
   let state: CompletionState | undefined;
@@ -444,9 +446,25 @@ export async function restoreCompletionStateFromMessages(
     if (review.status === "passed") {
       const receipt = await validateCompletionReceipt(review.receipt);
       const args = JSON.parse(calls.get(message.tool_call_id)!.arguments);
-      const edit = options.resolvePreparedEdit
-        ? await options.resolvePreparedEdit(args.edit)
-        : args.edit;
+      let edit: unknown;
+      if (
+        options.appendPreviewRepair &&
+        args.previewRepair?.mode === "append"
+      ) {
+        if (!state.previewRepair || !options.resolvePreparedEdit)
+          throw new Error(
+            "Append correction restore requires its owned saved candidate.",
+          );
+        edit = appendPreviewRepairEdit(
+          await options.resolvePreparedEdit({
+            reviewRef: state.previewRepair.basisRef,
+          }),
+          args.edit,
+        );
+      } else
+        edit = options.resolvePreparedEdit
+          ? await options.resolvePreparedEdit(args.edit)
+          : args.edit;
       if (
         receipt.snapshotHash !== snapshotHash ||
         receipt.requirementsHash !== requirementsHash ||

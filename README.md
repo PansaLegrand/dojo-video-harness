@@ -325,9 +325,9 @@ Paired real-media
 human acceptance and broader editing coverage remain open. The agent can correct
 tool validation errors and perform the bounded preview workflow described in
 [the current agent map](docs/agent-system.md). New local runs select
-`local-editor-v11` with kit 0.2.5, loop 0.2.0 and engine 1.2.3. The local gate
-passed 914 tests/build and 66 browser checks, with a later 16-test dispatch/recovery
-extension and TypeScript pass. Public CI is pending for the pushed candidate.
+`local-editor-v12` with kit 0.2.6, loop 0.2.0 and engine 1.2.3. The 0.2.6 local gate
+passed 933 tests/build and 66 browser checks. Explicit append repair, restored
+expanded receipts and older-profile compatibility also passed 50 focused tests. Public CI is pending for the pushed candidate.
 Follow the [readiness plan](docs/harness-readiness-plan.md) before a launch.
 
 The [focused lower-third live gate](docs/lower-third-qualification-2026-11-04.md)

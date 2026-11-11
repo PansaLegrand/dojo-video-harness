@@ -123,7 +123,8 @@ export class AgentService {
       | "local-editor-v8"
       | "local-editor-v9"
       | "local-editor-v10"
-      | "local-editor-v11" = "local-editor-v1",
+      | "local-editor-v11"
+      | "local-editor-v12" = "local-editor-v1",
     private stagedOptions: {
       captionBatchSize?: number;
       onTransition?: (plan: EditStagePlan) => Promise<void>;
@@ -212,7 +213,7 @@ export class AgentService {
         reviewBasisRequired: true,
         agentProfile: this.agentProfile,
         ...(this.stagedOptions.browser &&
-        ["local-editor-v10", "local-editor-v11"].includes(this.agentProfile)
+        ["local-editor-v10", "local-editor-v11", "local-editor-v12"].includes(this.agentProfile)
           ? { browserToolsEnabled: true as const }
           : {}),
         events: [],
@@ -768,6 +769,7 @@ export class AgentService {
       proposal: r.proposal,
       current,
       organizeTracks: !r.undoOfRunId,
+      preserveAuthoredPaintOrder: r.agentProfile === "local-editor-v12",
     });
     if (r.completion) {
       const checks = checkNativeCompletionRequirements(
@@ -842,6 +844,7 @@ export class AgentService {
         proposal: r.proposal,
         current: snapshot(p),
         organizeTracks: !r.undoOfRunId,
+      preserveAuthoredPaintOrder: r.agentProfile === "local-editor-v12",
       });
       if (r.completion) {
         const checks = checkNativeCompletionRequirements(

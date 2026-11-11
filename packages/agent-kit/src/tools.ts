@@ -3,8 +3,10 @@ import {
   previewRepairInspectionSchema,
   parsePreviewInspection,
   parsePreviewRepairClaim,
+  appendPreviewRepairEdit,
   type PreviewInspection,
   type PreviewRepairEvidence,
+  type PreviewRepairClaim,
 } from "./preview-repair.js";
 import { parseEditArtifactRef } from "./stages.js";
 import {
@@ -27,6 +29,7 @@ import {
   usesReviewedEditReferences,
   usesPhaseScopedTools,
   usesPreviewRepair,
+  usesAppendPreviewRepair,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -289,6 +292,7 @@ export function createEditorToolset<T>(input: {
   const completion = usesCompletionPreflight(input.profile);
   const authoring = usesAuthoringContracts(input.profile);
   const previewRepair = usesPreviewRepair(input.profile);
+  const appendPreviewRepair = usesAppendPreviewRepair(input.profile);
   const previewAvailable =
     previewRepair &&
     !!ports.previewEvidence &&
@@ -351,11 +355,14 @@ export function createEditorToolset<T>(input: {
     raw: unknown,
     basis: { ref: unknown; renderHash: string },
     signal: AbortSignal,
+    savedEvidence?: PreviewRepairEvidence,
   ) => {
     const inspection = parsePreviewInspection(raw);
     if (!ports.previewEvidence)
       throw new Error("The host has no owned preview receipt reader.");
-    const evidence = await ports.previewEvidence(inspection.requestId, signal);
+    const evidence =
+      savedEvidence ??
+      (await ports.previewEvidence(inspection.requestId, signal));
     if (
       evidence.requestId !== inspection.requestId ||
       evidence.receiptHash !== inspection.receiptHash ||
@@ -579,11 +586,13 @@ export function createEditorToolset<T>(input: {
       ...toolMetadata("review_edit"),
       ...(authoring
         ? {
-            description: previewRepair
-              ? "Review the complete intended edit, omitting requirements once they are frozen. To correct actual sampled preview failures, include previewRepair:{requestId,receiptHash,issues:[{frame,description}]}. The host verifies the exact prior saved candidate and authorized browser receipt, then claims ONE correction command batch before native review. The claim survives failed checks and restart. After correction request a second preview and report unresolved issues with the final reviewed proposal. This tool retains normal command/check validation."
-              : reviewReferences
-                ? "Review the complete intended edit with {requirements,edit:{outcome:'proposal',summary,commands:[all commands]}}. Invalid requirement paths are rejected before freezing. A successful review retains the exact edit as an owned immutable verification artifact and returns a small reference; then call propose_edit({reviewed:true}) WITHOUT regenerating commands. A failed/error review clears that compact route; repair and review the complete edit again. This never applies edits."
-                : "Review the complete intended edit WITHOUT applying or saving a draft. Call with {requirements:[supported typed checks],edit:{outcome:'proposal',summary:'...',commands:[all commands]}}. The first valid requirement list freezes. Repair failed checks by reviewing the full repaired edit again. On success call propose_edit with that exact edit object. A rejected propose_edit does not save commands: reviewing commands:[] cannot recover them. Empty additional commands are allowed only when the host explicitly reports preparedCommands.",
+            description: appendPreviewRepair
+              ? "Review the complete intended edit, keeping frozen requirements. For a targeted correction to an owned inspected candidate, send previewRepair:{mode:'append',requestId,receiptHash,issues:[{frame,description}]} and edit:{outcome:'proposal',summary,commands:[only incremental native repair commands]}. The host resolves that exact verified candidate, appends the repair commands once, and validates the complete result against the original snapshot and requirements before claiming ONE correction. Both repair modes validate before claiming. Invalid repair commands do not consume the claim. Omit mode when sending a full replacement command batch. After a successful correction request a SECOND preview and propose the saved reviewed result with its sampled unresolved issues. This never applies edits."
+              : previewRepair
+                ? "Review the complete intended edit, omitting requirements once they are frozen. To correct actual sampled preview failures, include previewRepair:{requestId,receiptHash,issues:[{frame,description}]}. The host verifies the exact prior saved candidate and authorized browser receipt, then claims ONE correction command batch before native review. The claim survives failed checks and restart. After correction request a second preview and report unresolved issues with the final reviewed proposal. This tool retains normal command/check validation."
+                : reviewReferences
+                  ? "Review the complete intended edit with {requirements,edit:{outcome:'proposal',summary,commands:[all commands]}}. Invalid requirement paths are rejected before freezing. A successful review retains the exact edit as an owned immutable verification artifact and returns a small reference; then call propose_edit({reviewed:true}) WITHOUT regenerating commands. A failed/error review clears that compact route; repair and review the complete edit again. This never applies edits."
+                  : "Review the complete intended edit WITHOUT applying or saving a draft. Call with {requirements:[supported typed checks],edit:{outcome:'proposal',summary:'...',commands:[all commands]}}. The first valid requirement list freezes. Repair failed checks by reviewing the full repaired edit again. On success call propose_edit with that exact edit object. A rejected propose_edit does not save commands: reviewing commands:[] cannot recover them. Empty additional commands are allowed only when the host explicitly reports preparedCommands.",
           }
         : {}),
       parameters: object(
@@ -594,7 +603,22 @@ export function createEditorToolset<T>(input: {
               ? pagedCompletionRequirementsSchema
               : completionRequirementsSchema,
           ...(previewRepair
-            ? { previewRepair: previewRepairInspectionSchema }
+            ? {
+                previewRepair: appendPreviewRepair
+                  ? {
+                      ...previewRepairInspectionSchema,
+                      properties: {
+                        ...previewRepairInspectionSchema.properties,
+                        mode: {
+                          type: "string",
+                          const: "append",
+                          description:
+                            "Append only the supplied incremental commands to the exact owned candidate identified by this preview receipt.",
+                        },
+                      },
+                    }
+                  : previewRepairInspectionSchema,
+              }
             : {}),
           edit: usesResolvedEditSchema(input.profile)
             ? embedEditingSchema(input.proposalSchema, {
@@ -644,9 +668,28 @@ export function createEditorToolset<T>(input: {
         let checks: CompletionCheck[];
         let receipt: CompletionReceipt | undefined;
         let reviewRef: CompletionState["successfulReviewRef"];
+        let pendingRepairClaim: PreviewRepairClaim | undefined;
         let edit = value.edit;
         try {
-          if (stages) edit = await stages.resolvePreparedEdit(edit, signal);
+          let repairInspection = value.previewRepair;
+          let append = false;
+          if (appendPreviewRepair && repairInspection !== undefined) {
+            const repair = record(repairInspection, [
+              "requestId",
+              "receiptHash",
+              "issues",
+              "mode",
+            ]);
+            if (repair.mode !== undefined && repair.mode !== "append")
+              throw new Error(
+                "Use previewRepair.mode:'append' for incremental commands, or omit mode for a full replacement.",
+              );
+            append = repair.mode === "append";
+            const { mode: _mode, ...inspection } = repair;
+            repairInspection = inspection;
+          }
+          if (stages && !append)
+            edit = await stages.resolvePreparedEdit(edit, signal);
           if (usesResolvedEditSchema(input.profile))
             assertEditingProposal(edit);
           if (requirementsHash !== state.requirementsHash)
@@ -659,18 +702,40 @@ export function createEditorToolset<T>(input: {
                 "Preview correction requires a durable assembly plan.",
               );
             const prior = state.previewRepair;
-            const basisRef = prior?.basisRef ?? previousRef;
-            const renderHash =
-              prior?.renderHash ?? previousReceipt?.previewHash;
+            let basisRef = prior?.basisRef ?? previousRef;
+            let renderHash = prior?.renderHash ?? previousReceipt?.previewHash;
+            let savedEvidence: PreviewRepairEvidence | undefined;
+            if (appendPreviewRepair && (!basisRef || !renderHash)) {
+              const inspection = parsePreviewInspection(repairInspection);
+              if (!ports.previewEvidence)
+                throw new Error(
+                  "The host has no owned preview receipt reader.",
+                );
+              savedEvidence = await ports.previewEvidence(
+                inspection.requestId,
+                signal,
+              );
+              basisRef ??= parseEditArtifactRef(savedEvidence.candidateRef);
+              renderHash ??= savedEvidence.renderHash;
+            }
             if (!basisRef || !renderHash)
               throw new Error(
                 "Review the complete candidate successfully before requesting a preview correction.",
               );
             const { inspection } = await inspectPreview(
-              value.previewRepair,
+              repairInspection,
               { ref: basisRef, renderHash },
               signal,
+              savedEvidence,
             );
+            if (appendPreviewRepair) {
+              const basis = await stages.resolvePreparedEdit(
+                { reviewRef: basisRef },
+                signal,
+              );
+              assertEditingProposal(basis);
+              if (append) edit = appendPreviewRepairEdit(basis, edit);
+            }
             const claim = parsePreviewRepairClaim({
               kind: "preview-repair",
               ...inspection,
@@ -687,8 +752,11 @@ export function createEditorToolset<T>(input: {
               throw new Error(
                 "The single preview correction round is exhausted. Inspect the repaired preview and report remaining failures.",
               );
-            await stages.claimPreviewRepair(claim, signal);
-            state.previewRepair = claim;
+            if (appendPreviewRepair) pendingRepairClaim = claim;
+            else {
+              await stages.claimPreviewRepair(claim, signal);
+              state.previewRepair = claim;
+            }
           } else if (previewRepair && state.previewRepair) {
             throw new Error(
               "This run already claimed its single preview correction. Reuse the exact correction claim or report its unresolved failures.",
@@ -716,6 +784,10 @@ export function createEditorToolset<T>(input: {
                 "The host preflight receipt does not match the declared edit.",
               );
             receipt = checked;
+            if (pendingRepairClaim) {
+              await stages!.claimPreviewRepair!(pendingRepairClaim, signal);
+              state.previewRepair = pendingRepairClaim;
+            }
           }
           const recorded = await stages?.recordReview?.(
             {

@@ -1,19 +1,19 @@
 # Editor agent ownership and extensions
 
 The shared model/tool loop is `packages/agent-loop` **0.2.0**. Portable editor definitions
-are `packages/agent-kit` **0.2.5**, with tool metadata and schemas, trusted Markdown skill
+are `packages/agent-kit` **0.2.6**, with tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
 
 ## Current runtime, 2026-11-12
 
-The local API starts new runs with `local-editor-v11`. Its commercial counterpart
-is `commercial-editing-v12`. The engine dependency is **1.2.3**. The frozen 0.2.5
-kit source is `e822993`. Host adapters and subsequent tests/docs have their own
+The local API starts new runs with `local-editor-v12`. Its commercial counterpart
+is `commercial-editing-v13`. The engine dependency is **1.2.3**. The frozen 0.2.6
+kit source is `664345c`. Host adapters and subsequent tests/docs have their own
 commits and acceptance records.
 
-Local v6, v7, v8, v9 and v10 runs dispatch through retained kit 0.2.0, 0.2.1,
-0.2.2, 0.2.3 and 0.2.4 coordinators respectively. Each saved run keeps its model,
+Local v6, v7, v8, v9, v10 and v11 runs dispatch through retained kit 0.2.0, 0.2.1,
+0.2.2, 0.2.3, 0.2.4 and 0.2.5 coordinators respectively. Each saved run keeps its model,
 inventory, source basis, receipts and original budget. The application selects
 the run's stored profile during recovery. Standalone `AgentService` integrations
 retain their explicit profile selection.
@@ -25,7 +25,9 @@ monolingual captions plus graphics. Planning, caption batches and assembly expos
 their phase-specific tools. Assembly uses `review_edit` and `propose_edit` with
 the frozen checklist and saved successful review reference.
 
-The shared allowance is 32 model calls, 64 tool calls and 32,000 output tokens.
+The latest local host freezes 64 model calls, 64 tool calls and 32,000 output tokens.
+Earlier staged profiles retain their original 32-call allowance. The portable coordinator
+default remains 32 calls.
 The latest local profile permits 16 model calls, 24 tool calls and up to the
 remaining 32,000 output tokens per stage. Planning and assembly consume the same
 total. Provider-request ceilings belong to the frozen model configuration.
@@ -44,6 +46,22 @@ source or candidate snapshot and sampled frames. Pixels enter the configured
 model transport through verified receipt references. Checkpoints store bounded
 metadata. One durable preview-repair claim permits a correction batch, followed
 by a second candidate preview and a final report of sampled unresolved issues.
+The latest profile accepts `previewRepair.mode: "append"` with a batch of targeted
+native commands. It resolves the same owned verified candidate and combines its
+complete command list with the incremental batch. Prepared captions occur once.
+The original snapshot and frozen requirements govern native preflight. Both
+append and full-replacement repairs claim their single round after passing native
+checks. Invalid commands can be corrected against the same owned preview receipt.
+The claim binds the expanded full-command hash. Checkpoint restore reconstructs
+that expansion from the owned basis reference before validating the receipt.
+Saved successful reviews continue through the existing second-preview/proposal
+path with the original total allowance.
+
+Latest-profile native review and final compilation also preserve authored paint
+order when automatic type-based lane grouping would invert overlapping visual
+items. This protects authored backgrounds and overlays through the existing
+command representation and track checks.
+
 Export requests bind to the actual Apply receipt. Publication verifies the
 cached file's bytes, hash, profile and applied revision.
 
@@ -58,13 +76,19 @@ the optional LH-R15 follow-up. `prepare_generated_media` and its skill become
 eligible only when a host registers that executor. The current localhost
 registry's four tools advertise inspection, preview and export.
 
-The coordinated source gate passed 914 tests, TypeScript, integrity checks and
+The coordinated 0.2.5 source gate passed 914 tests, TypeScript, integrity checks and
 the production build. All 66 browser checks passed with scripted provider HTTP.
 Later test-only commit `8c08424` passed 16 staged-service tests and TypeScript,
 including new-profile review/Apply/reload/replay/Undo, observed planning/assembly
 budgets and exact older-profile checkpoint recovery. These records are local
 verification. Public CI and live-provider creative acceptance are recorded
 separately in [the ledger](readiness-progress.md).
+The 0.2.6 full gate passed 933 tests, TypeScript, integrity checks and the
+production build. All 66 browser checks passed against that build, with report
+`test-results/browser-026-664345c/report.json`. Its focused pre-freeze gate passed
+50 tests. Sixteen commercial native-session/discovery tests passed using the
+installed 0.2.6 kit. Standalone package and live-provider acceptance follow the
+recorded release gate.
 
 ## Host ports and retained compatibility
 
@@ -121,7 +145,7 @@ to32KB/12sources/200cues; incomplete coverage requires narrowing rather than gue
 
 Frozen local-editor-v1/commercial-editing-v2 profiles retain their original kit
 contract version, inventory/schema/guidance and checkpoint bindings. The local
-application now opts new runs into v11; older stored runs/clarification children retain
+application now opts new runs into v12; older stored runs/clarification children retain
 their own profile. Standalone AgentService integrations retain v1 unless opted in.
 
 The local checkpoint adapter is `apps/server/src/agent-loop-checkpoint.ts`.

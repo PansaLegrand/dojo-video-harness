@@ -1,8 +1,8 @@
 # Harness capability and coverage inventory
 
 Created on 2026-11-01 and last reviewed on 2026-11-12. Acceptance results are recorded separately.
-Current engine dependency is 1.2.3. New local runs use local-editor-v11 with kit
-0.2.5 and loop 0.2.0. The coordinated gate passed 914 tests/build and 66
+Current engine dependency is 1.2.3. New local runs use local-editor-v12 with kit
+0.2.6 and loop 0.2.0. The coordinated 0.2.6 gate passed 933 tests/build and 66
 scripted-provider browser checks. See [the current ledger](readiness-progress.md)
 for the later focused tests and pending public CI.
 
