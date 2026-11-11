@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceRepository": "dojo-video-web",
-  "sourceCommit": "984338bc93c999ae3083a4ce23aa2e892e7b5c06",
+  "sourceCommit": "23a9f8b10452cadf5da9c9ca33d6031e2fa1e291",
   "transforms": [
     "engine namespace/path rename",
     "local user import boundary",
@@ -336,8 +336,8 @@
     {
       "source": "components/editor/motionforge/editor-media.ts",
       "target": "packages/core/src/lib/editor/media.product.ts",
-      "sourceHash": "80aa827e884e77f965637738519c699a5d71c137fccea8d4dd30204e5031f16c",
-      "outputHash": "99073d4b8bfc75f18b321d75a860de5459a56345a071f8bba57b95d1daeb4486"
+      "sourceHash": "3b81c4126f2999422072e843734cc04131eadf2b645b3886f7ec6f0202ee9583",
+      "outputHash": "59ff2300ba4376b460d698bc6f19bd1b90fd4ee9974dbeb58dd86b6d441efce8"
     },
     {
       "source": "components/editor/motionforge/editor-missing-media-copy.ts",

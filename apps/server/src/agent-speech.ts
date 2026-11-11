@@ -16,6 +16,10 @@ import {
 } from "../../../packages/core/src/lib/video-project/semantic";
 import { nativeTranscriptScopedSourceItemIds } from "../../../packages/core/src/lib/video-project/agent-transcript-search";
 import {
+  fallbackSpeechSourceItems,
+  sourceAudioTrackPresence,
+} from "../../../packages/core/src/lib/video-project/source-audio";
+import {
   HttpError,
   runOf,
   type ProjectStore,
@@ -252,7 +256,19 @@ export async function prepareAgentSpeech(
     ).filter((item) => scoped === null || scoped.includes(item.id));
     if (!items.length)
       throw new HttpError("Select source video or audio for this speech edit.");
-    const assets = [...new Set(items.map((item) => item.node.assetId!))].filter(
+    const speechItems = items.filter(
+      (item) =>
+        sourceAudioTrackPresence(document, item.node.assetId!) !== "absent",
+    );
+    if (
+      !speechItems.length ||
+      (["local-editor-v10"].includes(r.agentProfile ?? "") &&
+        !fallbackSpeechSourceItems(document, speechItems).length)
+    )
+      return r;
+    const assets = [
+      ...new Set(speechItems.map((item) => item.node.assetId!)),
+    ].filter(
       (assetId) =>
         !Object.values(document.evidence).some(
           (evidence) =>

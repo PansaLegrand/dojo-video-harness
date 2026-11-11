@@ -191,7 +191,12 @@ export async function importLocalVideoSource(
       ? { width: metadata.width, height: metadata.height }
       : {}),
     ...(metadata.mediaMetadata
-      ? { mediaMetadata: metadata.mediaMetadata }
+      ? {
+          mediaMetadata: {
+            ...metadata.mediaMetadata,
+            contentHash: fingerprint,
+          },
+        }
       : {}),
   };
   const source: LocalVideoSource = {
@@ -241,6 +246,16 @@ export async function relinkLocalVideoSource(
   if (fingerprint !== expectedFingerprint)
     throw new Error(
       "This is a different file. Relink using the original media; import new footage separately.",
+    );
+  const metadata = await probeEditorMedia(file, signal);
+  if (
+    asset.mediaMetadata?.contentHash === fingerprint &&
+    typeof asset.mediaMetadata.hasAudio === "boolean" &&
+    typeof metadata.mediaMetadata?.hasAudio === "boolean" &&
+    asset.mediaMetadata.hasAudio !== metadata.mediaMetadata.hasAudio
+  )
+    throw new Error(
+      "The original audio-track metadata does not match this file. Import the media again.",
     );
   await saveLocalVideoSource(
     {

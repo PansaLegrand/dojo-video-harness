@@ -218,6 +218,56 @@ export type AdmittedEditorVideo = {
   mediaMetadata: NonNullable<SceneAsset["metadata"]>;
 };
 
+/** Inspect the original container, including when an audio element is muted. */
+export async function probeOriginalAudioTrack(
+  file: Blob,
+  parent?: AbortSignal,
+): Promise<boolean | undefined> {
+  const { Input, BlobSource, ALL_FORMATS } = await abortableLocalRead(
+    import("mediabunny"),
+    parent,
+  );
+  parent?.throwIfAborted();
+  const controller = new AbortController(),
+    signal = controller.signal;
+  const input = new Input({
+    source: new BlobSource(file, {
+      maxCacheSize: EDITOR_MEDIA_ADMISSION.metadataCacheBytes,
+    }),
+    formats: ALL_FORMATS.filter(
+      (format) => format.name.toLowerCase() !== "hls",
+    ),
+  });
+  const abort = () => controller.abort(parent?.reason);
+  parent?.addEventListener("abort", abort, { once: true });
+  let disposed = false;
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    try {
+      input.dispose();
+    } catch {
+      /* Already disposed by cancellation. */
+    }
+  };
+  signal.addEventListener("abort", dispose, { once: true });
+  const timer = setTimeout(
+    () => controller.abort(new Error("Audio-track inspection timed out.")),
+    EDITOR_MEDIA_ADMISSION.probeTimeoutMs,
+  );
+  try {
+    return !!(await abortableLocalRead(input.getPrimaryAudioTrack(), signal));
+  } catch {
+    parent?.throwIfAborted();
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+    parent?.removeEventListener("abort", abort);
+    signal.removeEventListener("abort", dispose);
+    dispose();
+  }
+}
+
 /** Reads bounded packet metadata and proves the original codec can decode a
  * frame. Any late frame after cancellation is still closed by the inner job. */
 export async function inspectEditorVideo(
