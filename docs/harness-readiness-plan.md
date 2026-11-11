@@ -8,12 +8,22 @@ review mode, which remains available to evaluation hosts and paid/cloud workflow
 
 Date: 2026-11-01
 
-Last reviewed: 2026-11-02
+Last reviewed on 2026-11-12
 
 Status: executing; see [the execution ledger](readiness-progress.md) and
 [2026-11-02 evidence](readiness-report-2026-11-02.md). The
 [Gateway automated GPT gates passed](gateway-readiness-report.md); real-media,
 human and additional capability acceptance remain open.
+
+Current local source selects `local-editor-v11` with kit 0.2.5, loop 0.2.0 and
+engine 1.2.3. The coordinated local gate passed 914 tests/build and 66 browser
+checks. Later test-only coverage passed 16 staged-service tests and TypeScript.
+LH-R07 source inspection and LH-R20 candidate-preview/Apply-bound export adapters
+are implemented and browser-qualified within their recorded scope. General local
+image/video generation is the optional bounded LH-R15 follow-up. The original
+milestone qualifies user-reviewed editing, while LH-R15 has its own provider
+integration scope. Follow [the current ledger](readiness-progress.md) for release,
+CI, live-provider and human acceptance separately.
 
 ## 1. Milestone question and scope
 

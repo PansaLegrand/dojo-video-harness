@@ -16,13 +16,25 @@ the local editor and commercial adapters. Host persistence, accounts, credits,
 provider credentials and external-job policy remain separate. Synchronization is
 explicit and tested; the repositories do not share one interchangeable server.
 
-The local application selects `local-editor-v9`, using the portable agent kit
-**0.2.3** and the unchanged host-independent loop **0.2.0**. Engine packages remain
+The local application selects `local-editor-v11`, using the portable agent kit
+**0.2.5** and the host-independent loop **0.2.0**. Engine packages are
 **1.2.3**. These are separate versioned boundaries: a tool-contract change does not
 require a renderer or loop rewrite. Older runs retain their bound profiles,
 archived tool/skill contracts and checkpoint semantics rather than upgrading in place.
 See [the profile catalog](../packages/agent-kit/src/catalog.ts) and
 [local application setup](../apps/server/src/local-api.ts).
+
+The current profile preserves installed-engine refined-value descriptions and
+formats in graphics discovery. The 19,138-byte descriptor includes a native
+`center bottom` transform-origin example and directs keyframe values to their
+named style grammar. Earlier profile observations retain their archive snapshots.
+
+The local browser-request registry implements source inspection, owned candidate
+previews and Apply-bound export intents. Authorized receipt references hydrate
+model pixels at the transport boundary. One durable preview correction requires
+a second preview before final proposal. Cached browser output can publish after
+restart without another encoding. The existing export store verifies final local
+file authority. See [local host adapters](managed-ui-host-followups.md).
 
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
@@ -183,9 +195,9 @@ live-model editing quality or successful rendered-media acceptance. See
 [staged-edit tests](../tests/general-edit-stages.test.ts) and
 [saved-review tests](../tests/reviewed-edit-reference.test.ts).
 
-One bounded follow-up remains for the next immutable contract patch: malformed
-`review_edit` input can be rejected before clearing an earlier successful review
-in the same session, while checkpoint restoration clears the error. The reference
-still resolves only the earlier exact verified edit; unreviewed commands cannot
-reuse its receipt. Move invalidation before input parsing and cover the same-session
-and restored-checkpoint behavior together. The immutable 0.2.3 contract is retained.
+The 0.2.4 contract moved review invalidation before malformed-input parsing and
+added preview-bound repair receipts. The 0.2.5 discovery patch preserves the
+installed grammar metadata. The later coordinated gate passed 914 tests and the
+production build, followed by 66 actual browser checks with scripted providers.
+The new-profile service/recovery matrix in `8c08424` passed 16 focused tests and
+TypeScript after that full gate. [Current execution ledger](readiness-progress.md).

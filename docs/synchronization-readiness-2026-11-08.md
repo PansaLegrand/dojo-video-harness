@@ -1,5 +1,16 @@
 # Synchronization and agent readiness — 2026-11-08
 
+## Current addendum, 2026-11-12
+
+New local runs use `local-editor-v11`, kit 0.2.5, loop 0.2.0 and engine 1.2.3.
+The frozen kit source is `e822993`. The coordinated local gate passed 914
+tests/build and 66 scripted-provider browser checks. LH-R07 source inspection and
+LH-R20 receipt-bound preview/correction/export adapters are implemented. General
+local image/video generation remains the optional LH-R15 integration. Public CI
+for the pushed candidate is pending. See [the current agent map](agent-system.md)
+and [execution ledger](readiness-progress.md). Earlier dated results below retain
+their original package and provider identities.
+
 ## Ownership
 
 | Concern                                                     | Starting point                                   | Host responsibility                                                         |
@@ -63,8 +74,9 @@ qualification. Earlier failed and rejected candidates remain retained.
 
 The runtime is a useful extension base: typed tools, bounded execution, source
 evidence, guarded commits, durable provider receipts and restart/cancel behavior.
-It does not yet autonomously render, inspect and revise generated output, and
-passing command validation does not establish semantic or visual quality for
-arbitrary long requests. Qualify every new provider and capability with actual
-host receipts, saved project behavior and decoded-media checks. Image/video
-generation remains an extension point, not a shipped local provider lifecycle.
+Current local browser adapters support consented source sampling and one
+receipt-bound preview correction followed by a second preview. Arbitrary long
+requests and creative quality need their own acceptance evidence. Qualify each
+provider and capability with actual host receipts, saved project behavior and
+decoded-media checks. General local image/video generation follows the optional
+LH-R15 lifecycle scope.
