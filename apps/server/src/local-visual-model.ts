@@ -5,7 +5,7 @@ import {
   type ChatMessage,
   type ToolSpec,
   type ModelLimits,
-} from "@dojo-video/agent-loop";
+} from "../../../packages/agent-loop/src/index";
 import {
   EDITOR_HOST_TOOL_POLICY,
   type EditorVisualInputRef,
