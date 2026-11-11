@@ -8,6 +8,7 @@ import {
   usesStagedEditing,
   usesReviewedEditReferences,
   usesPreviewRepair,
+  usesAppendPreviewRepair,
   type PreviewRepairEvidence,
   type EditorStagePorts,
   type AgentProfile,
@@ -189,6 +190,11 @@ export async function runAgent(input: {
                     : {}),
                   ...(usesPreviewRepair(input.profile ?? "local-editor-v1")
                     ? { previewRepair: true as const }
+                    : {}),
+                  ...(usesAppendPreviewRepair(
+                    input.profile ?? "local-editor-v1",
+                  )
+                    ? { appendPreviewRepair: true as const }
                     : {}),
                   resolvePreparedEdit: (edit) =>
                     input.stages!.resolvePreparedEdit(edit, signal),

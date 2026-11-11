@@ -7,6 +7,7 @@ import {
   usesReviewedEditReferences,
   usesPhaseScopedTools,
   usesPreviewRepair,
+  usesAppendPreviewRepair,
   type AgentProfile,
 } from "./catalog.js";
 import type { Skill } from "./catalog.js";
@@ -58,7 +59,11 @@ export function composeToolAgentPrompt(input: {
       : []),
     CORRECTION_GUIDE,
     ...(input.profile && usesPreviewRepair(input.profile)
-      ? [PREVIEW_REPAIR_GUIDE]
+      ? [
+          usesAppendPreviewRepair(input.profile)
+            ? APPEND_PREVIEW_REPAIR_GUIDE
+            : PREVIEW_REPAIR_GUIDE,
+        ]
       : []),
     ...(input.toolNames.includes("review_edit")
       ? [
@@ -115,3 +120,6 @@ const PHASE_READER_GUIDE =
 
 const PREVIEW_REPAIR_GUIDE =
   "Original source audio facts distinguish present, absent and unknown audio tracks. A silent source needs no ASR. An audio track does not prove speech. Resolve genuinely ambiguous speech targets with ask_user. For visual uncertainty use the existing request_project_preview after successful assembly review with {frames,reviewed:true}. Wait for the authorized browser receipt, inspect the actual labeled sampled pixels, then either propose with previewReport:{requestId,receiptHash,issues:[]} or correct observed failures through review_edit({edit,previewRepair:{requestId,receiptHash,issues:[{frame,description}]}}). Omit requirements to preserve the frozen checklist. Exactly ONE correction command batch can be claimed under the original allowance. Its claim persists even if review fails. After a successful correction request a SECOND preview of the repaired candidate and finish with propose_edit({reviewed:true,previewReport:{requestId,receiptHash,issues:[remaining sampled failures]}}). A second correction is unavailable. Report unresolved failures honestly and stop. Sampled images cover only listed frames, audio is not inspected, and unsampled/semantic quality remains unknown. Native review/Apply/Undo and provider consent still govern all work.";
+
+const APPEND_PREVIEW_REPAIR_GUIDE =
+  "Original source audio facts distinguish present, absent and unknown tracks. Silent originals need no ASR. Use ask_user for genuinely ambiguous speech targets. After a successful full assembly review, request_project_preview({frames,reviewed:true}) and inspect its authorized labeled samples. To repair observed failures with incremental native commands, send review_edit({edit:{outcome:'proposal',summary,commands:[only targeted repair commands]},previewRepair:{mode:'append',requestId,receiptHash,issues:[{frame,description}]}}). The host resolves that exact owned verified candidate and appends the supplied commands once, preserving its original assembly and prepared captions. Requirements and the original compiler snapshot remain frozen. The complete expanded candidate receives native validation before its single correction claim is consumed. Both repair modes validate before claiming. Invalid commands may be corrected against the same receipt. Omit mode when supplying a complete replacement batch. A successfully claimed correction requires a SECOND preview of the repaired candidate and propose_edit({reviewed:true,previewReport:{requestId,receiptHash,issues:[remaining sampled failures]}}). Report remaining sampled failures honestly. Samples cover only listed frames and leave audio and unsampled quality uninspected. Apply, Undo, consent and the original overall allowance continue through the existing host ports.";

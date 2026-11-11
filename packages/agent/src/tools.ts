@@ -19,6 +19,7 @@ import {
   usesReviewedEditReferences,
   usesPreviewRepair,
   usesInstalledGraphicsGrammar,
+  usesAppendPreviewRepair,
   type PreviewRepairEvidence,
   type EditorStagePorts,
 } from "../../agent-kit/src/index";
@@ -290,7 +291,14 @@ export function createVideoToolset(
         command: prepareReadableOverlay(document, args),
         next: "Include this command in propose_edit. The host handles application; preparation has not applied an edit.",
       }),
-      reviewEdit: (input) => reviewNativeCompletionEdit(request, input),
+      reviewEdit: (input) =>
+        reviewNativeCompletionEdit(
+          request,
+          input,
+          usesAppendPreviewRepair(options.profile ?? "local-editor-v1")
+            ? { preserveAuthoredPaintOrder: true }
+            : {},
+        ),
       prepareCaptionPair: (input) =>
         prepareCaptionPair(document, input, {
           sourceRange: usesPagedReaders(options.profile ?? "local-editor-v1"),
@@ -304,10 +312,16 @@ export function createVideoToolset(
         )
           throw new Error("holdMs requires the completion-preflight profile.");
         return completion
-          ? compileNativeCompletionResponse(request, {
-              ...(args as object),
-              completion,
-            })
+          ? compileNativeCompletionResponse(
+              request,
+              {
+                ...(args as object),
+                completion,
+              },
+              usesAppendPreviewRepair(options.profile ?? "local-editor-v1")
+                ? { preserveAuthoredPaintOrder: true }
+                : {},
+            )
           : compileNativeAgentResult(request, args);
       },
       askUser: (args) => {
@@ -326,7 +340,8 @@ export function createVideoToolset(
     tools: toolset.tools.map((tool): AgentTool => {
       const host =
         (options.profile === "local-editor-v10" ||
-          options.profile === "local-editor-v11") &&
+          options.profile === "local-editor-v11" ||
+          options.profile === "local-editor-v12") &&
         [
           "inspect_image",
           "sample_video_frames",

@@ -1,4 +1,10 @@
 import { createHash } from "node:crypto";
+import {
+  builtInSkills as v25Skills,
+  composeToolAgentPrompt as v25Prompt,
+  createEditorToolset as v25Tools,
+  createEditorHostTools as v25HostTools,
+} from "@dojo-video/agent-kit-v25";
 import { expect, it } from "vitest";
 import {
   AGENT_KIT_VERSION as v24Version,
@@ -8,7 +14,6 @@ import {
   createEditorToolset as v24Tools,
 } from "@dojo-video/agent-kit-v24";
 import {
-  AGENT_KIT_VERSION,
   builtInSkills,
   composeToolAgentPrompt,
   createEditorHostTools,
@@ -19,6 +24,7 @@ import {
   usesCompletionPreflight,
   usesEfficientReaders,
   usesInstalledGraphicsGrammar,
+  usesAppendPreviewRepair,
   usesPagedReaders,
   usesPhaseScopedTools,
   usesPreviewRepair,
@@ -140,7 +146,7 @@ it("retains exact 0.2.4 tool metadata, inventory, skills and prompt bytes for ac
   }
 });
 
-it("new profiles inherit prior reader, staging and preview features while selecting the current kit version", () => {
+it("installed-grammar profiles retain their reader, staging, preview and 0.2.5 contract", () => {
   const priorFeatures = [
     usesCompletionPreflight,
     usesPagedReaders,
@@ -152,10 +158,9 @@ it("new profiles inherit prior reader, staging and preview features while select
     usesPhaseScopedTools,
     usesPreviewRepair,
   ];
-  expect(AGENT_KIT_VERSION).toBe("0.2.5");
   for (const [previous, profile] of profilePairs) {
     expect(usesInstalledGraphicsGrammar(profile)).toBe(true);
-    expect(profileKitVersion(profile)).toBe(AGENT_KIT_VERSION);
+    expect(profileKitVersion(profile)).toBe("0.2.5");
     expect(profileKitVersion(previous)).toBe("0.2.4");
     expect(profileSkills[profile]).toEqual(profileSkills[previous]);
     for (const feature of priorFeatures) {
@@ -284,5 +289,93 @@ it("the actual local tool wrapper preserves old observation bytes and gates inst
     await expect(
       currentSession.inspect({ installedGrammar: true }),
     ).rejects.toThrow();
+  }
+});
+
+it("retains exact archived 0.2.5 schemas, guidance and inventory before adding explicit append repair", () => {
+  for (const profile of [
+    "local-editor-v11",
+    "commercial-editing-v12",
+  ] as const) {
+    expect(usesAppendPreviewRepair(profile)).toBe(false);
+    expect(profileKitVersion(profile)).toBe("0.2.5");
+    for (const phase of phases) {
+      const common = {
+        profile,
+        snapshotHash: "sha256:" + "a".repeat(64),
+        ports: ports(phase),
+        proposalSchema: nativeAgentResponseSchema({
+          clarification: true,
+          composition: true,
+          anchorHold: true,
+        }),
+      };
+      const current = createEditorToolset({
+        ...common,
+        skills: builtInSkills(),
+        extraTools: createEditorHostTools({ profile, ports: hostPorts }),
+      });
+      const previous = v25Tools({
+        ...common,
+        skills: v25Skills(),
+        extraTools: v25HostTools({ profile, ports: hostPorts }),
+      });
+      expect(JSON.stringify(current.tools)).toBe(
+        JSON.stringify(previous.tools),
+      );
+      expect(JSON.stringify(current.inventory)).toBe(
+        JSON.stringify(previous.inventory),
+      );
+      expect(JSON.stringify(current.skills)).toBe(
+        JSON.stringify(previous.skills),
+      );
+      const prompt = {
+        profile,
+        phase,
+        editingGuide: "Frozen host guide",
+        toolNames: names(current.tools),
+        skills: current.skills,
+      };
+      expect(composeToolAgentPrompt(prompt)).toBe(v25Prompt(prompt));
+    }
+  }
+});
+
+it("advertises explicit append only in new profiles and references the host-owned original allowance", () => {
+  for (const profile of [
+    "local-editor-v12",
+    "commercial-editing-v13",
+  ] as const) {
+    expect(usesAppendPreviewRepair(profile)).toBe(true);
+    expect(profileKitVersion(profile)).toBe("0.2.6");
+    const current = createEditorToolset({
+      profile,
+      ports: ports("assemble"),
+      skills: builtInSkills(),
+      proposalSchema: nativeAgentResponseSchema({
+        clarification: true,
+        composition: true,
+        anchorHold: true,
+      }),
+      snapshotHash: "sha256:" + "a".repeat(64),
+      extraTools: createEditorHostTools({ profile, ports: hostPorts }),
+    });
+    expect(
+      current.tools.find((tool) => tool.name === "review_edit")?.parameters,
+    ).toMatchObject({
+      properties: {
+        previewRepair: { properties: { mode: { const: "append" } } },
+      },
+    });
+    const prompt = composeToolAgentPrompt({
+      profile,
+      phase: "assemble",
+      editingGuide: "Host supplied remaining allowance",
+      toolNames: names(current.tools),
+      skills: current.skills,
+    });
+    expect(prompt).toContain("mode:'append'");
+    expect(prompt).toContain("original overall allowance");
+    expect(prompt).not.toContain("32 model calls");
   }
 });

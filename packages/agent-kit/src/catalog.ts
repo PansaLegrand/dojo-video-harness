@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.2.5" as const;
+export const AGENT_KIT_VERSION = "0.2.6" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -199,7 +199,9 @@ export type AgentProfile =
   | "local-editor-v10"
   | "commercial-editing-v11"
   | "local-editor-v11"
-  | "commercial-editing-v12";
+  | "commercial-editing-v12"
+  | "local-editor-v12"
+  | "commercial-editing-v13";
 export const usesCompletionPreflight = (profile: AgentProfile) =>
   [
     "local-editor-v2",
@@ -222,6 +224,8 @@ export const usesCompletionPreflight = (profile: AgentProfile) =>
     "commercial-editing-v11",
     "local-editor-v11",
     "commercial-editing-v12",
+    "local-editor-v12",
+    "commercial-editing-v13",
   ].includes(profile);
 export const usesPagedReaders = (profile: AgentProfile) =>
   [
@@ -243,6 +247,8 @@ export const usesPagedReaders = (profile: AgentProfile) =>
     "commercial-editing-v11",
     "local-editor-v11",
     "commercial-editing-v12",
+    "local-editor-v12",
+    "commercial-editing-v13",
   ].includes(profile);
 export const usesEfficientReaders = (profile: AgentProfile) =>
   [
@@ -262,6 +268,8 @@ export const usesEfficientReaders = (profile: AgentProfile) =>
     "commercial-editing-v11",
     "local-editor-v11",
     "commercial-editing-v12",
+    "local-editor-v12",
+    "commercial-editing-v13",
   ].includes(profile);
 export const usesResolvedEditSchema = (profile: AgentProfile) =>
   [
@@ -279,6 +287,8 @@ export const usesResolvedEditSchema = (profile: AgentProfile) =>
     "commercial-editing-v11",
     "local-editor-v11",
     "commercial-editing-v12",
+    "local-editor-v12",
+    "commercial-editing-v13",
   ].includes(profile);
 export const usesStagedEditing = (profile: AgentProfile) =>
   profile === "local-editor-v6" ||
@@ -306,29 +316,36 @@ export const usesPreviewRepair = (profile: AgentProfile) =>
   usesInstalledGraphicsGrammar(profile);
 /** Discovery preserves the installed engine's refined-value grammar metadata. */
 export const usesInstalledGraphicsGrammar = (profile: AgentProfile) =>
-  profile === "local-editor-v11" || profile === "commercial-editing-v12";
+  profile === "local-editor-v11" ||
+  profile === "commercial-editing-v12" ||
+  usesAppendPreviewRepair(profile);
+/** Targeted preview repairs expand against the exact owned successful candidate. */
+export const usesAppendPreviewRepair = (profile: AgentProfile) =>
+  profile === "local-editor-v12" || profile === "commercial-editing-v13";
 export const profileKitVersion = (profile: AgentProfile) =>
-  usesInstalledGraphicsGrammar(profile)
+  usesAppendPreviewRepair(profile)
     ? AGENT_KIT_VERSION
-    : usesPreviewRepair(profile)
-      ? "0.2.4"
-      : usesPhaseScopedTools(profile)
-        ? "0.2.3"
-        : usesReviewedEditReferences(profile)
-          ? "0.2.2"
-          : usesAuthoringContracts(profile)
-            ? "0.2.1"
-            : usesStagedEditing(profile)
-              ? "0.2.0"
-              : usesResolvedEditSchema(profile)
-                ? "0.1.5"
-                : usesEfficientReaders(profile)
-                  ? "0.1.4"
-                  : usesPagedReaders(profile)
-                    ? "0.1.3"
-                    : usesCompletionPreflight(profile)
-                      ? "0.1.2"
-                      : "0.1.1";
+    : usesInstalledGraphicsGrammar(profile)
+      ? "0.2.5"
+      : usesPreviewRepair(profile)
+        ? "0.2.4"
+        : usesPhaseScopedTools(profile)
+          ? "0.2.3"
+          : usesReviewedEditReferences(profile)
+            ? "0.2.2"
+            : usesAuthoringContracts(profile)
+              ? "0.2.1"
+              : usesStagedEditing(profile)
+                ? "0.2.0"
+                : usesResolvedEditSchema(profile)
+                  ? "0.1.5"
+                  : usesEfficientReaders(profile)
+                    ? "0.1.4"
+                    : usesPagedReaders(profile)
+                      ? "0.1.3"
+                      : usesCompletionPreflight(profile)
+                        ? "0.1.2"
+                        : "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
@@ -345,6 +362,17 @@ export const profileSkills: Record<
   "local-editor-v9": null,
   "local-editor-v10": null,
   "local-editor-v11": null,
+  "local-editor-v12": null,
+  "commercial-editing-v13": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+    "multi-asset-editing",
+    "staged-editing",
+    "generated-media",
+    "visual-inspection",
+  ],
   "commercial-editing-v12": [
     "precise-editing",
     "motion-design",

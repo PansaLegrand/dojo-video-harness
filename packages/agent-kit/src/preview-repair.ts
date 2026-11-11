@@ -1,4 +1,21 @@
 import { parseEditArtifactRef, type EditArtifactRef } from "./stages.js";
+import { assertEditingProposal } from "./editing-schema.js";
+
+/** The saved candidate already includes any prepared caption commands. */
+export function appendPreviewRepairEdit(
+  basis: unknown,
+  delta: unknown,
+): unknown {
+  assertEditingProposal(basis);
+  assertEditingProposal(delta);
+  return {
+    ...(delta as object),
+    commands: [
+      ...(basis as { commands: unknown[] }).commands,
+      ...(delta as { commands: unknown[] }).commands,
+    ],
+  };
+}
 
 export type PreviewIssue = { frame: number; description: string };
 export type PreviewRepairEvidence = {
