@@ -1,3 +1,4 @@
+import type { PreviewRepairClaim } from "./preview-repair.js";
 import { toolMetadata, type AgentTool } from "./catalog.js";
 import {
   pagedCompletionRequirementsSchema,
@@ -23,6 +24,11 @@ export type EditorStagePorts<T> = {
   /** Host-bound prepared commands are fixed before the assembly checkpoint starts. */
   resolvePreparedEdit(input: unknown, signal: AbortSignal): Promise<unknown>;
   preparedCommands: boolean;
+  /** Atomically retained by the existing artifact host before evaluating a correction. */
+  claimPreviewRepair?(
+    claim: PreviewRepairClaim,
+    signal: AbortSignal,
+  ): Promise<void>;
   completionState?: CompletionState;
   readCaptionCues?(
     input: CaptionCueQuery,

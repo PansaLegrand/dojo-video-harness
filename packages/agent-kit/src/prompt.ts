@@ -6,6 +6,7 @@ import {
   usesAuthoringContracts,
   usesReviewedEditReferences,
   usesPhaseScopedTools,
+  usesPreviewRepair,
   type AgentProfile,
 } from "./catalog.js";
 import type { Skill } from "./catalog.js";
@@ -56,6 +57,9 @@ export function composeToolAgentPrompt(input: {
       ? [OVERLAY_GUIDE]
       : []),
     CORRECTION_GUIDE,
+    ...(input.profile && usesPreviewRepair(input.profile)
+      ? [PREVIEW_REPAIR_GUIDE]
+      : []),
     ...(input.toolNames.includes("review_edit")
       ? [
           phaseScoped && phase === "assemble"
@@ -108,3 +112,6 @@ const ASSEMBLY_COMPLETION_GUIDE =
   "The completion requirements are already frozen by the host. Call review_edit with {edit:{outcome:'proposal',summary,commands:[all intended additional commands]}} and OMIT requirements to preserve that list. Never replace, add to or weaken it. A failed check requires repairing the full command list and reviewing again; it does not authorize replanning. Fulfill all requested outputs even when the checklist is only a bounded subset of semantic/visual quality. If a successful review returns reviewRef, finish with propose_edit({reviewed:true}); the host resolves that same owned successful full edit and checks its hashes/native compilation without regenerating command JSON. If no saved reference exists, follow the review reply's exact raw-edit fallback. Empty additional commands are allowed only with explicit host preparedCommands. Source/evidence identities, original budget, consent and shared Undo remain unchanged.";
 const PHASE_READER_GUIDE =
   "Read authoritative supplied metadata and targeted source/asset/caption pages for the current phase. Follow returned cursors for the requested range and retain genuine source word/cue IDs; incomplete coverage is unfinished work. Do not enumerate unrelated imported assets or invent timing. During final assembly, all batches and the plan are already fixed; readers resolve missing facts for the actual complete edit, not a new planning pass. Use the host's completion-target hints: flattened item-index from/duration are node fields, so use a node target or explicit item.node path for completion checks.";
+
+const PREVIEW_REPAIR_GUIDE =
+  "Original source audio facts distinguish present, absent and unknown audio tracks. A silent source needs no ASR. An audio track does not prove speech. Resolve genuinely ambiguous speech targets with ask_user. For visual uncertainty use the existing request_project_preview after successful assembly review with {frames,reviewed:true}. Wait for the authorized browser receipt, inspect the actual labeled sampled pixels, then either propose with previewReport:{requestId,receiptHash,issues:[]} or correct observed failures through review_edit({edit,previewRepair:{requestId,receiptHash,issues:[{frame,description}]}}). Omit requirements to preserve the frozen checklist. Exactly ONE correction command batch can be claimed under the original allowance. Its claim persists even if review fails. After a successful correction request a SECOND preview of the repaired candidate and finish with propose_edit({reviewed:true,previewReport:{requestId,receiptHash,issues:[remaining sampled failures]}}). A second correction is unavailable. Report unresolved failures honestly and stop. Sampled images cover only listed frames, audio is not inspected, and unsampled/semantic quality remains unknown. Native review/Apply/Undo and provider consent still govern all work.";

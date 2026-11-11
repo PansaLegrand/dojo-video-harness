@@ -1,3 +1,7 @@
+import {
+  parsePreviewRepairClaim,
+  type PreviewRepairClaim,
+} from "./preview-repair.js";
 import { parseEditArtifactRef, type EditArtifactRef } from "./stages.js";
 /** Portable completion declarations and deterministic receipts. No domain,
  * provider, persistence or rendering authority lives in this module. */
@@ -93,6 +97,7 @@ export type CompletionState = {
   successfulReceipt?: CompletionReceipt;
   /** Small owned reference only; command JSON remains in the original review/artifact. */
   successfulReviewRef?: EditArtifactRef;
+  previewRepair?: PreviewRepairClaim;
 };
 export const COMPLETION_LIMITS = {
   requirements: 12,
@@ -378,6 +383,7 @@ export async function restoreCompletionStateFromMessages(
   options: {
     resolvePreparedEdit?: (edit: unknown) => Promise<unknown>;
     reviewReferences?: true;
+    previewRepair?: true;
   } = {},
 ): Promise<CompletionState | undefined> {
   let state: CompletionState | undefined;
@@ -426,6 +432,15 @@ export async function restoreCompletionStateFromMessages(
     )
       throw new Error("Frozen completion requirements changed.");
     state ??= { version: 1, snapshotHash, requirements, requirementsHash };
+    if (options.previewRepair && review.previewRepair !== undefined) {
+      const claim = parsePreviewRepairClaim(review.previewRepair);
+      if (
+        state.previewRepair &&
+        completionCanonical(state.previewRepair) !== completionCanonical(claim)
+      )
+        throw new Error("The saved preview correction round changed.");
+      state.previewRepair = claim;
+    }
     if (review.status === "passed") {
       const receipt = await validateCompletionReceipt(review.receipt);
       const args = JSON.parse(calls.get(message.tool_call_id)!.arguments);

@@ -1,3 +1,4 @@
+import { sourceAudioTrackPresence } from "../../core/src/lib/video-project/source-audio";
 import { importSvgGraphic } from "@dojo-video-engine/interchange/svg";
 import {
   parseThreeScene,
@@ -16,6 +17,8 @@ import {
   usesStagedEditing,
   usesAuthoringContracts,
   usesReviewedEditReferences,
+  usesPreviewRepair,
+  type PreviewRepairEvidence,
   type EditorStagePorts,
 } from "../../agent-kit/src/index";
 import {
@@ -86,6 +89,10 @@ export function createVideoToolset(
     profile?: AgentProfile;
     initialCompletionState?: CompletionState;
     stages?: EditorStagePorts<NativeAgentResult>;
+    previewEvidence?: (
+      requestId: string,
+      signal: AbortSignal,
+    ) => Promise<PreviewRepairEvidence>;
   } = {},
 ) {
   const document = parseVideoProjectDocument(request.document);
@@ -93,10 +100,16 @@ export function createVideoToolset(
     ...request,
     document,
   });
+  const audioAssets = Object.values(document.assets).filter((asset) =>
+    ["video", "audio"].includes(asset.type),
+  );
   const toolset = createEditorToolset<NativeAgentResult>({
     skills,
     profile: options.profile ?? "local-editor-v1",
     snapshotHash: request.baseHash,
+    ...(usesPreviewRepair(options.profile ?? "local-editor-v1")
+      ? { previewSnapshotHash: request.visualDocumentHash ?? request.baseHash }
+      : {}),
     initialCompletionState: options.initialCompletionState,
     extraTools,
     proposalSchema: nativeAgentResponseSchema({
@@ -105,6 +118,10 @@ export function createVideoToolset(
       anchorHold: usesCompletionPreflight(options.profile ?? "local-editor-v1"),
     }),
     ports: {
+      ...(usesPreviewRepair(options.profile ?? "local-editor-v1") &&
+      options.previewEvidence
+        ? { previewEvidence: options.previewEvidence }
+        : {}),
       ...(usesReviewedEditReferences(options.profile ?? "local-editor-v1")
         ? {
             validateRequirements: (raw: unknown) => {
@@ -145,6 +162,20 @@ export function createVideoToolset(
               extension: THREE_EXTENSION,
             },
       inspectProject: (query) => ({
+        ...(usesPreviewRepair(options.profile ?? "local-editor-v1")
+          ? {
+              sourceAudio: {
+                sources: audioAssets
+                  .slice(0, 50)
+                  .map((asset) => ({
+                    sourceId: asset.id,
+                    audioTrack: sourceAudioTrackPresence(document, asset.id),
+                  })),
+                omitted: Math.max(0, audioAssets.length - 50),
+                coverage: "listed-sources-only",
+              },
+            }
+          : {}),
         ...(usesReviewedEditReferences(options.profile ?? "local-editor-v1")
           ? { completionTargets: nativeCompletionTargetHints(document.items) }
           : {}),

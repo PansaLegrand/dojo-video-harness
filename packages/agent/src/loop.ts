@@ -7,6 +7,8 @@ import {
   usesResolvedEditSchema,
   usesStagedEditing,
   usesReviewedEditReferences,
+  usesPreviewRepair,
+  type PreviewRepairEvidence,
   type EditorStagePorts,
   type AgentProfile,
 } from "../../agent-kit/src/index";
@@ -58,6 +60,10 @@ export async function runAgent(input: {
   extraTools?: AgentTool[];
   profile?: AgentProfile;
   stages?: EditorStagePorts<NativeAgentResult>;
+  previewEvidence?: (
+    requestId: string,
+    signal: AbortSignal,
+  ) => Promise<PreviewRepairEvidence>;
   stageContext?: unknown;
 }): Promise<NativeAgentResult> {
   const { request, model, skills, signal } = input;
@@ -115,6 +121,9 @@ export async function runAgent(input: {
   const toolset = createVideoToolset(request, skills, input.extraTools ?? [], {
     profile: input.profile,
     ...(input.stages ? { stages: input.stages } : {}),
+    ...(input.previewEvidence
+      ? { previewEvidence: input.previewEvidence }
+      : {}),
   });
   const tools = toolset.tools;
   const system =
@@ -177,6 +186,9 @@ export async function runAgent(input: {
                     input.profile ?? "local-editor-v1",
                   )
                     ? { reviewReferences: true as const }
+                    : {}),
+                  ...(usesPreviewRepair(input.profile ?? "local-editor-v1")
+                    ? { previewRepair: true as const }
                     : {}),
                   resolvePreparedEdit: (edit) =>
                     input.stages!.resolvePreparedEdit(edit, signal),

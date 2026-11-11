@@ -13,6 +13,11 @@ import {
   builtInSkills as v22Skills,
   composeToolAgentPrompt as v22Prompt,
 } from "@dojo-video/agent-kit-v22";
+import {
+  createEditorToolset as v23Tools,
+  builtInSkills as v23Skills,
+  composeToolAgentPrompt as v23Prompt,
+} from "@dojo-video/agent-kit-v23";
 import { runToolLoop } from "../packages/agent-loop/src/index";
 import { createVideoToolset } from "../packages/agent/src/tools";
 import {
@@ -270,7 +275,7 @@ it("phase-specific system guidance stops assembly replanning and preserves the c
     } else expect(prompt).toContain("plan_edit_stages");
   }
 });
-it("old 0.2.2 phase menus, skills, descriptions and prompts are byte-identical to their archive", () => {
+it("old 0.2.2 and 0.2.3 phase menus, skills, descriptions and prompts are byte-identical to their archive", () => {
   const ports: EditorToolPorts<string> = {
     inspectProject: () => ({}),
     inspectGraphicsSchema: () => ({}),
@@ -293,7 +298,12 @@ it("old 0.2.2 phase menus, skills, descriptions and prompts are byte-identical t
       resolvePreparedEdit: async (value) => value,
     },
   };
-  for (const profile of ["local-editor-v8", "commercial-editing-v9"] as const) {
+  for (const profile of [
+    "local-editor-v8",
+    "commercial-editing-v9",
+    "local-editor-v9",
+    "commercial-editing-v10",
+  ] as const) {
     const common = {
       profile,
       snapshotHash: "sha256:" + "a".repeat(64),
@@ -308,7 +318,16 @@ it("old 0.2.2 phase menus, skills, descriptions and prompts are byte-identical t
       ports,
       skills: builtInSkills(),
     });
-    const old = v22Tools({ ...common, ports, skills: v22Skills() });
+    const latest =
+      profile === "local-editor-v9" || profile === "commercial-editing-v10";
+    const old = latest
+      ? v23Tools({ ...common, ports, skills: v23Skills() })
+      : v22Tools({
+          ...common,
+          profile: profile as "local-editor-v8" | "commercial-editing-v9",
+          ports,
+          skills: v22Skills(),
+        });
     expect(current.inventory).toEqual(old.inventory);
     expect(current.skills).toEqual(old.skills);
     const prompt = {
@@ -318,6 +337,13 @@ it("old 0.2.2 phase menus, skills, descriptions and prompts are byte-identical t
       toolNames: names(current.tools),
       skills: current.skills,
     };
-    expect(composeToolAgentPrompt(prompt)).toBe(v22Prompt(prompt));
+    expect(composeToolAgentPrompt(prompt)).toBe(
+      latest
+        ? v23Prompt(prompt)
+        : v22Prompt({
+            ...prompt,
+            profile: profile as "local-editor-v8" | "commercial-editing-v9",
+          }),
+    );
   }
 });

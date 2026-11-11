@@ -1,3 +1,4 @@
+import { parsePreviewRepairClaim } from "./preview-repair.js";
 import {
   completionCanonical,
   completionHash,
@@ -185,6 +186,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   reviewReferences?: true;
   /** New profiles advertise only tools valid in the current host-owned phase. */
   phaseScopedTools?: true;
+  previewRepair?: true;
   policy?: StagedEditPolicy;
   invoke(options: StageModelInvocation<T>): Promise<T>;
   signal: AbortSignal;
@@ -816,6 +818,25 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           commands: [...(source?.commands ?? []), ...edit.commands],
         };
       },
+      ...(input.previewRepair
+        ? {
+            claimPreviewRepair: async (claim: unknown) => {
+              if (!stage || stage.kind !== "assemble")
+                throw new Error("Preview correction requires final assembly.");
+              const parsed = parsePreviewRepairClaim(claim);
+              if (
+                parsed.basisRef.runId !== binding.runId ||
+                parsed.basisRef.bindingHash !== (await completionHash(binding))
+              )
+                throw new Error(
+                  "Preview correction belongs to another editing basis.",
+                );
+              // The artifact host atomically accepts one exact marker per run. Replaying
+              // the same immutable claim is safe after a checkpoint interruption.
+              await port.putArtifact("creative-decision", parsed);
+            },
+          }
+        : {}),
       recordReview: async (review) => {
         if (!stage || stage.kind !== "assemble") return;
         const ref = await port.putArtifact(
@@ -849,7 +870,9 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           );
         const finalRef = await port.putArtifact("verification", {
           kind: "final-candidate",
-          edit: review.edit,
+          edit: input.previewRepair
+            ? { ...(review.edit as object), summary: result.summary }
+            : review.edit,
           completion: result.completion,
         } satisfies Candidate);
         await input.records.saveCandidate(finalRef);
@@ -1063,6 +1086,29 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       requirements: plan.requirements,
       requirementsHash: plan.requirementsHash,
     };
+    if (input.previewRepair) {
+      const records = await saved();
+      for (const { ref } of Object.values(records.artifacts)) {
+        if (ref.kind !== "creative-decision") continue;
+        const value = await artifact(ref);
+        if (
+          value &&
+          typeof value === "object" &&
+          (value as { kind?: string }).kind === "preview-repair"
+        ) {
+          const claim = parsePreviewRepairClaim(value);
+          if (
+            stagePorts.completionState.previewRepair &&
+            completionCanonical(stagePorts.completionState.previewRepair) !==
+              completionCanonical(claim)
+          )
+            throw new Error(
+              "The original preview correction allowance is exhausted.",
+            );
+          stagePorts.completionState.previewRepair = claim;
+        }
+      }
+    }
     const checkpointRef = { stageId: stage.id, attemptId: attempt.id };
     let result: T;
     try {

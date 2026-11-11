@@ -632,3 +632,56 @@ it.each(["local-editor-v8", "local-editor-v9"] as const)(
     expect(calls).toBe(2);
   },
 );
+
+it.each([
+  ["local-editor-v9", false],
+  ["local-editor-v10", true],
+] as const)(
+  "malformed reviews invalidate compact eligibility only in the new profile (%s)",
+  async (profile, clears) => {
+    for (const malformed of [null, { edit: {}, unexpected: true }]) {
+      const f = await fixture();
+      const run = runEditingStages({
+        ...f,
+        snapshotHash: f.request.baseHash,
+        modelIdentity: f.binding.modelIdentity,
+        run: {
+          instruction: f.request.instruction!,
+          createdAt: new Date().toISOString(),
+        },
+        history: [],
+        generalEditing: true,
+        reviewReferences: true,
+        signal: signal(),
+        invoke: async (options) => {
+          const session = createVideoToolset(f.request, builtInSkills(), [], {
+            profile,
+            stages: options.stages,
+          });
+          const review = session.tools.find(
+            (tool) => tool.name === "review_edit",
+          )!;
+          await review.execute(
+            { requirements: f.requirements, edit: f.edit },
+            signal(),
+          );
+          await expect(review.execute(malformed, signal())).rejects.toThrow();
+          const proposed = session.tools
+            .find((tool) => tool.name === "propose_edit")!
+            .execute({ reviewed: true }, signal());
+          if (clears)
+            await expect(proposed).rejects.toThrow(/No latest successful/);
+          else
+            expect(await proposed).toMatchObject({
+              kind: "terminal",
+              result: { outcome: "proposal" },
+            });
+          throw Error("Completed eligibility check");
+        },
+      });
+      if (clears)
+        await expect(run).rejects.toThrow("Completed eligibility check");
+      else expect(await run).toMatchObject({ outcome: "proposal" });
+    }
+  },
+);
