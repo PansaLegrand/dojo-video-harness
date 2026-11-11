@@ -16,8 +16,8 @@ the local editor and commercial adapters. Host persistence, accounts, credits,
 provider credentials and external-job policy remain separate. Synchronization is
 explicit and tested; the repositories do not share one interchangeable server.
 
-The local application selects `local-editor-v11`, using the portable agent kit
-**0.2.5** and the host-independent loop **0.2.0**. Engine packages are
+The local application selects `local-editor-v12`, using the portable agent kit
+**0.2.6** and the host-independent loop **0.2.0**. Engine packages are
 **1.2.3**. These are separate versioned boundaries: a tool-contract change does not
 require a renderer or loop rewrite. Older runs retain their bound profiles,
 archived tool/skill contracts and checkpoint semantics rather than upgrading in place.
@@ -35,6 +35,15 @@ model pixels at the transport boundary. One durable preview correction requires
 a second preview before final proposal. Cached browser output can publish after
 restart without another encoding. The existing export store verifies final local
 file authority. See [local host adapters](managed-ui-host-followups.md).
+
+New local v12 runs can append an explicit incremental preview repair to the exact
+owned successful candidate. Both repair modes run native preflight before the
+single claim, preserve the original snapshot/checklist and require a second
+preview. Claim hashes and restored receipts bind the expanded command list.
+The current host freezes 64 model calls with the existing 64-tool/32,000-token
+total, while earlier runs retain their stored allowances. Native review and final
+compilation preserve authored stacking when typed-lane grouping would invert an
+overlapping visual pair.
 
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
@@ -201,3 +210,8 @@ installed grammar metadata. The later coordinated gate passed 914 tests and the
 production build, followed by 66 actual browser checks with scripted providers.
 The new-profile service/recovery matrix in `8c08424` passed 16 focused tests and
 TypeScript after that full gate. [Current execution ledger](readiness-progress.md).
+
+The 0.2.6 source gate passed 933 tests/build and 66 actual browser checks. The
+kit is frozen from `664345c`. Explicit append repair, receipt restoration and
+archived contracts passed 50 focused tests and full TypeScript before packaging.
+Public CI and live-provider acceptance retain their separate release records.

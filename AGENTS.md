@@ -26,12 +26,12 @@ Start with:
 Plans are not completed evidence. Verify source and reports before claiming a
 capability is accepted; mark plan items complete only with the required evidence.
 
-The local application starts new runs with `local-editor-v11`, agent kit **0.2.5**
+The local application starts new runs with `local-editor-v12`, agent kit **0.2.6**
 and loop **0.2.0**, consuming published engine **1.2.3**. Earlier runs use their
 retained profile/coordinator archives. The commercial counterpart is
-`commercial-editing-v12`. Check [the agent map](docs/agent-system.md) and
+`commercial-editing-v13`. Check [the agent map](docs/agent-system.md) and
 [execution ledger](docs/readiness-progress.md) before describing acceptance.
-The frozen 0.2.5 kit source is `e822993`, with separate later host/test/doc commits.
+The frozen 0.2.6 kit source is `664345c`, with separate later host/test/doc commits.
 
 ## Architecture and where to work
 
@@ -77,6 +77,11 @@ preview, and final proposal then requires a second preview. Export intents bind
 to the actual guarded Apply receipt and verified local output file. See
 [localhost adapter scope](docs/managed-ui-host-followups.md).
 Multiple commands may form one proposal.
+New local v12 repair requests can use `previewRepair.mode: "append"` to append
+targeted native commands to the same owned verified candidate. Both repair modes
+run complete native preflight before their single claim. A successful correction
+requires its second preview. The latest host freezes 64 model calls, 64 tools and
+32,000 total output tokens. Earlier profile budgets stay bound to their runs.
 Ordinary speech-dependent chat can obtain missing ASR evidence after consent;
 it is not limited to the optional join/logo workflow. Keep the full instruction,
 frozen source identity, task receipts and cancellation/restart fences through continuation.
@@ -177,6 +182,8 @@ the installed engine's public `sceneJsonSchema()` into its bounded projection.
 Keep native compilation authoritative. For example, `transformOrigin` uses
 horizontal then vertical components, as in `center bottom`. Old profile
 observations and tool/skill/prompt bytes have archive compatibility tests.
+Latest-profile native review and final compilation preserve authored visual
+stacking when automatic typed-lane grouping would invert overlapping content.
 Generated-media skills require a registered host executor. Local image/video job
 integration remains the bounded optional LH-R15 follow-up.
 
