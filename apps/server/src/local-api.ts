@@ -101,7 +101,7 @@ export async function createLocalApi() {
           source,
         ),
     },
-    "local-editor-v11",
+    "local-editor-v12",
     {
       browser: {
         tools: (projectId, runId, request) =>

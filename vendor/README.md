@@ -22,3 +22,8 @@ It preserves local v7/commercial v8 contracts and the known paid trial.
 `dojo-video-agent-kit-0.2.4.tgz` retains preview-repair contracts from
 `a917b1b7f2c6007babd179cda0ab3b39e04b9015`, SHA-256
 `4776d134f4f0d4e0041d9423669658486770fa61bb36e29d192a111d300646fb`.
+
+`dojo-video-agent-kit-0.2.5.tgz` retains installed-grammar contracts from
+`e8229934374414f1b6315a7483ec484f0b855584`, SHA-256
+`3f8e4e5c3a6539e53a674b681244f77731f698b0a156317ead962508435f47ea`.
+Its local v11 coordinator and 32-call original allowance remain unchanged.
