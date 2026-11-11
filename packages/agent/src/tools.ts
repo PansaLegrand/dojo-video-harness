@@ -20,6 +20,7 @@ import {
   usesPreviewRepair,
   usesInstalledGraphicsGrammar,
   usesAppendPreviewRepair,
+  usesSemanticEditingGuidance,
   type PreviewRepairEvidence,
   type EditorStagePorts,
 } from "../../agent-kit/src/index";
@@ -292,13 +293,14 @@ export function createVideoToolset(
         next: "Include this command in propose_edit. The host handles application; preparation has not applied an edit.",
       }),
       reviewEdit: (input) =>
-        reviewNativeCompletionEdit(
-          request,
-          input,
-          usesAppendPreviewRepair(options.profile ?? "local-editor-v1")
+        reviewNativeCompletionEdit(request, input, {
+          ...(usesAppendPreviewRepair(options.profile ?? "local-editor-v1")
             ? { preserveAuthoredPaintOrder: true }
-            : {},
-        ),
+            : {}),
+          ...(usesSemanticEditingGuidance(options.profile ?? "local-editor-v1")
+            ? { preciseSpeechDiagnostics: true }
+            : {}),
+        }),
       prepareCaptionPair: (input) =>
         prepareCaptionPair(document, input, {
           sourceRange: usesPagedReaders(options.profile ?? "local-editor-v1"),
@@ -318,9 +320,18 @@ export function createVideoToolset(
                 ...(args as object),
                 completion,
               },
-              usesAppendPreviewRepair(options.profile ?? "local-editor-v1")
-                ? { preserveAuthoredPaintOrder: true }
-                : {},
+              {
+                ...(usesAppendPreviewRepair(
+                  options.profile ?? "local-editor-v1",
+                )
+                  ? { preserveAuthoredPaintOrder: true }
+                  : {}),
+                ...(usesSemanticEditingGuidance(
+                  options.profile ?? "local-editor-v1",
+                )
+                  ? { preciseSpeechDiagnostics: true }
+                  : {}),
+              },
             )
           : compileNativeAgentResult(request, args);
       },
@@ -341,7 +352,8 @@ export function createVideoToolset(
       const host =
         (options.profile === "local-editor-v10" ||
           options.profile === "local-editor-v11" ||
-          options.profile === "local-editor-v12") &&
+          options.profile === "local-editor-v12" ||
+          options.profile === "local-editor-v13") &&
         [
           "inspect_image",
           "sample_video_frames",

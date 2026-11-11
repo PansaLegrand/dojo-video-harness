@@ -16,8 +16,8 @@ the local editor and commercial adapters. Host persistence, accounts, credits,
 provider credentials and external-job policy remain separate. Synchronization is
 explicit and tested; the repositories do not share one interchangeable server.
 
-The local application selects `local-editor-v12`, using the portable agent kit
-**0.2.6** and the host-independent loop **0.2.0**. Engine packages are
+The local application selects `local-editor-v13`, using the portable agent kit
+**0.2.7** and the host-independent loop **0.2.0**. Engine packages are
 **1.2.3**. These are separate versioned boundaries: a tool-contract change does not
 require a renderer or loop rewrite. Older runs retain their bound profiles,
 archived tool/skill contracts and checkpoint semantics rather than upgrading in place.
@@ -36,7 +36,7 @@ a second preview before final proposal. Cached browser output can publish after
 restart without another encoding. The existing export store verifies final local
 file authority. See [local host adapters](managed-ui-host-followups.md).
 
-New local v12 runs can append an explicit incremental preview repair to the exact
+Local v12 and later runs can append an explicit incremental preview repair to the exact
 owned successful candidate. Both repair modes run native preflight before the
 single claim, preserve the original snapshot/checklist and require a second
 preview. Claim hashes and restored receipts bind the expanded command list.
@@ -44,6 +44,15 @@ The current host freezes 64 model calls with the existing 64-tool/32,000-token
 total, while earlier runs retain their stored allowances. Native review and final
 compilation preserve authored stacking when typed-lane grouping would invert an
 overlapping visual pair.
+
+Local v13/commercial v14 adds generic per-cue translation fidelity and speech
+display guidance to the same prompt/tool path. The agent chooses a verbatim
+callout or supported numeric highlight before freezing its checklist, with
+separate items for context and unit labels. Every translated cue retains its
+own complete source meaning. Latest-only native diagnostics distinguish text,
+start and readable-duration failures. The existing tool inventory, stages and
+64-call/64-tool/32,000-token host allowance continue through their current ports.
+Live semantic and creative quality use separate outcome acceptance.
 
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
@@ -215,3 +224,8 @@ The 0.2.6 source gate passed 933 tests/build and 66 actual browser checks. The
 kit is frozen from `664345c`. Explicit append repair, receipt restoration and
 archived contracts passed 50 focused tests and full TypeScript before packaging.
 Public CI and live-provider acceptance retain their separate release records.
+
+The subsequent 0.2.7 source gate passed 939 tests/build and 66 browser checks from
+frozen source `4ce0d7d`. Its 28 focused tests cover old-profile bytes and the
+versioned guidance/native diagnostic path. Scripted provider checks verify runtime
+mechanisms, with actual semantic and creative output assessed independently.

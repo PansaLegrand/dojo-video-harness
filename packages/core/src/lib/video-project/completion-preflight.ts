@@ -186,6 +186,7 @@ function assertRequirement(
   after: VideoProjectDocument,
   requirement: CompletionRequirement,
   editedSequence = false,
+  preciseSpeechDiagnostics = false,
 ) {
   const item = (id: string) => {
     const found = after.items.find((item) => item.id === id);
@@ -366,6 +367,22 @@ function assertRequirement(
         binding.sourceStartMs,
         binding.sourceEndMs,
       );
+    if (preciseSpeechDiagnostics) {
+      const actualText = text(candidate.node);
+      if (actualText !== requirement.exactText)
+        throw new Error(
+          `Item ${candidate.id} display differs from frozen exactText: expected ${JSON.stringify(requirement.exactText).slice(0, 240)}, received ${JSON.stringify(actualText).slice(0, 240)}. Preserve exactText in this checked item; put unit, context and other labels outside the checked item. Do not change the frozen requirement or genuine source words.`,
+        );
+      if (!projected || candidate.node.from !== projected.from)
+        throw new Error(
+          `Item ${candidate.id} start differs from its genuine source-word projection: expected ${projected ? `frame ${projected.from}` : "a visible range inside the source clip"}, received frame ${candidate.node.from ?? 0}. Re-anchor the same declared word IDs without inventing timing or changing the genuine word range.`,
+        );
+      const actualMs = candidate.node.duration! * 1000 / after.format.fps;
+      if (actualMs + 0.001 < requirement.minReadableMs)
+        throw new Error(
+          `Item ${candidate.id} readable duration is ${Math.round(actualMs)} ms; the frozen minimum is ${requirement.minReadableMs} ms. Use bounded holdMs without changing the genuine word range.`,
+        );
+    }
     if (
       !projected ||
       candidate.node.from !== projected.from ||
@@ -608,6 +625,7 @@ export function checkNativeCompletionRequirements(
   beforeInput: VideoProjectDocument,
   afterInput: VideoProjectDocument,
   raw: unknown,
+  options: { preciseSpeechDiagnostics?: boolean } = {},
 ): CompletionCheck[] {
   const before = parseVideoProjectDocument(beforeInput),
     after = parseVideoProjectDocument(afterInput),
@@ -622,6 +640,7 @@ export function checkNativeCompletionRequirements(
         after,
         requirement,
         requirements.some((value) => value.kind === "asset_sequence"),
+        options.preciseSpeechDiagnostics === true,
       );
       return {
         id: requirement.id,
@@ -660,7 +679,7 @@ export function checkNativeCompletionRequirements(
 export async function reviewNativeCompletionEdit(
   request: NativeAgentRequest,
   input: { requirements: unknown; edit: unknown },
-  options: { preserveAuthoredPaintOrder?: boolean } = {},
+  options: { preserveAuthoredPaintOrder?: boolean; preciseSpeechDiagnostics?: boolean } = {},
 ) {
   const requirements = parseCompletionRequirements(input.requirements, {
       assetSequence: true,
@@ -690,6 +709,7 @@ export async function reviewNativeCompletionEdit(
     base,
     executed.document,
     requirements,
+    options,
   );
   const receipt = checks.every((check) => check.passed)
     ? await createCompletionReceipt({
@@ -707,7 +727,7 @@ export async function reviewNativeCompletionEdit(
 export async function compileNativeCompletionResponse(
   request: NativeAgentRequest,
   raw: unknown,
-  options: { preserveAuthoredPaintOrder?: boolean } = {},
+  options: { preserveAuthoredPaintOrder?: boolean; preciseSpeechDiagnostics?: boolean } = {},
 ): Promise<NativeAgentResult> {
   if (typeof raw === "string") {
     if (raw.length > 4_000_000)

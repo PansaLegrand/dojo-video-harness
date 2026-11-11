@@ -8,6 +8,7 @@ import {
   usesPhaseScopedTools,
   usesPreviewRepair,
   usesAppendPreviewRepair,
+  usesSemanticEditingGuidance,
   type AgentProfile,
 } from "./catalog.js";
 import type { Skill } from "./catalog.js";
@@ -64,6 +65,9 @@ export function composeToolAgentPrompt(input: {
             ? APPEND_PREVIEW_REPAIR_GUIDE
             : PREVIEW_REPAIR_GUIDE,
         ]
+      : []),
+    ...(input.profile && usesSemanticEditingGuidance(input.profile)
+      ? [SEMANTIC_EDITING_GUIDE]
       : []),
     ...(input.toolNames.includes("review_edit")
       ? [
@@ -123,3 +127,6 @@ const PREVIEW_REPAIR_GUIDE =
 
 const APPEND_PREVIEW_REPAIR_GUIDE =
   "Original source audio facts distinguish present, absent and unknown tracks. Silent originals need no ASR. Use ask_user for genuinely ambiguous speech targets. After a successful full assembly review, request_project_preview({frames,reviewed:true}) and inspect its authorized labeled samples. To repair observed failures with incremental native commands, send review_edit({edit:{outcome:'proposal',summary,commands:[only targeted repair commands]},previewRepair:{mode:'append',requestId,receiptHash,issues:[{frame,description}]}}). The host resolves that exact owned verified candidate and appends the supplied commands once, preserving its original assembly and prepared captions. Requirements and the original compiler snapshot remain frozen. The complete expanded candidate receives native validation before its single correction claim is consumed. Both repair modes validate before claiming. Invalid commands may be corrected against the same receipt. Omit mode when supplying a complete replacement batch. A successfully claimed correction requires a SECOND preview of the repaired candidate and propose_edit({reviewed:true,previewReport:{requestId,receiptHash,issues:[remaining sampled failures]}}). Report remaining sampled failures honestly. Samples cover only listed frames and leave audio and unsampled quality uninspected. Apply, Undo, consent and the original overall allowance continue through the existing host ports.";
+
+const SEMANTIC_EDITING_GUIDE =
+  "Before plan_edit_stages or the first review freezes requirements, choose the check that matches the intended displayed content. speech_callout requires genuine word IDs for a verbatim spoken quote, exactText matching that quote, and exactly that displayed text in the checked item. Put explanatory labels, shortened currency and unit labels in separate items with their own item/property checks. speech_highlight uses only recognized numeric word IDs and a supported numeric or percent exactText display. Keep currency, unit and context labels in separate items. Preserve the original genuine word identities and timing. Once requirements freeze, repair the edit against them. For caption translation, EACH cue must retain ALL facts, proper names, numbers, units, reporting periods, time qualifiers, comparisons and negation from THAT source cue. Neighboring context may clarify meaning while every source fact stays in its own cue. Before save_caption_batch, self-check every translated cue against its matching genuine source cue and confirm complete cue-ID coverage. Context never authorizes moving a fact to an adjacent cue or dropping it for brevity.";

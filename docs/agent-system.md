@@ -1,19 +1,19 @@
 # Editor agent ownership and extensions
 
 The shared model/tool loop is `packages/agent-loop` **0.2.0**. Portable editor definitions
-are `packages/agent-kit` **0.2.6**, with tool metadata and schemas, trusted Markdown skill
+are `packages/agent-kit` **0.2.7**, with tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
 
 ## Current runtime, 2026-11-12
 
-The local API starts new runs with `local-editor-v12`. Its commercial counterpart
-is `commercial-editing-v13`. The engine dependency is **1.2.3**. The frozen 0.2.6
-kit source is `664345c`. Host adapters and subsequent tests/docs have their own
+The local API starts new runs with `local-editor-v13`. Its commercial counterpart
+is `commercial-editing-v14`. The engine dependency is **1.2.3**. The frozen 0.2.7
+kit source is `4ce0d7d`. Host adapters and subsequent tests/docs have their own
 commits and acceptance records.
 
-Local v6, v7, v8, v9, v10 and v11 runs dispatch through retained kit 0.2.0, 0.2.1,
-0.2.2, 0.2.3, 0.2.4 and 0.2.5 coordinators respectively. Each saved run keeps its model,
+Local v6, v7, v8, v9, v10, v11 and v12 runs dispatch through retained kit 0.2.0,
+0.2.1, 0.2.2, 0.2.3, 0.2.4, 0.2.5 and 0.2.6 coordinators respectively. Each saved run keeps its model,
 inventory, source basis, receipts and original budget. The application selects
 the run's stored profile during recovery. Standalone `AgentService` integrations
 retain their explicit profile selection.
@@ -26,14 +26,32 @@ their phase-specific tools. Assembly uses `review_edit` and `propose_edit` with
 the frozen checklist and saved successful review reference.
 
 The latest local host freezes 64 model calls, 64 tool calls and 32,000 output tokens.
-Earlier staged profiles retain their original 32-call allowance. The portable coordinator
+Local v12 retains that same 64-call allowance, and earlier staged profiles retain
+their original 32-call allowance. The portable coordinator
 default remains 32 calls.
 The latest local profile permits 16 model calls, 24 tool calls and up to the
 remaining 32,000 output tokens per stage. Planning and assembly consume the same
 total. Provider-request ceilings belong to the frozen model configuration.
 
-`usesInstalledGraphicsGrammar(profile)` enables discovery metadata only for the
-new profiles. The native host projects the installed public `sceneJsonSchema()`
+`usesSemanticEditingGuidance(profile)` enables the local v13/commercial v14
+instructions. Before freezing requirements, the agent selects a check matching
+the intended displayed content. `speech_callout` requires a verbatim spoken
+quote in its checked item. `speech_highlight` selects recognized numeric word
+IDs and a supported numeric or percent display. Currency, unit and context
+labels occupy separate items with their own checks.
+
+Caption-batch guidance preserves every fact, proper name, number, unit,
+reporting period, comparison and negation inside its matching source cue.
+Neighboring context clarifies meaning while each cue retains its own content.
+The agent self-checks each translation against its source cue before saving the
+complete batch. Genuine cue IDs, evidence and timing remain source-bound.
+Latest-only `preciseSpeechDiagnostics` identifies display, projected start and
+readable duration failures independently. Successful receipt validation retains
+its existing semantics. These are runtime guidance and diagnostic contracts.
+Live cue fidelity and creative quality have independent acceptance cases.
+
+`usesInstalledGraphicsGrammar(profile)` begins with local v11/commercial v12
+and is inherited by later profiles. The host projects the public `sceneJsonSchema()`
 descriptions and custom formats onto its existing bounded style/animation shape.
 Keyframe values follow their named style property's grammar. The example uses
 `transformOrigin: "center bottom"`, validated through the engine and native
@@ -83,12 +101,20 @@ including new-profile review/Apply/reload/replay/Undo, observed planning/assembl
 budgets and exact older-profile checkpoint recovery. These records are local
 verification. Public CI and live-provider creative acceptance are recorded
 separately in [the ledger](readiness-progress.md).
-The 0.2.6 full gate passed 933 tests, TypeScript, integrity checks and the
+The earlier 0.2.6 full gate passed 933 tests, TypeScript, integrity checks and the
 production build. All 66 browser checks passed against that build, with report
 `test-results/browser-026-664345c/report.json`. Its focused pre-freeze gate passed
 50 tests. Sixteen commercial native-session/discovery tests passed using the
 installed 0.2.6 kit. Standalone package and live-provider acceptance follow the
 recorded release gate.
+
+The 0.2.7 source gate passed 939 tests in 98 files, full TypeScript, integrity
+checks and the production build. All 66 browser checks passed against that build,
+with `test-results/browser-027-4ce0d7d/report.json` retained. Twenty-eight focused
+guidance/compatibility tests passed before packaging. Ten commercial native-session
+tests passed with the installed 0.2.7 kit. Public CI for this new release candidate
+is pending. These source and scripted-provider results accompany separate live
+language, media and creative acceptance records.
 
 ## Host ports and retained compatibility
 
@@ -145,7 +171,7 @@ to32KB/12sources/200cues; incomplete coverage requires narrowing rather than gue
 
 Frozen local-editor-v1/commercial-editing-v2 profiles retain their original kit
 contract version, inventory/schema/guidance and checkpoint bindings. The local
-application now opts new runs into v12; older stored runs/clarification children retain
+application now opts new runs into v13; older stored runs/clarification children retain
 their own profile. Standalone AgentService integrations retain v1 unless opted in.
 
 The local checkpoint adapter is `apps/server/src/agent-loop-checkpoint.ts`.

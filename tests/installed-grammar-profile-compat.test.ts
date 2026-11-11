@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
 import {
+  builtInSkills as v26Skills,
+  composeToolAgentPrompt as v26Prompt,
+  createEditorToolset as v26Tools,
+  createEditorHostTools as v26HostTools,
+} from "@dojo-video/agent-kit-v26";
+import {
   builtInSkills as v25Skills,
   composeToolAgentPrompt as v25Prompt,
   createEditorToolset as v25Tools,
@@ -25,6 +31,7 @@ import {
   usesEfficientReaders,
   usesInstalledGraphicsGrammar,
   usesAppendPreviewRepair,
+  usesSemanticEditingGuidance,
   usesPagedReaders,
   usesPhaseScopedTools,
   usesPreviewRepair,
@@ -377,5 +384,107 @@ it("advertises explicit append only in new profiles and references the host-owne
     expect(prompt).toContain("mode:'append'");
     expect(prompt).toContain("original overall allowance");
     expect(prompt).not.toContain("32 model calls");
+  }
+});
+
+it("retains exact archived 0.2.6 schemas, inventory, skills and prompt bytes for every accepted phase", () => {
+  for (const profile of [
+    "local-editor-v12",
+    "commercial-editing-v13",
+  ] as const) {
+    expect(usesSemanticEditingGuidance(profile)).toBe(false);
+    expect(profileKitVersion(profile)).toBe("0.2.6");
+    for (const phase of phases) {
+      const common = {
+        profile,
+        snapshotHash: "sha256:" + "a".repeat(64),
+        ports: ports(phase),
+        proposalSchema: nativeAgentResponseSchema({
+          clarification: true,
+          composition: true,
+          anchorHold: true,
+        }),
+      };
+      const current = createEditorToolset({
+        ...common,
+        skills: builtInSkills(),
+        extraTools: createEditorHostTools({ profile, ports: hostPorts }),
+      });
+      const previous = v26Tools({
+        ...common,
+        skills: v26Skills(),
+        extraTools: v26HostTools({ profile, ports: hostPorts }),
+      });
+      expect(JSON.stringify(current.tools)).toBe(
+        JSON.stringify(previous.tools),
+      );
+      expect(JSON.stringify(current.inventory)).toBe(
+        JSON.stringify(previous.inventory),
+      );
+      expect(JSON.stringify(current.skills)).toBe(
+        JSON.stringify(previous.skills),
+      );
+      const prompt = {
+        profile,
+        phase,
+        editingGuide: "Frozen host guide",
+        toolNames: names(current.tools),
+        skills: current.skills,
+      };
+      expect(composeToolAgentPrompt(prompt)).toBe(v26Prompt(prompt));
+    }
+  }
+});
+
+it("new semantic guidance is visible during planning, caption batching and assembly without adding tools", () => {
+  for (const [previous, profile] of [
+    ["local-editor-v12", "local-editor-v13"],
+    ["commercial-editing-v13", "commercial-editing-v14"],
+  ] as const) {
+    expect(usesSemanticEditingGuidance(profile)).toBe(true);
+    expect(profileKitVersion(profile)).toBe("0.2.7");
+    for (const phase of phases) {
+      const make = (selected: AgentProfile) =>
+        createEditorToolset({
+          profile: selected,
+          ports: ports(phase),
+          skills: builtInSkills(),
+          snapshotHash: "sha256:" + "a".repeat(64),
+          proposalSchema: nativeAgentResponseSchema({
+            clarification: true,
+            composition: true,
+            anchorHold: true,
+          }),
+          extraTools: createEditorHostTools({
+            profile: selected,
+            ports: hostPorts,
+          }),
+        });
+      const current = make(profile),
+        old = make(previous);
+      expect(names(current.tools)).toEqual(names(old.tools));
+      expect(current.inventory.kitVersion).toBe("0.2.7");
+      const prompt = composeToolAgentPrompt({
+        profile,
+        phase,
+        editingGuide: "Host facts",
+        toolNames: names(current.tools),
+        skills: current.skills,
+      });
+      expect(prompt).toContain(
+        "Before plan_edit_stages or the first review freezes requirements",
+      );
+      expect(prompt).toContain("verbatim spoken quote");
+      expect(prompt).toContain("recognized numeric word IDs");
+      expect(prompt).toContain("separate items");
+      expect(prompt).toContain("THAT source cue");
+      expect(prompt).toContain(
+        "proper names, numbers, units, reporting periods, time qualifiers, comparisons and negation",
+      );
+      expect(prompt).toContain(
+        "Before save_caption_batch, self-check every translated cue",
+      );
+      expect(prompt).not.toContain("32 model calls");
+    }
   }
 });
