@@ -26,12 +26,12 @@ Start with:
 Plans are not completed evidence. Verify source and reports before claiming a
 capability is accepted; mark plan items complete only with the required evidence.
 
-The local application starts new runs with `local-editor-v12`, agent kit **0.2.6**
+The local application starts new runs with `local-editor-v13`, agent kit **0.2.7**
 and loop **0.2.0**, consuming published engine **1.2.3**. Earlier runs use their
 retained profile/coordinator archives. The commercial counterpart is
-`commercial-editing-v13`. Check [the agent map](docs/agent-system.md) and
+`commercial-editing-v14`. Check [the agent map](docs/agent-system.md) and
 [execution ledger](docs/readiness-progress.md) before describing acceptance.
-The frozen 0.2.6 kit source is `664345c`, with separate later host/test/doc commits.
+The frozen 0.2.7 kit source is `4ce0d7d`, with separate later host/test/doc commits.
 
 ## Architecture and where to work
 
@@ -77,7 +77,7 @@ preview, and final proposal then requires a second preview. Export intents bind
 to the actual guarded Apply receipt and verified local output file. See
 [localhost adapter scope](docs/managed-ui-host-followups.md).
 Multiple commands may form one proposal.
-New local v12 repair requests can use `previewRepair.mode: "append"` to append
+Local v12 and later repair requests can use `previewRepair.mode: "append"` to append
 targeted native commands to the same owned verified candidate. Both repair modes
 run complete native preflight before their single claim. A successful correction
 requires its second preview. The latest host freezes 64 model calls, 64 tools and
@@ -186,6 +186,16 @@ Latest-profile native review and final compilation preserve authored visual
 stacking when automatic typed-lane grouping would invert overlapping content.
 Generated-media skills require a registered host executor. Local image/video job
 integration remains the bounded optional LH-R15 follow-up.
+
+Local v13/commercial v14 adds versioned semantic editing guidance. Choose a
+speech check matching the intended display before requirements freeze.
+`speech_callout` displays the selected spoken quote verbatim. `speech_highlight`
+uses recognized numeric word IDs and supported numeric/percent display. Keep
+currency, unit and explanatory labels in separate checked items. Each translated
+cue retains its own facts, names, numbers, units, periods and negation, with a
+cue-by-cue self-check before saving the batch. Latest-only diagnostics identify
+display, projected-start and readable-duration failures separately. Live language
+and creative quality use independent acceptance evidence.
 
 ## Milestones and working discipline
 

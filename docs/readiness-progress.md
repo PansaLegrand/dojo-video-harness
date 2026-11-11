@@ -2,7 +2,37 @@
 
 Started on 2026-11-01. Last updated on 2026-11-12. The harness plan remains the acceptance contract.
 
-## November 12 append-repair candidate
+## November 12 semantic editing guidance, 0.2.7
+
+The immutable kit source is `4ce0d7d8fa5b3d78688063d26cf2e8aa0ed64684`, with
+archive SHA-256
+`628edc47a0ad7447b99bbe0cdb4a328c6211d658a460283be9fcf14136259b4d`.
+New local runs select local-editor-v13 and the commercial counterpart is
+commercial-editing-v14. Loop 0.2.0, engine 1.2.3 and the prior 0.2.6
+64-model-call/64-tool/32,000-output-token allowance are retained. Earlier stored
+profiles keep their original budgets, archives and observations.
+
+Guidance distinguishes verbatim source quotes in `speech_callout` from supported
+numeric/percent `speech_highlight` displays. Unit, currency and context labels
+use separate items. Check selection precedes requirement freezing. Caption
+translation retains each cue's facts, names, numbers, units, reporting periods,
+comparisons and negation in that same cue, followed by a cue-by-cue self-check.
+Latest-only diagnostics separate display, source-projected start and readable
+duration failures. Source evidence, timing and successful receipt semantics
+remain bound to the existing native contracts.
+
+The source gate passed **939 tests in 98 files**, full TypeScript, integrity
+checks and the production build. Its focused pre-freeze gate passed 28 tests.
+The new guidance is visible in planning, caption batching and assembly, with the
+same tool names. Archived 0.2.6 schemas, inventory, skills and prompt bytes match
+in all three phases. All 66 actual browser checks passed against that production build, using
+scripted local provider HTTP and independent output decoding. The retained report
+is `test-results/browser-027-4ce0d7d/report.json`. Ten commercial native-session
+tests passed against the installed 0.2.7 kit. Public CI for the new candidate is
+pending. Live per-cue fidelity and long-form creative output use their
+own acceptance cases, retained failures and authorized provider usage.
+
+## November 12 append repair, 0.2.6 baseline
 
 The 0.2.6 kit source is `664345c`. New runs use local-editor-v12 and its commercial
 counterpart commercial-editing-v13. The host freezes 64 model calls with the
@@ -23,8 +53,8 @@ from `664345cabd0b6843fc24f040861a4b17ca5e026a` with SHA-256
 All 66 actual browser checks passed against the production build, with synthetic
 local provider HTTP and independent output decoding. The report and media remain
 under `test-results/browser-026-664345c`. Standalone commercial-package and live
-provider gates are recorded separately. The 0.2.5 PR remains at
-its own immutable head with public CI queued. Live-provider creative acceptance
+provider gates are recorded separately. Public CI retains each candidate's
+versioned results. Live-provider creative acceptance
 continues under its separate frozen cases, retained failures and provider budget.
 
 Clean-install CI exposed a localhost visual-model import that depended on the
@@ -34,7 +64,10 @@ is present on both release branches and preserves the frozen kit archive.
 A fresh exported tree with no `node_modules` or loop `dist` passed setup, full
 TypeScript and actual startup/editor/private-settings checks. Local proof is
 retained under `test-results/clean-import-026`. Earlier failed CI runs remain
-visible, with replacement checks running against the corrected branch heads.
+visible. Corrected PRs #10 and #11 each passed all eight public checks, including
+Linux, Windows and macOS startup, then merged to main as `b9fd293` and `3dd7c75`.
+[PR #10](https://github.com/PansaLegrand/dojo-video-harness/pull/10),
+[PR #11](https://github.com/PansaLegrand/dojo-video-harness/pull/11).
 
 ## November 12 local runtime and browser adapters, 0.2.5 baseline
 
