@@ -123,6 +123,27 @@ export class AgentService {
     private stagedOptions: {
       captionBatchSize?: number;
       onTransition?: (plan: EditStagePlan) => Promise<void>;
+      browser?: {
+        tools(
+          projectId: string,
+          runId: string,
+          request: NativeAgentRequest,
+        ): AgentTool[];
+        model(
+          projectId: string,
+          runId: string,
+          model: LanguageModel,
+        ): LanguageModel;
+        previewEvidence(
+          projectId: string,
+          runId: string,
+          requestId: string,
+          signal: AbortSignal,
+        ): Promise<
+          import("../../../packages/agent-kit/src/index").PreviewRepairEvidence
+        >;
+        cancel(projectId: string, runId: string): Promise<void>;
+      };
     } = {},
   ) {}
   /** Explicit startup recovery: only durable, checked boundaries are launched.
@@ -186,6 +207,10 @@ export class AgentService {
         scope,
         reviewBasisRequired: true,
         agentProfile: this.agentProfile,
+        ...(this.stagedOptions.browser &&
+        this.agentProfile === "local-editor-v10"
+          ? { browserToolsEnabled: true as const }
+          : {}),
         events: [],
         requestHash: hash,
         request: {
@@ -231,8 +256,15 @@ export class AgentService {
     this.active.set(id, controller);
     this.armDeadline(id, controller);
     void (async () => {
-      const model =
+      const configuredModel =
         typeof this.model === "function" ? this.model() : this.model;
+      const stored = (await this.store.read(projectId)).runs.find(
+        (run) => run.id === id,
+      )!;
+      const model =
+        stored.browserToolsEnabled && this.stagedOptions.browser
+          ? this.stagedOptions.browser.model(projectId, id, configuredModel)
+          : configuredModel;
       await this.execute(projectId, id, controller.signal, model);
     })()
       .catch(async (cause) => {
@@ -379,7 +411,26 @@ export class AgentService {
         profile: run.agentProfile ?? "local-editor-v1",
         model,
         skills: this.skills,
-        extraTools: this.extraTools?.(projectId, id, request),
+        extraTools: [
+          ...(this.extraTools?.(projectId, id, request) ?? []),
+          ...(run.browserToolsEnabled
+            ? (this.stagedOptions.browser?.tools(projectId, id, request) ?? [])
+            : []),
+        ],
+        ...(run.browserToolsEnabled && this.stagedOptions.browser
+          ? {
+              previewEvidence: (
+                requestId: string,
+                evidenceSignal: AbortSignal,
+              ) =>
+                this.stagedOptions.browser!.previewEvidence(
+                  projectId,
+                  id,
+                  requestId,
+                  evidenceSignal,
+                ),
+            }
+          : {}),
         signal,
         maxSteps: ["local-editor-v4", "local-editor-v5"].includes(
           run.agentProfile ?? "",
@@ -659,6 +710,11 @@ export class AgentService {
       }
     });
     this.active.get(id)?.abort();
+    if (
+      (await this.store.read(projectId)).runs.find((run) => run.id === id)
+        ?.browserToolsEnabled
+    )
+      await this.stagedOptions.browser?.cancel(projectId, id);
     return { cancelled: true };
   }
   async review(projectId: string, id: string) {
@@ -793,6 +849,12 @@ export class AgentService {
       r.appliedBefore = p.document;
       r.appliedAfter = comparison.afterDocument;
       await commitDocument(p, comparison.afterDocument);
+      if (r.browserToolsEnabled)
+        r.appliedReceipt = {
+          operationId: input.operationId,
+          revision: p.revision,
+          documentHash: p.documentHash,
+        };
       r.status = "applied";
       r.phase = "applied";
       r.updatedAt = new Date().toISOString();
@@ -1000,6 +1062,8 @@ export class AgentService {
         events: [],
         loopCheckpoint: undefined,
         completion: undefined,
+        hostRequests: undefined,
+        outputRequests: undefined,
         scope,
         requestHash: hash,
         answers: undefined,

@@ -165,12 +165,10 @@ export function createVideoToolset(
         ...(usesPreviewRepair(options.profile ?? "local-editor-v1")
           ? {
               sourceAudio: {
-                sources: audioAssets
-                  .slice(0, 50)
-                  .map((asset) => ({
-                    sourceId: asset.id,
-                    audioTrack: sourceAudioTrackPresence(document, asset.id),
-                  })),
+                sources: audioAssets.slice(0, 50).map((asset) => ({
+                  sourceId: asset.id,
+                  audioTrack: sourceAudioTrackPresence(document, asset.id),
+                })),
                 omitted: Math.max(0, audioAssets.length - 50),
                 coverage: "listed-sources-only",
               },
@@ -321,15 +319,28 @@ export function createVideoToolset(
   });
   return {
     ...toolset,
-    tools: toolset.tools.map(
-      (tool): AgentTool => ({
+    tools: toolset.tools.map((tool): AgentTool => {
+      const host =
+        options.profile === "local-editor-v10" &&
+        [
+          "inspect_image",
+          "sample_video_frames",
+          "request_project_preview",
+          "request_project_export",
+        ].includes(tool.name)
+          ? extraTools?.find((extra) => extra.name === tool.name)
+          : undefined;
+      return {
         ...tool,
-        replaySafe: (replaySafeNativeToolNames as readonly string[]).includes(
-          tool.name,
-        ),
-        compactionSafe: ["inspect_project", "read_skill"].includes(tool.name),
-      }),
-    ),
+        replaySafe:
+          (replaySafeNativeToolNames as readonly string[]).includes(
+            tool.name,
+          ) || host?.replaySafe === true,
+        compactionSafe:
+          ["inspect_project", "read_skill"].includes(tool.name) ||
+          host?.compactionSafe === true,
+      };
+    }),
   };
 }
 export function createVideoTools(

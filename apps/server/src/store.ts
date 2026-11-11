@@ -69,6 +69,12 @@ export const commitInput = z
   })
   .strict();
 export type StoredRun = VideoProjectAgentRun & {
+  browserToolsEnabled?: true;
+  appliedReceipt?: {
+    operationId: string;
+    revision: number;
+    documentHash: string;
+  };
   request: NativeAgentRequest;
   requestHash: string;
   events: AgentEvent[];
@@ -122,6 +128,7 @@ export type Project = {
     string,
     import("./edit-stage-store").StoredEditStageState
   >;
+  browserRequests?: import("./local-browser-requests").LocalBrowserRequestState;
 };
 export function snapshot(p: Project): VideoProjectSnapshot {
   return {
@@ -461,6 +468,8 @@ export const runOf = (p: Project, id: string) => {
   return run;
 };
 export function publicRun({
+  browserToolsEnabled: _browserTools,
+  appliedReceipt: _application,
   request: _request,
   requestHash: _hash,
   appliedBefore: _before,

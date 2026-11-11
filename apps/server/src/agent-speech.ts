@@ -330,6 +330,9 @@ export async function prepareAgentSpeech(
   });
   if (!run) return null;
   if (run.status !== "needs_evidence") return run.request;
+  // Exact browser grants resume their own saved tool without ASR consent.
+  if (run.phase === "waiting_for_host" && !run.prerequisites)
+    return run.request;
   if (!run.cloudConsent || run.prerequisites?.status === "consent_required")
     return null;
   const state = run.speechContinuation!;

@@ -33,6 +33,8 @@ import {
 import { MusicService } from "./music-service";
 import { musicTools } from "./music-tools";
 import { AgentService } from "./agent-service";
+import { LocalBrowserRequests } from "./local-browser-requests";
+import { withLocalVisualInputs } from "./local-visual-model";
 import {
   isBasicEditingWorkflowRequest,
   type AgentSpeechSource,
@@ -75,6 +77,7 @@ export async function createLocalApi() {
   );
   const music = new MusicService(store, () => providers.get("music"));
   await music.recover();
+  const browserRequests = new LocalBrowserRequests(store);
   const agent = new AgentService(
     store,
     () => new GptResponsesModel(providers.get("llm")),
@@ -99,6 +102,19 @@ export async function createLocalApi() {
         ),
     },
     "local-editor-v10",
+    {
+      browser: {
+        tools: (projectId, runId, request) =>
+          browserRequests.tools(projectId, runId, request),
+        model: (projectId, runId, model) =>
+          withLocalVisualInputs(model, (ref, signal) =>
+            browserRequests.modelFrames(projectId, runId, ref, signal),
+          ),
+        previewEvidence: (projectId, runId, requestId) =>
+          browserRequests.previewEvidence(projectId, runId, requestId),
+        cancel: (projectId, runId) => browserRequests.cancel(projectId, runId),
+      },
+    },
   );
   type Task = {
     id: string;
@@ -243,6 +259,7 @@ export async function createLocalApi() {
               error: (value as { message: string }).message,
               message: (value as { message: string }).message,
               code: (value as { code?: string }).code,
+              error_code: (value as { code?: string }).code,
             }),
       }),
     );
@@ -339,6 +356,18 @@ export async function createLocalApi() {
   }
 
   await agent.recover();
+  const resumeBrowser = (
+    projectId: string,
+    runId: string,
+    revision: number,
+    hash: string,
+  ) =>
+    agent.resume(projectId, runId, {
+      operationId: `browser:${runId}`,
+      baseRevision: revision,
+      baseHash: hash,
+    });
+  await browserRequests.resumeReady(resumeBrowser);
 
   async function api(req: IncomingMessage, res: ServerResponse) {
     const host = req.headers.host,
@@ -765,6 +794,65 @@ export async function createLocalApi() {
         }
         const runId = identifier.parse(parts[4]),
           action = parts[5];
+        if (action === "host-requests" || action === "output-requests") {
+          const kind =
+            action === "host-requests"
+              ? "source-inspection"
+              : "project-preview";
+          if (method === "GET" && parts.length === 6) {
+            await browserRequests.resumeReady(resumeBrowser, id, runId);
+            return json(res, await browserRequests.list(id, runId, kind));
+          }
+          const requestId = z.string().min(1).max(191).parse(parts[6]),
+            operation = parts[7];
+          if (method === "GET" && operation === "receipt")
+            return json(
+              res,
+              await browserRequests.receipt(id, runId, requestId),
+            );
+          if (
+            method === "GET" &&
+            operation === "render-input" &&
+            kind === "project-preview"
+          )
+            return json(
+              res,
+              await browserRequests.renderInput(id, runId, requestId),
+            );
+          if (method !== "POST") throw new HttpError("Method not allowed", 405);
+          const body = await input(req);
+          if (operation === "authorize")
+            return json(
+              res,
+              await browserRequests.authorize(id, runId, requestId, body),
+            );
+          if (operation === "fail")
+            return json(
+              res,
+              await browserRequests.fail(id, runId, requestId, body),
+            );
+          if (operation === "retry")
+            return json(
+              res,
+              await browserRequests.retry(id, runId, requestId, body),
+            );
+          if (operation === "fulfill") {
+            const receipt =
+              kind === "source-inspection"
+                ? z.object({ receipt: z.unknown() }).strict().parse(body)
+                    .receipt
+                : body;
+            const result = await browserRequests.fulfill(
+              id,
+              runId,
+              requestId,
+              receipt,
+            );
+            await browserRequests.resumeReady(resumeBrowser, id, runId);
+            return json(res, result);
+          }
+          throw new HttpError("Browser request endpoint not found", 404);
+        }
         if (method !== "POST") throw new HttpError("Method not allowed", 405);
         const v = await input(req);
         if (action === "review")
