@@ -509,6 +509,9 @@ it("cancels after a stored batch without applying it or repeating paid model wor
     baseHash: done.project.documentHash,
   });
   expect(f.calls()).toBe(3);
+  // The persisted cancellation precedes the background catch/finally transaction.
+  // Confirm execution drained before teardown removes its real storage directory.
+  await vi.waitFor(() => expect((f.agent as unknown as { active: Map<string, unknown> }).active.has(start.run.id)).toBe(false));
 }, 15000);
 
 it("stops a changed original source before another model request and retains completed siblings", async () => {
