@@ -841,3 +841,31 @@ it("binds final completion replay to the versioned authored paint policy", async
   expect(final.completion!.receipt).toEqual(checked.receipt);
   await expect(compileNativeCompletionResponse(request,response)).rejects.toThrow("Completion receipt differs");
 });
+
+it("reports text, projected start and readable duration separately only under precise speech diagnostics", async () => {
+  const f=await fixture(), reviewed=await reviewNativeCompletionEdit(f.request,{requirements:f.requirements,edit:f.edit});
+  const after=executeVideoProjectCommands(f.document,reviewed.result.proposal!.commands).document;
+  const combined="Highlight text/start/readable duration does not meet the declaration. Use bounded holdMs without changing the genuine word range.";
+  for (const [kind,mutate] of [
+    ["text",(d:typeof after)=>{d.items.find(i=>i.id==="number")!.node.text="3.3% — extra label";}],
+    ["start",(d:typeof after)=>{d.items.find(i=>i.id==="number")!.node.from!+=1;}],
+    ["duration",(d:typeof after)=>{d.items.find(i=>i.id==="number")!.node.duration=1;}],
+    ["text-and-duration",(d:typeof after)=>{const n=d.items.find(i=>i.id==="number")!.node;n.text="Other label";n.duration=1;}],
+  ] as const) {
+    const broken=structuredClone(after);mutate(broken);
+    const old=checkNativeCompletionRequirements(f.document,broken,f.requirements),latest=checkNativeCompletionRequirements(f.document,broken,f.requirements,{preciseSpeechDiagnostics:true});
+    expect(latest.map(c=>({id:c.id,passed:c.passed}))).toEqual(old.map(c=>({id:c.id,passed:c.passed})));
+    expect(old.find(c=>c.id==="number")!.message).toBe(combined);
+    const message=latest.find(c=>c.id==="number")!.message;
+    if(kind.startsWith("text")){expect(message).toContain("display differs from frozen exactText");expect(message).toContain("labels outside the checked item");expect(message).not.toContain("holdMs");}
+    else if(kind==="start"){expect(message).toContain("start differs from its genuine source-word projection");expect(message).not.toContain("holdMs");}
+    else{expect(message).toContain("readable duration");expect(message).toContain("holdMs");}
+  }
+});
+it("keeps successful review and final replay receipts unchanged with precise speech diagnostics",async()=>{
+  const f=await fixture(),input={requirements:f.requirements,edit:f.edit};
+  const old=await reviewNativeCompletionEdit(f.request,input),latest=await reviewNativeCompletionEdit(f.request,input,{preciseSpeechDiagnostics:true});
+  expect(latest).toEqual(old);
+  const result=await compileNativeCompletionResponse(f.request,{...f.edit,completion:{requirements:f.requirements,receipt:latest.receipt}},{preciseSpeechDiagnostics:true});
+  expect(result.completion!.receipt).toEqual(old.receipt);
+});
