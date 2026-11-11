@@ -21,10 +21,6 @@ import {
   type BrowserInspectionReceipt,
 } from "../../../packages/core/src/lib/video-project/browser-host-requests";
 import {
-  browserInspectionSourceIsCurrent,
-  MODEL_INSPECTION_DEFAULT_LIMITS,
-} from "../../../packages/core/src/lib/video-project/browser-host-requests-client";
-import {
   createProjectPreviewRequest,
   validateProjectPreviewReceipt,
   OUTPUT_PREVIEW_LIMITS,
@@ -49,6 +45,27 @@ import {
   type StoredRun,
 } from "./store";
 import type { AgentTool } from "../../../packages/agent/src/tools";
+import {
+  prepareLocalAgentExport,
+  listLocalAgentExports,
+  authorizeLocalAgentExport,
+  fulfillLocalAgentExport,
+  readLocalAgentExport,
+  failLocalAgentExport,
+  retryLocalAgentExport,
+  cancelLocalAgentExports,
+  updateLocalExportHint,
+} from "./local-agent-exports";
+
+// Bound model inputs before creating an authorized browser request.
+const MODEL_INSPECTION_DEFAULT_LIMITS = Object.freeze({
+  maxFrames: EDITOR_HOST_TOOL_POLICY.framesPerRequest,
+  maxDimension: 768,
+  maxFramePixels: 768 * 768,
+  maxTotalPixels: 4 * 768 * 768,
+  maxOutputBytes: 512 * 1024,
+  timeoutMs: 15000,
+});
 
 export type LocalBrowserRecord = {
   kind: "source-inspection" | "project-preview";
@@ -65,7 +82,10 @@ export type LocalBrowserRecord = {
 };
 export type LocalBrowserRequestState = Record<
   string,
-  Record<string, LocalBrowserRecord>
+  Record<
+    string,
+    LocalBrowserRecord | import("./local-agent-exports").LocalAgentExport
+  >
 >;
 const authorization = z
   .object({
@@ -100,11 +120,17 @@ function enabled(project: Project, runId: string, allowStopped = false) {
   return run;
 }
 function entries(project: Project, runId: string) {
-  return project.browserRequests?.[runId] ?? {};
+  return Object.fromEntries(
+    Object.entries(project.browserRequests?.[runId] ?? {}).filter(
+      (entry): entry is [string, LocalBrowserRecord] =>
+        entry[1].kind !== "project-export",
+    ),
+  );
 }
 function owned(project: Project, runId: string, requestId: string) {
   enabled(project, runId, true);
-  const value = entries(project, runId)[requestId];
+  const all = entries(project, runId);
+  const value = Object.hasOwn(all, requestId) ? all[requestId] : undefined;
   if (
     !value ||
     value.request.projectId !== project.id ||
@@ -120,26 +146,27 @@ function summary(row: LocalBrowserRecord) {
 function hints(project: Project, runId: string) {
   const run = runOf(project, runId),
     all = Object.values(entries(project, runId));
-  const sources = all.filter((row) => row.kind === "source-inspection"),
-    outputs = all.filter((row) => row.kind === "project-preview");
+  const sources = all.filter((row) => row.kind === "source-inspection");
   const pending = (rows: LocalBrowserRecord[]) =>
     rows.filter((row) =>
       ["waiting_consent", "waiting_browser"].includes(row.status),
     ).length;
   run.hostRequests = { count: sources.length, pending: pending(sources) };
-  run.outputRequests = {
-    count: outputs.length,
-    pending: pending(outputs),
-    waitingForApplication: 0,
-  };
+  updateLocalExportHint(project, runId);
 }
 function current(project: Project, run: StoredRun, row: LocalBrowserRecord) {
   if (row.kind === "source-inspection") {
+    const request = row.request as BrowserInspectionRequest;
+    const source = project.document.sources[request.source.sourceId];
+    const asset = project.document.assets[request.source.sourceId];
     if (
-      !browserInspectionSourceIsCurrent(
-        row.request as BrowserInspectionRequest,
-        project.document,
-      )
+      !source ||
+      !asset ||
+      source.revision !== request.source.sourceRevision ||
+      source.contentHash !== request.source.contentHash ||
+      asset.type !== request.source.type ||
+      (asset.byteLength !== undefined &&
+        asset.byteLength !== request.source.byteLength)
     )
       throw new HttpError(
         "The original source changed. Start a new inspection.",
@@ -334,6 +361,17 @@ export class LocalBrowserRequests {
       input: Record<string, unknown>,
     ) => {
       const row = await this.prepare(projectId, runId, kind, input);
+      if (row.status === "failed")
+        return {
+          kind: "observation" as const,
+          value: {
+            browserRequest: {
+              requestRef: requestRef(row),
+              status: "failed",
+              error: row.error,
+            },
+          },
+        };
       return row.receipt
         ? { kind: "observation" as const, value: { visualInput: visual(row) } }
         : { kind: "waiting" as const, requestRef: requestRef(row) };
@@ -350,6 +388,8 @@ export class LocalBrowserRequests {
         sample_video_frames: (input) =>
           prepare("source-inspection", { ...input, expectedType: "video" }),
         request_project_preview: (input) => prepare("project-preview", input),
+        request_project_export: (input) =>
+          prepareLocalAgentExport(this.store, projectId, runId, input),
       },
     }).map((tool) => ({ ...tool, replaySafe: true, compactionSafe: true }));
   }
@@ -474,7 +514,7 @@ export class LocalBrowserRequests {
     runId: string,
     kind: LocalBrowserRecord["kind"],
   ) {
-    return this.store.transaction(projectId, (project) => {
+    const listed = await this.store.transaction(projectId, (project) => {
       const run = enabled(project, runId, true);
       const all = Object.values(entries(project, runId));
       if (run.status === "cancelled")
@@ -482,8 +522,18 @@ export class LocalBrowserRequests {
       hints(project, runId);
       return { requests: all.filter((row) => row.kind === kind).map(summary) };
     });
+    return kind === "project-preview"
+      ? {
+          requests: [
+            ...listed.requests,
+            ...(await listLocalAgentExports(this.store, projectId, runId)),
+          ],
+        }
+      : listed;
   }
   async authorize(projectId: string, runId: string, id: string, raw: unknown) {
+    if (id.startsWith("export:"))
+      return authorizeLocalAgentExport(this.store, projectId, runId, id, raw);
     const input = authorization.parse(raw);
     return this.store.transaction(projectId, (project) => {
       const run = enabled(project, runId),
@@ -507,6 +557,8 @@ export class LocalBrowserRequests {
     });
   }
   async fulfill(projectId: string, runId: string, id: string, raw: unknown) {
+    if (id.startsWith("export:"))
+      return fulfillLocalAgentExport(this.store, projectId, runId, id, raw);
     return this.store.transaction(projectId, (project) => {
       const row = owned(project, runId, id),
         receipt = validate(row, raw);
@@ -557,6 +609,8 @@ export class LocalBrowserRequests {
     });
   }
   async receipt(projectId: string, runId: string, id: string) {
+    if (id.startsWith("export:"))
+      return readLocalAgentExport(this.store, projectId, runId, id);
     const project = await this.store.read(projectId),
       row = owned(project, runId, id);
     if (!row.receipt)
@@ -591,6 +645,8 @@ export class LocalBrowserRequests {
     };
   }
   async fail(projectId: string, runId: string, id: string, raw: unknown) {
+    if (id.startsWith("export:"))
+      return failLocalAgentExport(this.store, projectId, runId, id, raw);
     const failure = z
       .object({
         code: z.string().min(1).max(64),
@@ -612,6 +668,8 @@ export class LocalBrowserRequests {
     });
   }
   async retry(projectId: string, runId: string, id: string, raw: unknown) {
+    if (id.startsWith("export:"))
+      return retryLocalAgentExport(this.store, projectId, runId, id, raw);
     retryInput.parse(raw);
     return this.store.transaction(projectId, (project) => {
       const run = enabled(project, runId),
@@ -633,6 +691,7 @@ export class LocalBrowserRequests {
         if (!row.receipt) row.status = "cancelled";
       hints(project, runId);
     });
+    await cancelLocalAgentExports(this.store, projectId, runId);
   }
   async previewEvidence(projectId: string, runId: string, id: string) {
     const project = await this.store.read(projectId),
@@ -720,7 +779,7 @@ export class LocalBrowserRequests {
         const wait = parseLoopCheckpoint(raw).hostWait?.requestRef;
         const row = wait ? entries(project, run.id)[wait.id] : undefined;
         if (
-          row?.receipt &&
+          (row?.receipt || row?.status === "failed") &&
           completionCanonical(requestRef(row)) === completionCanonical(wait)
         )
           await resume(

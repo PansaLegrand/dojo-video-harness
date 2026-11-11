@@ -80,6 +80,7 @@ export async function handleLocalRequest(request: Request): Promise<Response> {
           error: message,
           message,
           code: cause instanceof HttpError ? cause.code : "REQUEST_FAILED",
+          error_code: cause instanceof HttpError ? cause.code : "REQUEST_FAILED",
         }),
       );
     });

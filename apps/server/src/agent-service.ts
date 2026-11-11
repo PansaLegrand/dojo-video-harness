@@ -405,6 +405,19 @@ export class AgentService {
       return run;
     });
     const project = await this.store.read(projectId);
+    const firstCheckpoint = run.preludeCheckpoints?.[0] ?? run.loopCheckpoint;
+    const frozenTools = firstCheckpoint
+      ? new Set(
+          parseLoopCheckpoint(firstCheckpoint.checkpoint).snapshot.tools.map(
+            (tool) => tool.name,
+          ),
+        )
+      : undefined;
+    const browserTools = run.browserToolsEnabled
+      ? (
+          this.stagedOptions.browser?.tools(projectId, id, request) ?? []
+        ).filter((tool) => !frozenTools || frozenTools.has(tool.name))
+      : [];
     const invoke = async (invocation?: EditingStageInvocation) =>
       runAgent({
         request,
@@ -413,9 +426,7 @@ export class AgentService {
         skills: this.skills,
         extraTools: [
           ...(this.extraTools?.(projectId, id, request) ?? []),
-          ...(run.browserToolsEnabled
-            ? (this.stagedOptions.browser?.tools(projectId, id, request) ?? [])
-            : []),
+          ...browserTools,
         ],
         ...(run.browserToolsEnabled && this.stagedOptions.browser
           ? {

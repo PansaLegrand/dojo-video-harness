@@ -8,6 +8,7 @@ export function withCompletionReview(context, body, response) {
   )
     return response;
   if (
+    response.args.outcome === undefined ||
     body.tools.find((tool) => tool.name === "propose_edit")?.parameters
       ?.properties?.outcome?.const === "proposal"
   )

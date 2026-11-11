@@ -826,11 +826,16 @@ export async function createLocalApi() {
               res,
               await browserRequests.authorize(id, runId, requestId, body),
             );
-          if (operation === "fail")
-            return json(
-              res,
-              await browserRequests.fail(id, runId, requestId, body),
+          if (operation === "fail") {
+            const result = await browserRequests.fail(
+              id,
+              runId,
+              requestId,
+              body,
             );
+            await browserRequests.resumeReady(resumeBrowser, id, runId);
+            return json(res, result);
+          }
           if (operation === "retry")
             return json(
               res,

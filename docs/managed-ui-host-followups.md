@@ -5,26 +5,46 @@ sync includes scoped media/progress, paired-caption merge/split with provenance,
 source audition, generated-media cards and browser output-request components.
 The managed files are copied mechanically; local HTTP authority stays in this host.
 
-The local editor still works without provider credentials: media import, manual
-editing, preview, captions from local files, Undo and browser export do not need a
-commercial account. Model-assisted editing and transcription use the configured
-BYOK providers. The normal durable staged-caption workflow operates locally and
+The local editor supports media import, manual editing, preview, captions from
+local files, Undo and browser export without provider credentials. Model-assisted
+editing and transcription use the configured BYOK providers. The normal durable staged-caption workflow operates locally and
 has its own source-bound plans, batch receipts, continuation budgets and tests.
-A shared browser helper alone does not make a local agent tool available.
 
-## Explicit remaining local adapter work
+## Local adapter status
 
-| Follow-up                                 | Current boundary                                                                                                                                                                                                                 | Bounded implementation and acceptance                                                                                                                                                                                                                                                                                                                                                                              |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| LH-R07 — source inspection registry       | Pure source sampling/request/receipt helpers exist; the local HTTP request registry is not implemented. Normal runs omit `hostRequests`.                                                                                         | Persist local owned-source requests and exact-scope visual grants; implement list/authorize/fulfill/receipt/fail/retry behind loopback checks. Prove no pixel transfer before consent, wrong-source rejection, duplicate receipts, cancellation and restart using real local originals.                                                                                                                            |
-| LH-R15 — generalized generated-media jobs | Existing approved local music workflows remain available through their own adapter. The commercial image/video/music quote registry is not a local service. Normal runs omit `externalJobs`.                                     | Define a BYOK local job adapter without commercial credit claims; retain approved inputs, uncertain submissions, canonical local results and separate placement receipts. Qualify one configured provider at a time before advertising it. Undo must not repeat generation.                                                                                                                                        |
-| LH-R20 — agent output request registry    | Manual browser export and local saved outputs work. Pure preview/export/cache helpers are present; model-visible output HTTP registry and artifact authorization are not implemented locally. Normal runs omit `outputRequests`. | Derive candidate render inputs from owned immutable stage artifacts, require exact preview/export grants, bind exports to actual Apply receipts and persist immutable verification receipts. Prove cancellation, stale rejection, cached-file recovery after later edits and no second encoding on publication retry. Local publication must use local storage authority rather than SaaS storage/credit services. |
+| Follow-up                                 | Current boundary                                                                                                                                                                                                                 | Bounded implementation and acceptance                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| LH-R07 — source inspection registry       | Implemented for newly started local v10 runs with registered browser tools. Original source fingerprints, exact visual grants and immutable receipts persist in ProjectStore.                                                    | Actual managed consent UI, original image sampling, local HTTP and Responses transport passed with restart and duplicate delivery. Pixels reach the configured model after exact consent. Checkpoints retain metadata references. The existing allowance is four frames per request, sixteen per run and 1.5 MiB of retained visual bytes. |
+| LH-R15 — generalized generated-media jobs | Existing approved local music workflows remain available through their own adapter. The commercial image/video/music quote registry is not a local service. Normal runs omit `externalJobs`.                                     | Define a BYOK local job adapter without commercial credit claims; retain approved inputs, uncertain submissions, canonical local results and separate placement receipts. Qualify one configured provider at a time before advertising it. Undo must not repeat generation.                                                                |
+| LH-R20 — agent output request registry    | Implemented through the same ProjectStore browser-request map. Candidate previews use owned verification artifacts. Export intents bind to the actual guarded Apply receipt. Existing local export storage owns published files. | Actual shared UI completed two rendered previews and one native correction. A decoded 1280×720 MP4 contained 180 frames over six seconds. Publication retry after a later edit and restart reused the cached file with one encoding and one upload. Stored status requires matching file bytes, hash, format and applied revision.         |
 
-Absent optional hints keep these unsupported cards inactive: no speculative
-registry polling, upload, capture or paid work occurs. Add each hint only after its
-host executor, persistence, ownership and behavior tests exist. Do not return fake
-success summaries or enable model metadata merely because the pure helper can run.
+Runs saved before these adapters retain their frozen model and tool inventory.
+New runs expose the registered source-inspection, candidate-preview and export
+ports. Generated-media hints become available when the corresponding local job
+adapter is registered and qualified.
 
-The host-specific gaps above do not block ordinary staged caption editing. Keep
-`tests/staged-agent-service.test.ts`, the store/audit recovery tests and the actual
-production-browser smoke suite green when introducing an adapter.
+The host keeps the existing loop, command kernel, stage artifacts, recovery checks
+and local JSON transactions. `local-browser-requests.ts` owns source and preview
+requests. `local-agent-exports.ts` handles the export intent's Apply-dependent
+lifecycle in the same request map. `exports.ts` retains local file authority.
+
+## Verification
+
+The browser controls use a local scripted Responses endpoint. Source capture,
+Canvas rendering, WebCodecs export, receipt persistence and FFmpeg decode run
+through the actual adapters. The source check used the original 230,910-byte PNG
+from the retained mixed-media inputs.
+
+```sh
+npm run check
+npm run test:browser
+node --import tsx scripts/verify-local-browser-requests.mjs PATH_TO_IMAGE
+node --import tsx scripts/verify-local-browser-requests.mjs PATH_TO_IMAGE --outputs
+```
+
+The targeted control suites are `tests/local-browser-requests.test.ts`,
+`tests/local-visual-model.test.ts`, `tests/next-route.test.ts` and
+`tests/exports.test.ts`. Existing staged-agent, speech, store and managed-UI
+regressions remain part of the full harness gate. Browser reports record the
+sampled frames, model request counts, encoding/upload counts and restart results
+under ignored `test-results/local-*-browser-*` directories.
