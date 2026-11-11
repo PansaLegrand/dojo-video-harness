@@ -352,3 +352,62 @@ describe("generated timeline track placement", () => {
     );
   });
 });
+
+describe("versioned authored visual stacking", () => {
+  const paint = (document: ReturnType<typeof createVideoProjectDocument>) => document.tracks.flatMap(track => document.items.filter(item => item.trackId === track.id).map(item => item.id));
+  const layerFixture = () => {
+    const before = createVideoProjectDocument({ width: 320, height: 180, fps: 30, durationInFrames: 90 });
+    const background: EditorItem = { ...text("chapter"), node: { id: "chapter", type: "div", from: 0, duration: 90, style: { position: "absolute", inset: 0, backgroundColor: "#081426" }, children: [{ id: "chapter-title", type: "text", text: "Title", style: { left: 10, top: 10, fontSize: 20 } }] } };
+    const chart: EditorItem = { ...vector(), id: "chart", node: { ...vector().node, id: "chart", duration: 90 } };
+    const after = executeVideoProjectCommands(before, [{ type: "addItem", item: background }, { type: "addItem", item: chart }]).document;
+    return { before, after };
+  };
+  it("keeps an authored chart above opaque chapter text while the retained profile stays byte-compatible", () => {
+    const { before, after } = layerFixture();
+    const legacy = generatedTrackCommands(before, after);
+    expect(paint(executeVideoProjectCommands(after, legacy).document)).toEqual(["chart", "chapter"]);
+    const latest = generatedTrackCommands(before, after, { preserveAuthoredPaintOrder: true });
+    expect(latest).toEqual([]);
+    expect(paint(after)).toEqual(["chapter", "chart"]);
+    expect(generatedTrackCommands(before, after)).toEqual(legacy);
+  });
+  it("still creates typed lanes for non-overlapping layers", () => {
+    const { before, after } = layerFixture();
+    after.items[0]!.node.duration = 30;
+    after.items[1]!.node.from = 30;
+    expect(generatedTrackCommands(before, after, { preserveAuthoredPaintOrder: true })).toEqual(generatedTrackCommands(before, after));
+    expect(generatedTrackCommands(before, after).length).toBeGreaterThan(0);
+  });
+  it("uses actual track paint order rather than item array or command order", () => {
+    const { before, after } = layerFixture();
+    after.tracks.push({ id: "foreground", name: "Foreground", kind: "visual", muted: false, hidden: false, locked: false });
+    after.items[0]!.trackId = "foreground";
+    const commands = generatedTrackCommands(before, after, { preserveAuthoredPaintOrder: true });
+    expect(paint(executeVideoProjectCommands(after, commands).document)).toEqual(["chart", "chapter"]);
+  });
+  it("retains existing locked and hidden lanes and does not flatten 501 caption cues into layer pairs", () => {
+    const { before, after } = layerFixture();
+    const subtitles = caption("existing-captions");subtitles.trackId="captions";subtitles.node.duration=90;
+    subtitles.caption!.cues=Array.from({length:501},(_,i)=>({id:`cue-${i}`,text:`Word ${i}`,startMs:i*4,endMs:i*4+4}));
+    const tracks = [{id:"hidden",name:"Hidden",kind:"visual" as const,hidden:true,muted:false,locked:false},{id:"captions",name:"Subtitles",kind:"visual" as const,hidden:false,muted:false,locked:true}];
+    before.tracks.push(...tracks);after.tracks.push(...tracks);before.items.push(subtitles);after.items.push(subtitles);
+    const commands=generatedTrackCommands(before,after,{preserveAuthoredPaintOrder:true});
+    const result=commands.length?executeVideoProjectCommands(after,commands).document:after;
+    expect(result.tracks.filter(t=>["hidden","captions"].includes(t.id))).toEqual(tracks);
+    expect(result.items.find(i=>i.id===subtitles.id)?.caption?.cues).toEqual(subtitles.caption!.cues);
+    expect(paint(result).indexOf("chart")).toBeGreaterThan(paint(result).indexOf("chapter"));
+    expect(paint(result).indexOf("existing-captions")).toBeGreaterThan(paint(result).indexOf("chart"));
+  });
+  it("preserves the reviewed layering after rebasing onto a newer unrelated change", async () => {
+    const { before, after } = layerFixture(), baseHash = await hashVideoProjectDocument(before);
+    const commands: VideoProjectCommand[] = after.items.map(item => ({ type: "addItem", item }));
+    const current = executeVideoProjectCommands(before, [{ type: "set", target: {kind:"format"}, path:["backgroundColor"], value:"#111111" }]).document;
+    const result = await prepareNativeAgentReview({ runId:"layer-review", baseDocument:before, baseHash,
+      proposal:{commands,summary:"Chapter and chart",impact:"direct",changedItemIds:after.items.map(i=>i.id),previewHash:await hashVideoProjectDocument(after)},
+      current:{projectId:"p",revision:1,document:current,documentHash:await hashVideoProjectDocument(current),sources:[],history:{canUndo:true,canRedo:false}},
+      preserveAuthoredPaintOrder:true });
+    expect(paint(result.afterDocument)).toEqual(["chapter","chart"]);
+    expect(result.afterDocument.format.backgroundColor).toBe("#111111");
+    expect(executeVideoProjectCommands(current,result.review.commands).document).toEqual(result.afterDocument);
+  });
+});

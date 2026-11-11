@@ -823,3 +823,21 @@ it("appends after all retained edited content for an exact asset_sequence while 
     )!.passed,
   ).toBe(false);
 });
+
+it("binds final completion replay to the versioned authored paint policy", async () => {
+  const document = createVideoProjectDocument({width:320,height:180,fps:30,durationInFrames:90});
+  const request={contract:"video-project-commands" as const,version:1 as const,baseRevision:0,baseHash:await hashVideoProjectDocument(document),document,context:{selectedItemIds:[],playheadFrame:0}};
+  const edit={outcome:"proposal",summary:"Chapter with a visible chart",commands:[
+    {type:"addItem",item:{id:"chapter",name:"Chapter",trackId:"visual",node:{id:"chapter",type:"div",duration:90,style:{position:"absolute",inset:0,backgroundColor:"#081426"},children:[{id:"heading",type:"text",text:"Title",style:{position:"absolute",left:10,top:10,width:100,height:30,fontSize:20}}]}}},
+    {type:"addItem",item:{id:"chart",name:"Chart",trackId:"visual",node:{id:"chart",type:"shape",duration:90,shape:{kind:"rect"},style:{position:"absolute",left:100,top:80,width:60,height:60,fill:"#22d3ee"}}}}
+  ]};
+  const requirements=[{id:"chapter-present",kind:"item_present",itemId:"chapter"},{id:"chart-present",kind:"item_present",itemId:"chart"}];
+  const options={preserveAuthoredPaintOrder:true};
+  const checked=await reviewNativeCompletionEdit(request,{requirements,edit},options);
+  expect(checked.receipt).toBeTruthy();
+  const response={...edit,completion:{requirements,receipt:checked.receipt}};
+  const final=await compileNativeCompletionResponse(request,response,options);
+  expect(final.proposal!.commands.some(command=>command.type==="reorderTracks")).toBe(false);
+  expect(final.completion!.receipt).toEqual(checked.receipt);
+  await expect(compileNativeCompletionResponse(request,response)).rejects.toThrow("Completion receipt differs");
+});

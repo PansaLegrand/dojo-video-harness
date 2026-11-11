@@ -660,6 +660,7 @@ export function checkNativeCompletionRequirements(
 export async function reviewNativeCompletionEdit(
   request: NativeAgentRequest,
   input: { requirements: unknown; edit: unknown },
+  options: { preserveAuthoredPaintOrder?: boolean } = {},
 ) {
   const requirements = parseCompletionRequirements(input.requirements, {
       assetSequence: true,
@@ -671,7 +672,7 @@ export async function reviewNativeCompletionEdit(
     throw new Error("Completion preflight requires an editing proposal.");
   const rawCommands = (input.edit as { commands: unknown }).commands;
   const first = executeVideoProjectCommands(base, compiled.proposal.commands);
-  const placement = generatedTrackCommands(base, first.document);
+  const placement = generatedTrackCommands(base, first.document, options);
   const commands = [...compiled.proposal.commands, ...placement];
   const executed = placement.length
     ? executeVideoProjectCommands(base, commands)
@@ -706,6 +707,7 @@ export async function reviewNativeCompletionEdit(
 export async function compileNativeCompletionResponse(
   request: NativeAgentRequest,
   raw: unknown,
+  options: { preserveAuthoredPaintOrder?: boolean } = {},
 ): Promise<NativeAgentResult> {
   if (typeof raw === "string") {
     if (raw.length > 4_000_000)
@@ -742,7 +744,7 @@ export async function compileNativeCompletionResponse(
   const reviewed = await reviewNativeCompletionEdit(request, {
     requirements: contract.requirements,
     edit,
-  });
+  }, options);
   if (
     !reviewed.receipt ||
     completionCanonical(reviewed.receipt) !== completionCanonical(receipt)

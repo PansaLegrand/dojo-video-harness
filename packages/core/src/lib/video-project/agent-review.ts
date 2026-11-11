@@ -146,6 +146,7 @@ export async function prepareNativeAgentReview(input: {
   proposal: VideoProjectAgentProposal;
   current: VideoProjectSnapshot;
   organizeTracks?: boolean;
+  preserveAuthoredPaintOrder?: boolean;
 }): Promise<{
   review: NativeReviewDetails;
   beforeDocument: VideoProjectDocument;
@@ -169,7 +170,7 @@ export async function prepareNativeAgentReview(input: {
   const placement =
     input.organizeTracks === false
       ? []
-      : generatedTrackCommands(current, rebased.document);
+      : generatedTrackCommands(current, rebased.document, { preserveAuthoredPaintOrder: input.preserveAuthoredPaintOrder });
   const commands = [...rebased.commands, ...placement];
   const result = placement.length
     ? executeVideoProjectCommands(current, commands)
