@@ -11,6 +11,7 @@ import {
 import { runEditingStages as runRetainedEditingStages } from "@dojo-video/agent-kit-v20";
 import { runEditingStages as runRetainedAuthoringEditingStages } from "@dojo-video/agent-kit-v21";
 import { runEditingStages as runRetainedReviewedEditingStages } from "@dojo-video/agent-kit-v22";
+import { runEditingStages as runRetainedPhaseEditingStages } from "@dojo-video/agent-kit-v23";
 import {
   parseLoopCheckpoint,
   type LoopCheckpointPort,
@@ -101,8 +102,10 @@ export async function runStagedEditing(input: {
   );
   const port = createLocalEditStagePort({ ...input, binding });
   const coordinate =
-    run.agentProfile === "local-editor-v9"
+    run.agentProfile === "local-editor-v10"
       ? runEditingStages
+      : run.agentProfile === "local-editor-v9"
+        ? runRetainedPhaseEditingStages
       : run.agentProfile === "local-editor-v8"
         ? runRetainedReviewedEditingStages
         : run.agentProfile === "local-editor-v7"
@@ -119,10 +122,12 @@ export async function runStagedEditing(input: {
     ...(input.onTransition ? { onTransition: input.onTransition } : {}),
     policy: {
       ...STAGED_EDIT_POLICY,
+      ...(run.agentProfile === "local-editor-v10" ? { stageModelCalls: 16 } : {}),
       ...(input.policy?.captionBatchSize === undefined
         ? {}
         : { captionBatchSize: input.policy.captionBatchSize }),
     },
+    ...(run.agentProfile === "local-editor-v10" ? { previewRepair: true as const } : {}),
     records: {
       read: async () =>
         (await input.store.read(input.projectId)).editStagePlans?.[
@@ -228,19 +233,19 @@ export async function runStagedEditing(input: {
         };
       },
     },
-    ...(["local-editor-v7", "local-editor-v8", "local-editor-v9"].includes(
+    ...(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-v10"].includes(
       run.agentProfile ?? "",
     )
       ? { generalEditing: true as const }
       : {}),
-    ...(["local-editor-v8", "local-editor-v9"].includes(run.agentProfile ?? "")
+    ...(["local-editor-v8", "local-editor-v9", "local-editor-v10"].includes(run.agentProfile ?? "")
       ? { reviewReferences: true as const }
       : {}),
-    ...(run.agentProfile === "local-editor-v9"
+    ...(["local-editor-v9", "local-editor-v10"].includes(run.agentProfile ?? "")
       ? { phaseScopedTools: true as const }
       : {}),
     native: {
-      ...(["local-editor-v8", "local-editor-v9"].includes(
+      ...(["local-editor-v8", "local-editor-v9", "local-editor-v10"].includes(
         run.agentProfile ?? "",
       )
         ? {

@@ -42,7 +42,8 @@ async function fixture(
   profile:
     | "local-editor-v7"
     | "local-editor-v8"
-    | "local-editor-v9" = "local-editor-v7",
+    | "local-editor-v9"
+    | "local-editor-v10" = "local-editor-v7",
 ) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "dojo-general-edit-"));
   roots.push(directory);
@@ -523,7 +524,7 @@ it("rejects untranslated declared pairs rather than treating an empty array as a
   expect(await f.port.load()).toBeNull();
 });
 
-it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9"] as const)(
+it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9", "local-editor-v10"] as const)(
   "runs %s through actual AgentService review, Apply, reload, replay and Undo",
   async (profile) => {
     const f = await fixture(profile);
@@ -552,18 +553,18 @@ it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9"] as const)(
             );
             expect(
               tools.some((tool) => tool.name === "save_caption_batch"),
-            ).toBe(profile !== "local-editor-v9");
+            ).toBe(!["local-editor-v9", "local-editor-v10"].includes(profile));
             name = "plan_edit_stages";
             args = { requirements: f.requirements, captionPairs: [] };
           } else {
             expect(context.activeStage.kind).toBe("assemble");
             expect(context.preparedCommands).toBe(false);
             expect(tools.some((tool) => tool.name === "plan_edit_stages")).toBe(
-              profile !== "local-editor-v9",
+              !["local-editor-v9", "local-editor-v10"].includes(profile),
             );
             expect(
               tools.some((tool) => tool.name === "save_caption_batch"),
-            ).toBe(profile !== "local-editor-v9");
+            ).toBe(!["local-editor-v9", "local-editor-v10"].includes(profile));
             const reviewed = messages.some(
               (message) =>
                 message.role === "tool" &&
@@ -660,7 +661,7 @@ it.each(["local-editor-v7", "local-editor-v8", "local-editor-v9"] as const)(
   },
 );
 
-it.each(["local-editor-v6", "local-editor-v7", "local-editor-v8"] as const)(
+it.each(["local-editor-v6", "local-editor-v7", "local-editor-v8", "local-editor-v9"] as const)(
   "new-profile recovery retains accepted %s checkpoint byte-for-byte",
   async (profile) => {
     const f = await fixture();
@@ -719,7 +720,7 @@ it.each(["local-editor-v6", "local-editor-v7", "local-editor-v8"] as const)(
       undefined,
       "review",
       undefined,
-      "local-editor-v9",
+      "local-editor-v10",
     );
     await current.recover();
     expect((await current.start(initial.id, body)).run.id).toBe(before.id);

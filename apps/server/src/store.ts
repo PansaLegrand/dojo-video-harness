@@ -89,7 +89,8 @@ export type StoredRun = VideoProjectAgentRun & {
     | "local-editor-v6"
     | "local-editor-v7"
     | "local-editor-v8"
-    | "local-editor-v9";
+    | "local-editor-v9"
+    | "local-editor-v10";
   completion?: import("../../../packages/agent-kit/src/index").CompletionContract;
 };
 export type Project = {
