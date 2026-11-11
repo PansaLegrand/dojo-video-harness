@@ -27,6 +27,15 @@ provider gates are recorded separately. The 0.2.5 PR remains at
 its own immutable head with public CI queued. Live-provider creative acceptance
 continues under its separate frozen cases, retained failures and provider budget.
 
+Clean-install CI exposed a localhost visual-model import that depended on the
+loop package's cached build output. The host now imports the workspace source
+entry, matching the other local adapters. This host-only correction in `27c7064`
+is present on both release branches and preserves the frozen kit archive.
+A fresh exported tree with no `node_modules` or loop `dist` passed setup, full
+TypeScript and actual startup/editor/private-settings checks. Local proof is
+retained under `test-results/clean-import-026`. Earlier failed CI runs remain
+visible, with replacement checks running against the corrected branch heads.
+
 ## November 12 local runtime and browser adapters, 0.2.5 baseline
 
 New local runs select `local-editor-v11`, kit **0.2.5**, loop **0.2.0** and engine
