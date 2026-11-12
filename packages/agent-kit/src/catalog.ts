@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.2.7" as const;
+export const AGENT_KIT_VERSION = "0.2.8" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -203,7 +203,9 @@ export type AgentProfile =
   | "local-editor-v12"
   | "commercial-editing-v13"
   | "local-editor-v13"
-  | "commercial-editing-v14";
+  | "commercial-editing-v14"
+  | "local-editor-v14"
+  | "commercial-editing-v15";
 export const usesCompletionPreflight = (profile: AgentProfile) =>
   [
     "local-editor-v2",
@@ -230,6 +232,8 @@ export const usesCompletionPreflight = (profile: AgentProfile) =>
     "commercial-editing-v13",
     "local-editor-v13",
     "commercial-editing-v14",
+    "local-editor-v14",
+    "commercial-editing-v15",
   ].includes(profile);
 export const usesPagedReaders = (profile: AgentProfile) =>
   [
@@ -255,6 +259,8 @@ export const usesPagedReaders = (profile: AgentProfile) =>
     "commercial-editing-v13",
     "local-editor-v13",
     "commercial-editing-v14",
+    "local-editor-v14",
+    "commercial-editing-v15",
   ].includes(profile);
 export const usesEfficientReaders = (profile: AgentProfile) =>
   [
@@ -278,6 +284,8 @@ export const usesEfficientReaders = (profile: AgentProfile) =>
     "commercial-editing-v13",
     "local-editor-v13",
     "commercial-editing-v14",
+    "local-editor-v14",
+    "commercial-editing-v15",
   ].includes(profile);
 export const usesResolvedEditSchema = (profile: AgentProfile) =>
   [
@@ -299,6 +307,8 @@ export const usesResolvedEditSchema = (profile: AgentProfile) =>
     "commercial-editing-v13",
     "local-editor-v13",
     "commercial-editing-v14",
+    "local-editor-v14",
+    "commercial-editing-v15",
   ].includes(profile);
 export const usesStagedEditing = (profile: AgentProfile) =>
   profile === "local-editor-v6" ||
@@ -336,33 +346,40 @@ export const usesAppendPreviewRepair = (profile: AgentProfile) =>
   usesSemanticEditingGuidance(profile);
 /** Cue fidelity and explicit speech-display checks are selected before freezing. */
 export const usesSemanticEditingGuidance = (profile: AgentProfile) =>
-  profile === "local-editor-v13" || profile === "commercial-editing-v14";
+  profile === "local-editor-v13" ||
+  profile === "commercial-editing-v14" ||
+  usesDerivedCaptionPlan(profile);
+/** Exact caption pair declarations supply their matching completion checks. */
+export const usesDerivedCaptionPlan = (profile: AgentProfile) =>
+  profile === "local-editor-v14" || profile === "commercial-editing-v15";
 export const profileKitVersion = (profile: AgentProfile) =>
-  usesSemanticEditingGuidance(profile)
+  usesDerivedCaptionPlan(profile)
     ? AGENT_KIT_VERSION
-    : usesAppendPreviewRepair(profile)
-      ? "0.2.6"
-      : usesInstalledGraphicsGrammar(profile)
-        ? "0.2.5"
-        : usesPreviewRepair(profile)
-          ? "0.2.4"
-          : usesPhaseScopedTools(profile)
-            ? "0.2.3"
-            : usesReviewedEditReferences(profile)
-              ? "0.2.2"
-              : usesAuthoringContracts(profile)
-                ? "0.2.1"
-                : usesStagedEditing(profile)
-                  ? "0.2.0"
-                  : usesResolvedEditSchema(profile)
-                    ? "0.1.5"
-                    : usesEfficientReaders(profile)
-                      ? "0.1.4"
-                      : usesPagedReaders(profile)
-                        ? "0.1.3"
-                        : usesCompletionPreflight(profile)
-                          ? "0.1.2"
-                          : "0.1.1";
+    : usesSemanticEditingGuidance(profile)
+      ? "0.2.7"
+      : usesAppendPreviewRepair(profile)
+        ? "0.2.6"
+        : usesInstalledGraphicsGrammar(profile)
+          ? "0.2.5"
+          : usesPreviewRepair(profile)
+            ? "0.2.4"
+            : usesPhaseScopedTools(profile)
+              ? "0.2.3"
+              : usesReviewedEditReferences(profile)
+                ? "0.2.2"
+                : usesAuthoringContracts(profile)
+                  ? "0.2.1"
+                  : usesStagedEditing(profile)
+                    ? "0.2.0"
+                    : usesResolvedEditSchema(profile)
+                      ? "0.1.5"
+                      : usesEfficientReaders(profile)
+                        ? "0.1.4"
+                        : usesPagedReaders(profile)
+                          ? "0.1.3"
+                          : usesCompletionPreflight(profile)
+                            ? "0.1.2"
+                            : "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null
@@ -381,6 +398,17 @@ export const profileSkills: Record<
   "local-editor-v11": null,
   "local-editor-v12": null,
   "local-editor-v13": null,
+  "local-editor-v14": null,
+  "commercial-editing-v15": [
+    "precise-editing",
+    "motion-design",
+    "speech-editing",
+    "completion-preflight",
+    "multi-asset-editing",
+    "staged-editing",
+    "generated-media",
+    "visual-inspection",
+  ],
   "commercial-editing-v14": [
     "precise-editing",
     "motion-design",

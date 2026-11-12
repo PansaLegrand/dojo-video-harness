@@ -15,6 +15,8 @@ export type EditorStagePorts<T> = {
   phase?: EditorStagePhase;
   /** New profiles may plan monolingual/creative edits without a translation pair. */
   generalEditing?: boolean;
+  /** Missing checks are derived by the host from validated exact pair declarations. */
+  deriveCaptionPlan?: boolean;
   planEditStages(input: unknown, signal: AbortSignal): Promise<T>;
   saveCaptionBatch(input: unknown, signal: AbortSignal): Promise<T>;
   readEditArtifact(

@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
 import {
+  builtInSkills as v27Skills,
+  composeToolAgentPrompt as v27Prompt,
+  createEditorToolset as v27Tools,
+  createEditorHostTools as v27HostTools,
+} from "@dojo-video/agent-kit-v27";
+import {
   builtInSkills as v26Skills,
   composeToolAgentPrompt as v26Prompt,
   createEditorToolset as v26Tools,
@@ -32,6 +38,7 @@ import {
   usesInstalledGraphicsGrammar,
   usesAppendPreviewRepair,
   usesSemanticEditingGuidance,
+  usesDerivedCaptionPlan,
   usesPagedReaders,
   usesPhaseScopedTools,
   usesPreviewRepair,
@@ -87,6 +94,7 @@ function ports(phase: EditorStagePhase): EditorToolPorts<string> {
     stages: {
       phase,
       generalEditing: true,
+      deriveCaptionPlan: true,
       preparedCommands: false,
       planEditStages: async () => "plan",
       saveCaptionBatch: async () => "batch",
@@ -485,6 +493,131 @@ it("new semantic guidance is visible during planning, caption batching and assem
         "Before save_caption_batch, self-check every translated cue",
       );
       expect(prompt).not.toContain("32 model calls");
+    }
+  }
+});
+
+it("retains exact archived 0.2.7 schemas, skills, inventory and prompt bytes with an accidental new host flag in every accepted phase", () => {
+  for (const profile of [
+    "local-editor-v13",
+    "commercial-editing-v14",
+  ] as const) {
+    expect(usesDerivedCaptionPlan(profile)).toBe(false);
+    expect(profileKitVersion(profile)).toBe("0.2.7");
+    for (const phase of phases) {
+      const common = {
+        profile,
+        snapshotHash: "sha256:" + "a".repeat(64),
+        ports: ports(phase),
+        proposalSchema: nativeAgentResponseSchema({
+          clarification: true,
+          composition: true,
+          anchorHold: true,
+        }),
+      };
+      const current = createEditorToolset({
+        ...common,
+        skills: builtInSkills(),
+        extraTools: createEditorHostTools({ profile, ports: hostPorts }),
+      });
+      const archived = v27Tools({
+        ...common,
+        skills: v27Skills(),
+        extraTools: v27HostTools({ profile, ports: hostPorts }),
+      });
+      expect(JSON.stringify(current.tools)).toBe(
+        JSON.stringify(archived.tools),
+      );
+      expect(JSON.stringify(current.inventory)).toBe(
+        JSON.stringify(archived.inventory),
+      );
+      expect(JSON.stringify(current.skills)).toBe(
+        JSON.stringify(archived.skills),
+      );
+      const prompt = {
+        profile,
+        phase,
+        editingGuide: "Frozen host guide",
+        toolNames: names(current.tools),
+        skills: current.skills,
+      };
+      expect(composeToolAgentPrompt(prompt)).toBe(v27Prompt(prompt));
+    }
+  }
+});
+
+it("new derived-caption profiles retain all earlier features and tools while making pair declarations authoritative", () => {
+  for (const [previous, profile] of [
+    ["local-editor-v13", "local-editor-v14"],
+    ["commercial-editing-v14", "commercial-editing-v15"],
+  ] as const) {
+    expect(usesDerivedCaptionPlan(profile)).toBe(true);
+    expect(profileKitVersion(profile)).toBe("0.2.8");
+    expect(profileSkills[profile]).toEqual(profileSkills[previous]);
+    for (const feature of [
+      usesCompletionPreflight,
+      usesPagedReaders,
+      usesStagedEditing,
+      usesAuthoringContracts,
+      usesReviewedEditReferences,
+      usesPhaseScopedTools,
+      usesPreviewRepair,
+      usesInstalledGraphicsGrammar,
+      usesAppendPreviewRepair,
+      usesSemanticEditingGuidance,
+    ])
+      expect(feature(profile)).toBe(true);
+    for (const phase of phases) {
+      const make = (profile: AgentProfile) =>
+        createEditorToolset({
+          profile,
+          snapshotHash: "sha256:" + "a".repeat(64),
+          ports: ports(phase),
+          skills: builtInSkills(),
+          proposalSchema: nativeAgentResponseSchema({
+            clarification: true,
+            composition: true,
+            anchorHold: true,
+          }),
+        });
+      const current = make(profile),
+        old = make(previous);
+      expect(names(current.tools)).toEqual(names(old.tools));
+      expect(current.inventory.kitVersion).toBe("0.2.8");
+      const prompt = composeToolAgentPrompt({
+        profile,
+        phase,
+        editingGuide: "Frozen source and allowance",
+        toolNames: names(current.tools),
+        skills: current.skills,
+      });
+      expect(prompt).toContain("captionPairs are authoritative declarations");
+      expect(prompt).toContain(
+        "combined supplied plus derived list must fit12",
+      );
+      expect(prompt).toContain("THAT source cue");
+      expect(prompt).toContain("mode:'append'");
+      expect(prompt).not.toContain("32 model calls");
+      if (phase === "planning") {
+        expect(
+          current.tools.find((tool) => tool.name === "plan_edit_stages")!
+            .parameters,
+        ).toMatchObject({
+          properties: { requirements: { minItems: 0, maxItems: 12 } },
+        });
+        expect(
+          current.tools.find((tool) => tool.name === "review_edit")!.parameters,
+        ).toMatchObject({
+          properties: { requirements: { minItems: 1, maxItems: 12 } },
+        });
+        const stagedSkill = current.skills.find(
+          (skill) => skill.name === "staged-editing",
+        );
+        if (stagedSkill)
+          expect(stagedSkill.instructions).toContain(
+            "host derives each missing",
+          );
+      }
     }
   }
 });

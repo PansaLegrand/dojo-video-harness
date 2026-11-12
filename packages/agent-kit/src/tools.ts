@@ -9,6 +9,8 @@ import {
   type PreviewRepairClaim,
 } from "./preview-repair.js";
 import { parseEditArtifactRef } from "./stages.js";
+import { deriveCaptionPlanRequirements } from "./caption-plan.js";
+import type { StageCaptionPair } from "./staged-coordinator.js";
 import {
   editingOnlyProposalSchema,
   reviewedProposalSchema,
@@ -30,6 +32,7 @@ import {
   usesPhaseScopedTools,
   usesPreviewRepair,
   usesAppendPreviewRepair,
+  usesDerivedCaptionPlan,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -299,6 +302,8 @@ export function createEditorToolset<T>(input: {
     !!input.extraTools?.some((tool) => tool.name === "request_project_preview");
   const reviewReferences = usesReviewedEditReferences(input.profile);
   const stages = usesStagedEditing(input.profile) ? ports.stages : undefined;
+  const deriveCaptionPlan =
+    usesDerivedCaptionPlan(input.profile) && stages?.deriveCaptionPlan === true;
   const phaseScoped = usesPhaseScopedTools(input.profile),
     phase = stages?.phase ?? "planning";
   if (phaseScoped && !["planning", "caption_batch", "assemble"].includes(phase))
@@ -1027,13 +1032,31 @@ export function createEditorToolset<T>(input: {
         {
           ...stages,
           generalEditing: authoring && stages.generalEditing === true,
+          deriveCaptionPlan,
           planEditStages: async (raw, signal) => {
             await checkedState();
-            const requirements = parseCompletionRequirements(
-              (raw as { requirements?: unknown }).requirements,
-              { assetSequence: true, speechCallout: true },
-            );
-            if (reviewReferences)
+            const value = raw as {
+              requirements?: unknown;
+              captionPairs?: unknown;
+            };
+            let requirements =
+              deriveCaptionPlan &&
+              Array.isArray(value.requirements) &&
+              value.requirements.length === 0
+                ? []
+                : parseCompletionRequirements(value.requirements, {
+                    assetSequence: true,
+                    speechCallout: true,
+                  });
+            if (deriveCaptionPlan && state) {
+              if (!Array.isArray(value.captionPairs))
+                throw new Error("Plan 0–12 exact caption pairs.");
+              requirements = await deriveCaptionPlanRequirements(
+                requirements,
+                value.captionPairs as StageCaptionPair[],
+              );
+            }
+            if (reviewReferences && requirements.length)
               await ports.validateRequirements?.(requirements);
             if (
               state &&
@@ -1046,7 +1069,17 @@ export function createEditorToolset<T>(input: {
           },
         },
         authoring
-          ? { requirementsSchema: authoringCompletionRequirementsSchema }
+          ? {
+              requirementsSchema: deriveCaptionPlan
+                ? { ...authoringCompletionRequirementsSchema, minItems: 0 }
+                : authoringCompletionRequirementsSchema,
+              ...(deriveCaptionPlan
+                ? {
+                    description:
+                      "Freeze every requested outcome and exact captionPairs. Each validated pair declares its source/evidence, item IDs, languages, colors and requested range. The host derives a missing caption_pair check and preserves every supplied check, with at most12 combined. Matching explicit pair checks are reused; conflicts, duplicate IDs and unplanned checks are rejected. requirements may be empty only when pairs derive at least one check. Saving yields to bounded caption batches and assembly under the original budget; it never applies edits.",
+                  }
+                : {}),
+            }
           : undefined,
       ),
     );

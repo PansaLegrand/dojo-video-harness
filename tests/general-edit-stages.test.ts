@@ -12,6 +12,8 @@ import {
   type EditArtifactRef,
   type StageCoordinatorRecords,
   type StageModelInvocation,
+  type StageCaptionPair,
+  STAGED_EDIT_POLICY,
 } from "../packages/agent-kit/src/index";
 import {
   createLocalEditStagePort,
@@ -24,7 +26,19 @@ import {
   type NativeAgentRequest,
   type NativeAgentResult,
 } from "../packages/core/src/lib/video-project/agent-runtime";
-import { compileNativeCompletionResponse } from "../packages/core/src/lib/video-project/completion-preflight";
+import {
+  compileNativeCompletionResponse,
+  validateNativeCompletionRequirements,
+} from "../packages/core/src/lib/video-project/completion-preflight";
+import { captionPairSettingsSchema } from "../packages/core/src/lib/video-project/caption-pair";
+import {
+  captionBatchManifestSchema,
+  createCaptionBatchManifest,
+  prepareCaptionTranslationBatch,
+  assembleCaptionTranslationBatches,
+  captionBatchModelContext,
+} from "../packages/core/src/lib/video-project/caption-batches";
+import { readNativeCaptionCues } from "../packages/core/src/lib/video-project/agent-readers";
 import {
   createVideoProjectDocument,
   hashVideoProjectDocument,
@@ -44,7 +58,9 @@ async function fixture(
     | "local-editor-v8"
     | "local-editor-v9"
     | "local-editor-v10"
-    | "local-editor-v11" = "local-editor-v7",
+    | "local-editor-v11"
+    | "local-editor-v14" = "local-editor-v7",
+  secondSource = false,
 ) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "dojo-general-edit-"));
   roots.push(directory);
@@ -95,6 +111,28 @@ async function fixture(
     text: words.map((word) => word.text).join(" "),
     words,
   };
+  if (secondSource) {
+    raw.assets.recording2 = { ...raw.assets.recording, id: "recording2" };
+    raw.sources.recording2 = { assetId: "recording2", revision: "source-v2" };
+    raw.items.push({
+      ...raw.items[0],
+      id: "narration2",
+      node: {
+        ...raw.items[0].node,
+        id: "narration2",
+        assetId: "recording2",
+        from: 360,
+      },
+    });
+    raw.evidence.speech2 = {
+      ...raw.evidence.speech,
+      id: "speech2",
+      sourceAssetId: "recording2",
+      sourceRevision: "source-v2",
+      words: words.map((word) => ({ ...word, id: `second-${word.id}` })),
+    };
+    raw.format.durationInFrames = 720;
+  }
   const document = parseVideoProjectDocument(raw),
     baseHash = await hashVideoProjectDocument(document);
   const request: NativeAgentRequest = {
@@ -189,7 +227,9 @@ async function fixture(
     throw new Error("Monolingual editing must not invent a translation pair.");
   });
   const native = {
-    readableSourceItemIds: ["narration"],
+    readableSourceItemIds: secondSource
+      ? ["narration", "narration2"]
+      : ["narration"],
     parsePair: neverPair,
     parseManifest: neverPair,
     createManifest: neverPair,
@@ -1017,3 +1057,277 @@ it("the reviewed-edit marker resolves one prepared bilingual prefix without dupl
   expect(noMoreModel).not.toHaveBeenCalled();
   expect(invocations).toBe(calls);
 });
+
+function captionNative(f: Awaited<ReturnType<typeof fixture>>) {
+  return {
+    ...f.input.native,
+    validateRequirements: (requirements: CompletionRequirement[]) => {
+      validateNativeCompletionRequirements(requirements);
+    },
+    parsePair: (raw: unknown) => captionPairSettingsSchema.parse(raw),
+    parseManifest: (raw: unknown) => captionBatchManifestSchema.parse(raw),
+    createManifest: (settings: StageCaptionPair, size: number) =>
+      createCaptionBatchManifest(f.document, settings, size),
+    prepareBatch: (manifest: unknown, batchId: string, raw: unknown) =>
+      prepareCaptionTranslationBatch(f.document, manifest, batchId, raw),
+    assembleBatches: (manifest: unknown, batches: unknown[]) =>
+      assembleCaptionTranslationBatches(f.document, manifest, batches),
+    batchContext: captionBatchModelContext,
+    readCues: (
+      query: Parameters<typeof readNativeCaptionCues>[1],
+      options?: Parameters<typeof readNativeCaptionCues>[2],
+    ) => readNativeCaptionCues(f.request, query, options),
+    compileFinal: (
+      edit: unknown,
+      completion: Parameters<typeof compileNativeCompletionResponse>[1],
+    ) =>
+      compileNativeCompletionResponse(
+        f.request,
+        { ...(edit as object), completion },
+        { preserveAuthoredPaintOrder: true, preciseSpeechDiagnostics: true },
+      ),
+  };
+}
+function declaredPairs(): StageCaptionPair[] {
+  const settings = {
+    sourceItemId: "narration",
+    evidenceId: "speech",
+    trackId: "visual",
+    originalLanguage: "en",
+    translatedLanguage: "zh",
+    originalColor: "#ff0000",
+    translatedColor: "#ffffff",
+  };
+  return [
+    {
+      ...settings,
+      originalItemId: "en-first",
+      translatedItemId: "zh-first",
+    },
+    {
+      ...settings,
+      sourceItemId: "narration2",
+      evidenceId: "speech2",
+      originalItemId: "en-second",
+      translatedItemId: "zh-second",
+    },
+  ];
+}
+
+it("derives two caption checks alongside nine other outcomes and carries the full frozen checklist through real batches, native review and candidate replay", async () => {
+  const f = await fixture("local-editor-v14", true),
+    pairs = declaredPairs();
+  const supplied: CompletionRequirement[] = [
+    {
+      id: "original",
+      kind: "asset_sequence",
+      items: [
+        {
+          itemId: "narration",
+          assetId: "recording",
+          from: 0,
+          duration: 360,
+          sourceStartSeconds: 0,
+        },
+        {
+          itemId: "narration2",
+          assetId: "recording2",
+          from: 360,
+          duration: 360,
+          sourceStartSeconds: 0,
+        },
+      ],
+    },
+    { id: "chart", kind: "item_present", itemId: "chart-0" },
+    ...["duration", "audioStartTime", "volume"].map((path, index) => ({
+      id: `voice-${path}`,
+      kind: "property" as const,
+      target: {
+        kind: "node" as const,
+        itemId: "narration",
+        nodeId: "narration",
+      },
+      path: [path],
+      equals: [360, 0, 1][index],
+    })),
+    ...["width", "height", "fps", "durationInFrames"].map((path, index) => ({
+      id: `format-${path}`,
+      kind: "property" as const,
+      target: { kind: "format" as const },
+      path: [path],
+      equals: [640, 360, 30, 720][index],
+    })),
+  ];
+  const edit = {
+    outcome: "proposal",
+    summary:
+      "Two ranged caption pairs, source preservation and editable animated chart",
+    commands: [f.edit.commands[1]],
+  };
+  let planning = 0,
+    batches = 0,
+    assembly = 0;
+  let frozenHash = "";
+  const input = {
+    ...f.input,
+    generalEditing: true as const,
+    deriveCaptionPlan: true as const,
+    reviewReferences: true as const,
+    phaseScopedTools: true as const,
+    policy: { ...STAGED_EDIT_POLICY, captionBatchSize: 4 },
+    native: captionNative(f),
+    invoke: async (options: StageModelInvocation<NativeAgentResult>) => {
+      const set = createVideoToolset(f.request, builtInSkills(), [], {
+        profile: "local-editor-v14",
+        stages: options.stages,
+      });
+      const call = (name: string, value: unknown) =>
+        set.tools
+          .find((tool) => tool.name === name)!
+          .execute(value, f.input.signal);
+      if (!options.stageContext) {
+        planning++;
+        const result = (await call("plan_edit_stages", {
+          requirements: supplied,
+          captionPairs: pairs,
+        })) as { result: NativeAgentResult };
+        const plan = (await f.port.load())!;
+        expect(plan.requirements).toHaveLength(11);
+        expect(plan.requirements.slice(0, 9)).toEqual(supplied);
+        expect(plan.requirements.slice(9).map((value) => value.kind)).toEqual([
+          "caption_pair",
+          "caption_pair",
+        ]);
+        frozenHash = plan.requirementsHash;
+        return result.result;
+      }
+      expect(options.stages.completionState?.requirements).toHaveLength(11);
+      expect(options.stages.completionState?.requirementsHash).toBe(frozenHash);
+      const context = options.stageContext as any;
+      if (context.activeStage.kind === "caption_batch") {
+        batches++;
+        const batch = context.captionBatch;
+        const page = (await call("read_caption_cues", {
+          sourceItemId: batch.sourceItemId,
+          evidenceId: batch.evidenceId,
+          sourceRange: batch.sourceRange,
+        })) as { value: { cues: Array<{ cueId: string; text: string }> } };
+        expect(page.value.cues).toHaveLength(4);
+        return (
+          (await call("save_caption_batch", {
+            translations: page.value.cues.map((cue) => ({
+              cueId: cue.cueId,
+              text: `译 ${cue.text}`,
+            })),
+          })) as { result: NativeAgentResult }
+        ).result;
+      }
+      assembly++;
+      const review = (await call("review_edit", { edit })) as any;
+      expect(
+        review.value.completionPreflight.checks.filter(
+          (check: { passed: boolean }) => !check.passed,
+        ),
+      ).toEqual([]);
+      expect(review.value.completionPreflight.status).toBe("passed");
+      expect(review.value.completionPreflight.requirements).toHaveLength(11);
+      expect(review.value.completionPreflight.requirementsHash).toBe(
+        frozenHash,
+      );
+      expect(review.value.completionPreflight.reviewRef).toBeDefined();
+      return (
+        (await call("propose_edit", { reviewed: true })) as {
+          result: NativeAgentResult;
+        }
+      ).result;
+    },
+  };
+  const result = await runEditingStages(input);
+  expect([planning, batches, assembly]).toEqual([1, 6, 1]);
+  expect(result.outcome).toBe("proposal");
+  expect(result.completion?.requirements).toHaveLength(11);
+  expect(result.completion?.receipt.requirementsHash).toBe(frozenHash);
+  const after = executeVideoProjectCommands(
+    f.document,
+    result.proposal!.commands,
+  ).document;
+  expect(
+    after.items
+      .filter((item) => item.caption)
+      .map((item) => item.id)
+      .sort(),
+  ).toEqual(["en-first", "en-second", "zh-first", "zh-second"]);
+  expect(after.items.find((item) => item.id === "narration")).toEqual(
+    f.document.items[0],
+  );
+  expect(after.evidence).toEqual(f.document.evidence);
+  expect((await f.port.load())!.requirementsHash).toBe(frozenHash);
+  const neverModel = vi.fn(async () => {
+    throw Error("Saved candidate replay must reuse all caption artifacts");
+  });
+  expect(await runEditingStages({ ...input, invoke: neverModel })).toEqual(
+    result,
+  );
+  expect(neverModel).not.toHaveBeenCalled();
+});
+
+it.each([
+  "empty",
+  "overflow",
+  "conflict",
+  "missing-evidence",
+  "outside-scope",
+  "bad-range",
+  "duplicate-items",
+])(
+  "rejects invalid derived plan %s before freezing or writing artifacts",
+  async (failure) => {
+    const f = await fixture("local-editor-v14", true),
+      pairs = declaredPairs();
+    let requirements: CompletionRequirement[] = [
+      { id: "chart", kind: "item_present", itemId: "chart-0" },
+    ];
+    if (failure === "empty") {
+      requirements = [];
+      pairs.splice(0);
+    }
+    if (failure === "overflow")
+      requirements = Array.from({ length: 11 }, (_, index) => ({
+        id: `keep-${index}`,
+        kind: "item_present",
+        itemId: `graphic-${index}`,
+      }));
+    if (failure === "conflict") {
+      const { trackId: _track, sourceRange: _range, ...fields } = pairs[0];
+      requirements.push({
+        id: "conflict",
+        kind: "caption_pair",
+        ...fields,
+        translatedColor: "#000000",
+      });
+    }
+    if (failure === "missing-evidence") pairs[0].evidenceId = "missing";
+    if (failure === "outside-scope") pairs[0].sourceItemId = "other-source";
+    if (failure === "bad-range")
+      pairs[0].sourceRange = { startMs: 6000, endMs: 5000 };
+    if (failure === "duplicate-items")
+      pairs[1].translatedItemId = pairs[0].translatedItemId;
+    const before = JSON.stringify(f.document);
+    await expect(
+      runEditingStages({
+        ...f.input,
+        generalEditing: true,
+        deriveCaptionPlan: true,
+        native: captionNative(f),
+        invoke: (options) =>
+          options.stages.planEditStages(
+            { requirements, captionPairs: pairs },
+            f.input.signal,
+          ),
+      }),
+    ).rejects.toThrow();
+    expect(await f.port.load()).toBeNull();
+    expect(await f.records.read()).toBeNull();
+    expect(JSON.stringify(f.document)).toBe(before);
+  },
+);
