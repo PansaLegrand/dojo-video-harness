@@ -804,3 +804,214 @@ it("resumes an accepted three-tool host wait after the export adapter is install
     )
     .toBe(0);
 });
+
+it.each([
+  "local-editor-v11",
+  "local-editor-v12",
+  "local-editor-v13",
+  "local-editor-v14",
+] as const)(
+  "replays %s preview candidates with their saved native compiler options and rejects mismatched profiles and receipts",
+  async (profile) => {
+    const f = await fixture();
+    const { createEditStagePlan, STAGED_EDIT_POLICY } = await import(
+      "../packages/agent-kit/src/index"
+    );
+    const { localEditStageBinding, createLocalEditStagePort } = await import(
+      "../apps/server/src/edit-stage-store"
+    );
+    const { reviewNativeCompletionEdit } = await import(
+      "../packages/core/src/lib/video-project/completion-preflight"
+    );
+    await f.store.transaction(f.projectId, (p) => {
+      p.runs[0].agentProfile = profile;
+    });
+    const project = await f.store.read(f.projectId),
+      run = project.runs[0];
+    const edit = {
+      outcome: "proposal",
+      summary: "Editable chapter with a bar above its opaque background",
+      commands: [
+        {
+          type: "addItem",
+          item: {
+            id: "chapter",
+            name: "Chapter",
+            trackId: "visual",
+            node: {
+              id: "chapter",
+              type: "div",
+              duration: 120,
+              style: {
+                position: "absolute",
+                inset: 0,
+                backgroundColor: "#081426",
+              },
+              children: [
+                {
+                  id: "heading",
+                  type: "text",
+                  text: "Title",
+                  style: {
+                    position: "absolute",
+                    left: 10,
+                    top: 10,
+                    width: 200,
+                    height: 30,
+                    fontSize: 20,
+                    color: "#ffffff",
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          type: "addItem",
+          item: {
+            id: "chart",
+            name: "Chart",
+            trackId: "visual",
+            node: {
+              id: "chart",
+              type: "shape",
+              duration: 120,
+              shape: { kind: "rect" },
+              style: {
+                position: "absolute",
+                left: 100,
+                top: 220,
+                width: 60,
+                height: 60,
+                fill: "#22d3ee",
+              },
+            },
+          },
+        },
+      ],
+    };
+    const requirements = [
+      { id: "chapter", kind: "item_present" as const, itemId: "chapter" },
+      { id: "chart", kind: "item_present" as const, itemId: "chart" },
+    ];
+    const options =
+      profile === "local-editor-v11"
+        ? {}
+        : {
+            preserveAuthoredPaintOrder: true,
+            ...(profile !== "local-editor-v12"
+              ? { preciseSpeechDiagnostics: true }
+              : {}),
+          };
+    const review = await reviewNativeCompletionEdit(
+      run.request,
+      { edit, requirements },
+      options,
+    );
+    const legacy = await reviewNativeCompletionEdit(run.request, {
+      edit,
+      requirements,
+    });
+    expect(review.receipt).toBeDefined();
+    expect(legacy.receipt).toBeDefined();
+    if (profile !== "local-editor-v11")
+      expect(review.receipt!.previewHash).not.toBe(legacy.receipt!.previewHash);
+    const binding = await localEditStageBinding(
+      project,
+      run,
+      "fixture:no-model",
+    );
+    const port = createLocalEditStagePort({
+      store: f.store,
+      projectId: f.projectId,
+      runId: f.runId,
+      binding,
+    });
+    await port.initialize(
+      await createEditStagePlan({
+        id: "preview-profile",
+        binding,
+        instruction: run.instruction,
+        requirements,
+        limits: {
+          modelCalls: 32,
+          toolCalls: 64,
+          outputTokens: 32000,
+          attempts: 64,
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+          perStage: {
+            modelCalls: STAGED_EDIT_POLICY.stageModelCalls,
+            toolCalls: STAGED_EDIT_POLICY.stageToolCalls,
+            outputTokens: STAGED_EDIT_POLICY.stageOutputTokens,
+          },
+        },
+        stages: [
+          {
+            id: "assemble",
+            kind: "assemble",
+            execution: "model",
+            dependencies: [],
+            inputs: [],
+          },
+        ],
+      }),
+    );
+    const ref = await port.putArtifact("verification", {
+      kind: "editing-review",
+      edit,
+      requirements,
+      checks: review.checks,
+      receipt: review.receipt,
+    });
+    const preview = f.service
+      .tools(f.projectId, f.runId, run.request)
+      .find((tool) => tool.name === "request_project_preview")!;
+    await expect(
+      preview.execute(
+        { candidateRef: ref, frames: [0] },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ kind: "waiting" });
+    const row = (await f.service.list(f.projectId, f.runId, "project-preview"))
+      .requests[0];
+    if (row.request?.kind !== "project-preview")
+      throw Error("Owned candidate preview required");
+    const request = row.request;
+    expect(request.renderHash).toBe(review.receipt!.previewHash);
+    await f.service.authorize(f.projectId, f.runId, request.id, {
+      operationId: "profile-preview-grant",
+      scopeHash: request.scopeHash,
+    });
+    const input = await new LocalBrowserRequests(
+      new ProjectStore(f.directory),
+    ).renderInput(f.projectId, f.runId, request.id);
+    expect(await hashVideoProjectDocument(input.document)).toBe(
+      review.receipt!.previewHash,
+    );
+    await f.store.transaction(f.projectId, (p) => {
+      p.runs[0].agentProfile =
+        profile === "local-editor-v13"
+          ? "local-editor-v14"
+          : "local-editor-v13";
+    });
+    await expect(
+      f.service.renderInput(f.projectId, f.runId, request.id),
+    ).rejects.toThrow(/another editing profile/);
+    await f.store.transaction(f.projectId, (p) => {
+      p.runs[0].agentProfile = profile;
+    });
+    const wrong = await port.putArtifact("verification", {
+      kind: "editing-review",
+      edit,
+      requirements,
+      checks: review.checks,
+      receipt: { ...review.receipt, previewHash: "sha256:" + "0".repeat(64) },
+    });
+    await expect(
+      preview.execute(
+        { candidateRef: wrong, frames: [0] },
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow();
+  },
+);
