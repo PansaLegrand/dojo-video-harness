@@ -353,7 +353,8 @@ export function createVideoToolset(
         (options.profile === "local-editor-v10" ||
           options.profile === "local-editor-v11" ||
           options.profile === "local-editor-v12" ||
-          options.profile === "local-editor-v13") &&
+          options.profile === "local-editor-v13" ||
+          options.profile === "local-editor-v14") &&
         [
           "inspect_image",
           "sample_video_frames",

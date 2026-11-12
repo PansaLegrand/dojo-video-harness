@@ -1,4 +1,5 @@
 import { parsePreviewRepairClaim } from "./preview-repair.js";
+import { deriveCaptionPlanRequirements } from "./caption-plan.js";
 import {
   completionCanonical,
   completionHash,
@@ -182,6 +183,8 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   native: StageNativePorts<T>;
   /** Opted in only by new profiles; retained profiles require bilingual pairs. */
   generalEditing?: true;
+  /** Exact pair declarations supply their missing completion checks before freezing. */
+  deriveCaptionPlan?: true;
   /** New profiles may propose their retained successful review without resending JSON. */
   reviewReferences?: true;
   /** New profiles advertise only tools valid in the current host-owned phase. */
@@ -498,11 +501,17 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
   }
   async function initialize(raw: unknown) {
     const value = raw as { requirements?: unknown; captionPairs?: unknown };
-    const requirements = parseCompletionRequirements(value.requirements, {
-      assetSequence: true,
-      speechCallout: true,
-    });
-    await input.native.validateRequirements?.(requirements);
+    let requirements =
+      input.deriveCaptionPlan &&
+      Array.isArray(value.requirements) &&
+      value.requirements.length === 0
+        ? []
+        : parseCompletionRequirements(value.requirements, {
+            assetSequence: true,
+            speechCallout: true,
+          });
+    if (!input.deriveCaptionPlan)
+      await input.native.validateRequirements?.(requirements);
     if (
       !Array.isArray(value.captionPairs) ||
       (!input.generalEditing && !value.captionPairs.length) ||
@@ -522,6 +531,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           "This speech source is outside the current authorized read scope.",
         );
       if (
+        !input.deriveCaptionPlan &&
         !requirements.some(
           (requirement) =>
             requirement.kind === "caption_pair" &&
@@ -543,6 +553,13 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
       manifests.push(
         await input.native.createManifest(pair, policy.captionBatchSize),
       );
+    }
+    if (input.deriveCaptionPlan) {
+      requirements = await deriveCaptionPlanRequirements(
+        requirements,
+        manifests.map((manifest) => manifest.settings),
+      );
+      await input.native.validateRequirements?.(requirements);
     }
     if (
       requirements.filter((requirement) => requirement.kind === "caption_pair")
@@ -666,6 +683,7 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           }
         : {}),
       ...(input.generalEditing ? { generalEditing: true as const } : {}),
+      ...(input.deriveCaptionPlan ? { deriveCaptionPlan: true as const } : {}),
       preparedCommands: !!frozen?.preparedRef,
       ...(stage
         ? {

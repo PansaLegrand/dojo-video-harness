@@ -127,7 +127,7 @@ async function fixture() {
   return { request, requirements, edit, stages };
 }
 
-it.each(["local-editor-v12", "local-editor-v13"] as const)(
+it.each(["local-editor-v12", "local-editor-v13", "local-editor-v14"] as const)(
   "%s native session selects only its versioned speech diagnostics and guidance",
   async (profile) => {
     const f = await fixture(),
@@ -158,7 +158,7 @@ it.each(["local-editor-v12", "local-editor-v13"] as const)(
       value: { completionPreflight: { status: "failed" } },
     });
     const observation = JSON.stringify(result);
-    if (profile === "local-editor-v13") {
+    if (profile !== "local-editor-v12") {
       expect(observation).toContain("display differs from frozen exactText");
       expect(observation).toContain("labels outside the checked item");
       expect(observation).not.toContain("holdMs");

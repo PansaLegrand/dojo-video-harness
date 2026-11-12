@@ -8,6 +8,8 @@ import {
   completionCanonical,
   EDITOR_HOST_TOOL_POLICY,
   parseEditArtifactRef,
+  usesAppendPreviewRepair,
+  usesSemanticEditingGuidance,
   type EditorVisualInputRef,
 } from "../../../packages/agent-kit/src/index";
 import {
@@ -289,6 +291,11 @@ async function candidate(project: Project, run: StoredRun, raw: unknown) {
       "Preview requires this run's immutable successful review.",
       409,
     );
+  if (state.plan.binding.profile !== (run.agentProfile ?? "local-editor-v1"))
+    throw new HttpError(
+      "The saved preview belongs to another editing profile. Continue its original run.",
+      409,
+    );
   const review = saved.value as {
     edit: unknown;
     requirements: unknown;
@@ -309,10 +316,25 @@ async function candidate(project: Project, run: StoredRun, raw: unknown) {
       visualDocumentHash: run.baseHash,
     };
   }
-  const result = await compileNativeCompletionResponse(request, {
-    ...(review.edit as object),
-    completion: { requirements: review.requirements, receipt: review.receipt },
-  });
+  const profile = run.agentProfile ?? "local-editor-v1";
+  const result = await compileNativeCompletionResponse(
+    request,
+    {
+      ...(review.edit as object),
+      completion: {
+        requirements: review.requirements,
+        receipt: review.receipt,
+      },
+    },
+    {
+      ...(usesAppendPreviewRepair(profile)
+        ? { preserveAuthoredPaintOrder: true }
+        : {}),
+      ...(usesSemanticEditingGuidance(profile)
+        ? { preciseSpeechDiagnostics: true }
+        : {}),
+    },
+  );
   if (!result.proposal)
     throw new HttpError("Preview requires a native editing proposal.", 409);
   const document = executeVideoProjectCommands(

@@ -11,8 +11,14 @@ Never invent an English-to-English pair just to create a plan.
 
 For requested translation requiring multiple batches or several sources, bind each
 real distinct-language pair to its exact source, evidence, requested sourceRange,
-stable item IDs, languages and colors. Every pair needs its matching `caption_pair`
-requirement. The host fixes the complete cue plan before translation.
+stable item IDs, languages and colors in `captionPairs`. These declarations are
+authoritative. The host derives each missing `caption_pair` completion check and
+reuses a matching explicit check. Keep every other requested outcome in
+`requirements`. Supplied checks stay intact, and all checks together must fit the
+12-check limit. Conflicting pair fields, duplicate IDs and unplanned explicit pair
+checks are rejected. `requirements:[]` is valid when at least one declared pair
+derives a check. Both arrays empty is invalid. The host validates the source,
+evidence, range and complete cue plan before freezing requirements and translating.
 
 Work only on the active caption batch. Read its exact ranged host cues, preserve
 each genuine cue ID, and supply one translation per cue to `save_caption_batch`.

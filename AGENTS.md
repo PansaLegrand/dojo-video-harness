@@ -26,12 +26,12 @@ Start with:
 Plans are not completed evidence. Verify source and reports before claiming a
 capability is accepted; mark plan items complete only with the required evidence.
 
-The local application starts new runs with `local-editor-v13`, agent kit **0.2.7**
+The local application starts new runs with `local-editor-v14`, agent kit **0.2.8**
 and loop **0.2.0**, consuming published engine **1.2.3**. Earlier runs use their
 retained profile/coordinator archives. The commercial counterpart is
-`commercial-editing-v14`. Check [the agent map](docs/agent-system.md) and
+`commercial-editing-v15`. Check [the agent map](docs/agent-system.md) and
 [execution ledger](docs/readiness-progress.md) before describing acceptance.
-The frozen 0.2.7 kit source is `4ce0d7d`, with separate later host/test/doc commits.
+The frozen 0.2.8 kit source is `63af724`, with separate later documentation commits.
 
 ## Architecture and where to work
 
@@ -196,6 +196,16 @@ cue retains its own facts, names, numbers, units, periods and negation, with a
 cue-by-cue self-check before saving the batch. Latest-only diagnostics identify
 display, projected-start and readable-duration failures separately. Live language
 and creative quality use independent acceptance evidence.
+
+Local v14/commercial v15 makes `captionPairs` authoritative declarations for staged
+bilingual captions. Validate each pair's source, evidence, scope and manifest
+before deriving its missing `caption_pair` check and freezing the combined list.
+Preserve every supplied check and reuse matching explicit pair checks. Conflicting
+fields, duplicate identities, unplanned explicit pairs and totals above 12 fail
+before persistence. `requirements:[]` is valid when pairs derive at least one
+check. Both arrays empty is invalid. Existing review and stage receipts bind the
+complete frozen list. Local v13/commercial v14 runs retain their archived 0.2.7
+behavior.
 
 ## Milestones and working discipline
 

@@ -9,6 +9,7 @@ import {
   usesPreviewRepair,
   usesAppendPreviewRepair,
   usesSemanticEditingGuidance,
+  usesDerivedCaptionPlan,
   type AgentProfile,
 } from "./catalog.js";
 import type { Skill } from "./catalog.js";
@@ -68,6 +69,9 @@ export function composeToolAgentPrompt(input: {
       : []),
     ...(input.profile && usesSemanticEditingGuidance(input.profile)
       ? [SEMANTIC_EDITING_GUIDE]
+      : []),
+    ...(input.profile && usesDerivedCaptionPlan(input.profile)
+      ? [DERIVED_CAPTION_PLAN_GUIDE]
       : []),
     ...(input.toolNames.includes("review_edit")
       ? [
@@ -130,3 +134,6 @@ const APPEND_PREVIEW_REPAIR_GUIDE =
 
 const SEMANTIC_EDITING_GUIDE =
   "Before plan_edit_stages or the first review freezes requirements, choose the check that matches the intended displayed content. speech_callout requires genuine word IDs for a verbatim spoken quote, exactText matching that quote, and exactly that displayed text in the checked item. Put explanatory labels, shortened currency and unit labels in separate items with their own item/property checks. speech_highlight uses only recognized numeric word IDs and a supported numeric or percent exactText display. Keep currency, unit and context labels in separate items. Preserve the original genuine word identities and timing. Once requirements freeze, repair the edit against them. For caption translation, EACH cue must retain ALL facts, proper names, numbers, units, reporting periods, time qualifiers, comparisons and negation from THAT source cue. Neighboring context may clarify meaning while every source fact stays in its own cue. Before save_caption_batch, self-check every translated cue against its matching genuine source cue and confirm complete cue-ID coverage. Context never authorizes moving a fact to an adjacent cue or dropping it for brevity.";
+
+const DERIVED_CAPTION_PLAN_GUIDE =
+  "In plan_edit_stages, captionPairs are authoritative declarations for the requested bilingual captions. Declare each pair once with its exact source/evidence, stable item IDs, languages, colors and requested sourceRange. The host validates those pairs and derives any missing caption_pair checks before requirements freeze. A matching explicit pair check is reused. Keep all other requested outcome checks in requirements; supplied checks are preserved, and the combined supplied plus derived list must fit12. Conflicting fields, duplicate IDs and explicit checks for unplanned pairs are rejected. requirements:[] is valid when declared pairs derive at least one check. Both requirements:[] and captionPairs:[] is invalid. After planning, use the host's complete frozen checklist without rewriting or weakening it. Scope, genuine cue coverage, per-cue fidelity and the original allowance remain binding.";
