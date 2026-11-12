@@ -15,9 +15,12 @@ Status: executing; see [the execution ledger](readiness-progress.md) and
 [Gateway automated GPT gates passed](gateway-readiness-report.md); real-media,
 human and additional capability acceptance remain open.
 
-Current local source selects `local-editor-v13` with kit 0.2.7, loop 0.2.0 and
-engine 1.2.3. The coordinated 0.2.7 local gate passed 939 tests/build and 66 browser
-checks. Twenty-eight focused pre-freeze tests and full TypeScript also passed.
+Current local source selects `local-editor-v14` with kit 0.2.8, loop 0.2.0 and
+engine 1.2.3. The coordinated 0.2.8 local gate passed 968 tests/build and 66 browser
+checks. Sixty-one focused tests and full TypeScript also passed. Validated caption
+declarations supply their missing completion checks before freezing, retaining
+all supplied outcomes and the combined 12-check limit. Earlier profiles keep
+their archived contracts and original allowances.
 LH-R07 source inspection and LH-R20 candidate-preview/Apply-bound export adapters
 are implemented and browser-qualified within their recorded scope. General local
 image/video generation is the optional bounded LH-R15 follow-up. The original

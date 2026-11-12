@@ -2,6 +2,46 @@
 
 Started on 2026-11-01. Last updated on 2026-11-12. The harness plan remains the acceptance contract.
 
+## November 12 derived caption plans, 0.2.8
+
+The immutable kit source is `63af7248f5c7f3bba5415d64fdc0367b4a5410bf`, with
+archive SHA-256
+`986945fc7a1dbd9a3f0e1c2925a56f14a0f1f17f5a33d1fb06e9133c1fb5a884`
+and 61 packaged files. New local runs select local-editor-v14. The commercial
+counterpart is commercial-editing-v15. Loop 0.2.0, engine 1.2.3 and the existing
+64-model-call/64-tool/32,000-output-token allowance remain bound to their current
+contracts. Earlier runs retain their stored profiles and allowances.
+
+Validated `captionPairs` declare the intended bilingual outputs once. The
+coordinator validates source scope, evidence, requested ranges and manifests,
+then derives missing `caption_pair` checks before freezing the combined list.
+All supplied checks remain intact. Matching explicit checks retain their IDs and
+values. Conflicts, duplicate identities, unplanned explicit pairs and combined
+totals above 12 fail before plan/artifact persistence. `requirements:[]` is valid
+when declared pairs provide at least one check. Both arrays empty is invalid.
+The existing stages, checklist hashes, manifests, receipts and replay carry the
+complete list through the rest of the edit.
+
+Implementation `7ff03a2` adds this planning behavior and versioned metadata.
+Host correction `63af724` replays candidate previews with the saved compiler
+options and requires the stored profile to match the immutable stage binding.
+The focused gate passed **61 tests**, including two source-bound caption pairs,
+six batches, nine additional outcomes, complete native review/proposal, saved
+candidate replay and invalid declarations rejected before freezing. Exact
+archived 0.2.7 tool, skill, inventory and prompt bytes match in all three phases.
+Saved-profile preview tests cover local v11 through v14, restart and invalid
+profile/receipt rejection.
+
+The coordinated gate passed **968 tests in 99 files**, full TypeScript, integrity
+checks and the production build. All **66 actual browser checks** passed against
+that build with scripted local provider HTTP. Actual React, filesystem/IndexedDB
+persistence, engine preview/export and FFmpeg decoding are recorded in
+`test-results/browser-028-63af724/report.json`. Fifteen commercial native-session
+tests passed using the installed 0.2.8 kit and the normal test configuration.
+These checks made no paid provider calls. Public CI for this candidate is pending.
+Live language and creative quality retain their independent acceptance cases and
+retained failures.
+
 ## November 12 semantic editing guidance, 0.2.7
 
 The immutable kit source is `4ce0d7d8fa5b3d78688063d26cf2e8aa0ed64684`, with
@@ -28,9 +68,12 @@ same tool names. Archived 0.2.6 schemas, inventory, skills and prompt bytes matc
 in all three phases. All 66 actual browser checks passed against that production build, using
 scripted local provider HTTP and independent output decoding. The retained report
 is `test-results/browser-027-4ce0d7d/report.json`. Ten commercial native-session
-tests passed against the installed 0.2.7 kit. Public CI for the new candidate is
-pending. Live per-cue fidelity and long-form creative output use their
+tests passed against the installed 0.2.7 kit. PR #12 passed all eight public
+checks, including Linux, Windows and macOS clean startup, then merged to main
+as `04f232a7845a02d48c18c2908c593112e2638066`.
+Live per-cue fidelity and long-form creative output use their
 own acceptance cases, retained failures and authorized provider usage.
+[PR #12](https://github.com/PansaLegrand/dojo-video-harness/pull/12).
 
 ## November 12 append repair, 0.2.6 baseline
 

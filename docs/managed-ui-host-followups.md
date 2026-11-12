@@ -5,9 +5,9 @@ sync includes scoped media/progress, paired-caption merge/split with provenance,
 source audition, generated-media cards and browser output-request components.
 The managed files are copied mechanically; local HTTP authority stays in this host.
 
-New local runs use `local-editor-v13`, kit **0.2.7**, loop **0.2.0** and engine
+New local runs use `local-editor-v14`, kit **0.2.8**, loop **0.2.0** and engine
 **1.2.3**. LH-R07 and LH-R20 were introduced with local v10 and remain registered
-in the new profile. The frozen kit source is `4ce0d7d`.
+in the new profile. The frozen kit source is `63af724`.
 
 The local editor supports media import, manual editing, preview, captions from
 local files, Undo and browser export without provider credentials. Model-assisted
@@ -18,7 +18,7 @@ has its own source-bound plans, batch receipts, continuation budgets and tests.
 
 | Follow-up                                 | Current boundary                                                                                                                                                                                                                 | Bounded implementation and acceptance                                                                                                                                                                                                                                                                                                      |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| LH-R07 — source inspection registry       | Implemented for new local v10/v11/v12/v13 runs with registered browser tools. Original source fingerprints, exact visual grants and immutable receipts persist in ProjectStore.                                                  | Actual managed consent UI, original image sampling, local HTTP and Responses transport passed with restart and duplicate delivery. Pixels reach the configured model after exact consent. Checkpoints retain metadata references. The existing allowance is four frames per request, sixteen per run and 1.5 MiB of retained visual bytes. |
+| LH-R07 — source inspection registry       | Implemented for new local v10 and later runs with registered browser tools. Original source fingerprints, exact visual grants and immutable receipts persist in ProjectStore.                                                    | Actual managed consent UI, original image sampling, local HTTP and Responses transport passed with restart and duplicate delivery. Pixels reach the configured model after exact consent. Checkpoints retain metadata references. The existing allowance is four frames per request, sixteen per run and 1.5 MiB of retained visual bytes. |
 | LH-R15 — generalized generated-media jobs | Optional bounded follow-up. Existing approved local music workflows remain available through their own adapter. Normal runs omit `externalJobs`; general image/video generation requires a qualified local adapter.              | Scope one configured BYOK provider at a time. Retain approved inputs, uncertain submissions, canonical local results and separate placement receipts. Qualify the complete lifecycle before registering its tool and skill. Undo must reuse completed work.                                                                                |
 | LH-R20 — agent output request registry    | Implemented through the same ProjectStore browser-request map. Candidate previews use owned verification artifacts. Export intents bind to the actual guarded Apply receipt. Existing local export storage owns published files. | Actual shared UI completed two rendered previews and one native correction. A decoded 1280×720 MP4 contained 180 frames over six seconds. Publication retry after a later edit and restart reused the cached file with one encoding and one upload. Stored status requires matching file bytes, hash, format and applied revision.         |
 
@@ -52,6 +52,11 @@ guidance. It preserves the same 64/64/32,000 allowance. Source/UI checks cover
 the registered local mechanisms, while live translation and generated-output
 quality retain their separate acceptance records.
 
+Local v14 derives missing caption-pair checks from validated declarations before
+freezing. It preserves supplied checks, the combined limit of 12 and the existing
+64/64/32,000 allowance. Candidate preview replay uses the saved run's compiler
+options and rejects a profile that differs from its immutable stage binding.
+
 ## Verification
 
 The browser controls use a local scripted Responses endpoint. Source capture,
@@ -73,8 +78,8 @@ regressions remain part of the full harness gate. Browser reports record the
 sampled frames, model request counts, encoding/upload counts and restart results
 under ignored `test-results/local-*-browser-*` directories.
 
-The coordinated 0.2.7 source gate passed 939 tests/build and 66 browser checks.
-The pre-freeze semantic-guidance/compatibility subset passed 28 focused tests and
+The coordinated 0.2.8 source gate passed 968 tests/build and 66 browser checks.
+The derived-caption/compatibility/preview subset passed 61 focused tests and
 full TypeScript. The retained browser report is
-`test-results/browser-027-4ce0d7d/report.json`. These are local and scripted-provider results. Public CI is pending
+`test-results/browser-028-63af724/report.json`. These are local and scripted-provider results. Public CI is pending
 for the pushed candidate, with live-provider and human acceptance tracked separately.

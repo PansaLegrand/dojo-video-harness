@@ -16,8 +16,8 @@ the local editor and commercial adapters. Host persistence, accounts, credits,
 provider credentials and external-job policy remain separate. Synchronization is
 explicit and tested; the repositories do not share one interchangeable server.
 
-The local application selects `local-editor-v13`, using the portable agent kit
-**0.2.7** and the host-independent loop **0.2.0**. Engine packages are
+The local application selects `local-editor-v14`, using the portable agent kit
+**0.2.8** and the host-independent loop **0.2.0**. Engine packages are
 **1.2.3**. These are separate versioned boundaries: a tool-contract change does not
 require a renderer or loop rewrite. Older runs retain their bound profiles,
 archived tool/skill contracts and checkpoint semantics rather than upgrading in place.
@@ -53,6 +53,14 @@ own complete source meaning. Latest-only native diagnostics distinguish text,
 start and readable-duration failures. The existing tool inventory, stages and
 64-call/64-tool/32,000-token host allowance continue through their current ports.
 Live semantic and creative quality use separate outcome acceptance.
+
+Local v14/commercial v15 validates declared caption pairs and derives missing
+caption-pair completion checks before freezing the plan. Explicit matching checks
+are reused and every supplied outcome is retained. The combined list stays within
+12 checks. Invalid source/evidence/range, conflicts, duplicate identities and
+unplanned explicit pairs fail before persistence. Existing stages, manifests,
+checklist hashes, receipts and the original 64/64/32,000 allowance carry the
+complete list through assembly and replay.
 
 `core` contains the extracted domain and browser primitives; `ui` contains React
 components; `agent` contains the loop and tools; `adapters` contains model/ASR
@@ -229,3 +237,9 @@ The subsequent 0.2.7 source gate passed 939 tests/build and 66 browser checks fr
 frozen source `4ce0d7d`. Its 28 focused tests cover old-profile bytes and the
 versioned guidance/native diagnostic path. Scripted provider checks verify runtime
 mechanisms, with actual semantic and creative output assessed independently.
+
+The 0.2.8 source gate passed 968 tests/build and 66 browser checks from frozen
+source `63af724`. Its 61 focused tests include derived checks, two-source native
+assembly, saved-profile preview replay and exact archived 0.2.7 contracts.
+Preview requests use the run's saved compiler profile and require that profile
+to match its immutable stage binding.

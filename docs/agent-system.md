@@ -1,19 +1,19 @@
 # Editor agent ownership and extensions
 
 The shared model/tool loop is `packages/agent-loop` **0.2.0**. Portable editor definitions
-are `packages/agent-kit` **0.2.7**, with tool metadata and schemas, trusted Markdown skill
+are `packages/agent-kit` **0.2.8**, with tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
 
 ## Current runtime, 2026-11-12
 
-The local API starts new runs with `local-editor-v13`. Its commercial counterpart
-is `commercial-editing-v14`. The engine dependency is **1.2.3**. The frozen 0.2.7
-kit source is `4ce0d7d`. Host adapters and subsequent tests/docs have their own
+The local API starts new runs with `local-editor-v14`. Its commercial counterpart
+is `commercial-editing-v15`. The engine dependency is **1.2.3**. The frozen 0.2.8
+kit source is `63af724`. Subsequent documentation changes have their own
 commits and acceptance records.
 
-Local v6, v7, v8, v9, v10, v11 and v12 runs dispatch through retained kit 0.2.0,
-0.2.1, 0.2.2, 0.2.3, 0.2.4, 0.2.5 and 0.2.6 coordinators respectively. Each saved run keeps its model,
+Local v6, v7, v8, v9, v10, v11, v12 and v13 runs dispatch through retained kit 0.2.0,
+0.2.1, 0.2.2, 0.2.3, 0.2.4, 0.2.5, 0.2.6 and 0.2.7 coordinators respectively. Each saved run keeps its model,
 inventory, source basis, receipts and original budget. The application selects
 the run's stored profile during recovery. Standalone `AgentService` integrations
 retain their explicit profile selection.
@@ -25,8 +25,19 @@ monolingual captions plus graphics. Planning, caption batches and assembly expos
 their phase-specific tools. Assembly uses `review_edit` and `propose_edit` with
 the frozen checklist and saved successful review reference.
 
+`usesDerivedCaptionPlan(profile)` begins with local v14/commercial v15. Its
+host-owned `deriveCaptionPlan` flag makes validated `captionPairs` authoritative
+declarations. The coordinator validates source scope, evidence, range and
+manifests, then appends missing `caption_pair` checks with stable hash-derived
+IDs. Every supplied check remains intact. Matching explicit checks retain their
+IDs and values. Conflicts, duplicate identities, unplanned explicit pairs and
+combined lists above 12 are rejected before the plan or artifacts persist.
+`requirements:[]` is valid when declared pairs supply at least one check. Both
+arrays empty is invalid. Existing checklist hashes, batching, native receipts
+and replay govern the resulting complete list.
+
 The latest local host freezes 64 model calls, 64 tool calls and 32,000 output tokens.
-Local v12 retains that same 64-call allowance, and earlier staged profiles retain
+Local v12 and v13 retain that same 64-call allowance, and earlier staged profiles retain
 their original 32-call allowance. The portable coordinator
 default remains 32 calls.
 The latest local profile permits 16 model calls, 24 tool calls and up to the
@@ -112,9 +123,18 @@ The 0.2.7 source gate passed 939 tests in 98 files, full TypeScript, integrity
 checks and the production build. All 66 browser checks passed against that build,
 with `test-results/browser-027-4ce0d7d/report.json` retained. Twenty-eight focused
 guidance/compatibility tests passed before packaging. Ten commercial native-session
-tests passed with the installed 0.2.7 kit. Public CI for this new release candidate
-is pending. These source and scripted-provider results accompany separate live
+tests passed with the installed 0.2.7 kit. Its PR #12 passed all eight public
+checks and merged as `04f232a`. These source and scripted-provider results accompany separate live
 language, media and creative acceptance records.
+
+The 0.2.8 gate passed 968 tests in 99 files, full TypeScript, integrity checks and
+the production build. Its focused gate passed 61 tests, including a real native
+two-source/six-batch plan with nine additional checks, saved-candidate replay,
+invalid declarations rejected before persistence and exact archived 0.2.7 bytes.
+All 66 actual browser checks passed against the built application, with report
+`test-results/browser-028-63af724/report.json`. Fifteen commercial session tests
+passed against the installed 0.2.8 kit. Public CI for this candidate is pending.
+Live language and creative quality retain their separate acceptance records.
 
 ## Host ports and retained compatibility
 

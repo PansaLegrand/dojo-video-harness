@@ -2,14 +2,20 @@
 
 ## Current addendum, 2026-11-12
 
-New local runs use `local-editor-v13`, kit 0.2.7, loop 0.2.0 and engine 1.2.3.
-The frozen kit source is `4ce0d7d`. The coordinated 0.2.7 local gate passed 939
+New local runs use `local-editor-v14`, kit 0.2.8, loop 0.2.0 and engine 1.2.3.
+The frozen kit source is `63af724`. The coordinated 0.2.8 local gate passed 968
 tests/build and 66 scripted-provider browser checks. LH-R07 source inspection and
 LH-R20 receipt-bound preview/correction/export adapters are implemented. General
 local image/video generation remains the optional LH-R15 integration. Public CI
 for the pushed candidate is pending. See [the current agent map](agent-system.md)
 and [execution ledger](readiness-progress.md). Earlier dated results below retain
 their original package and provider identities.
+
+Validated caption-pair declarations now supply their missing completion checks
+before freezing. Supplied checks remain intact, matching explicit checks are
+reused and the combined list retains its 12-check limit. The host's existing
+64-model-call/64-tool/32,000-output-token allowance and archived 0.2.7 contracts
+are preserved.
 
 ## Ownership
 
