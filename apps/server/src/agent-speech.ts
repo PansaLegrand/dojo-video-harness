@@ -262,7 +262,7 @@ export async function prepareAgentSpeech(
     );
     if (
       !speechItems.length ||
-      (["local-editor-v10", "local-editor-v11", "local-editor-v12", "local-editor-v13"].includes(r.agentProfile ?? "") &&
+      (["local-editor-v10", "local-editor-v11", "local-editor-v12", "local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? "") &&
         !fallbackSpeechSourceItems(document, speechItems).length)
     )
       return r;

@@ -32,3 +32,8 @@ Its local v11 coordinator and 32-call original allowance remain unchanged.
 `664345cabd0b6843fc24f040861a4b17ca5e026a`, SHA-256
 `4d2ca043474d04307798eeec5b456680b6e43a7208b416d0c779d3a1bc8a12b5`.
 Its local v12 coordinator and 64-call/64-tool/32k-output allowance are retained.
+
+`dojo-video-agent-kit-0.2.7.tgz` retains semantic editing guidance from
+`4ce0d7d8fa5b3d78688063d26cf2e8aa0ed64684`, SHA-256
+`628edc47a0ad7447b99bbe0cdb4a328c6211d658a460283be9fcf14136259b4d`.
+Accepted local v13 plans and their original checks remain unchanged.

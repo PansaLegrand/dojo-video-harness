@@ -125,7 +125,8 @@ export class AgentService {
       | "local-editor-v10"
       | "local-editor-v11"
       | "local-editor-v12"
-      | "local-editor-v13" = "local-editor-v1",
+      | "local-editor-v13"
+      | "local-editor-v14" = "local-editor-v1",
     private stagedOptions: {
       captionBatchSize?: number;
       onTransition?: (plan: EditStagePlan) => Promise<void>;
@@ -214,7 +215,7 @@ export class AgentService {
         reviewBasisRequired: true,
         agentProfile: this.agentProfile,
         ...(this.stagedOptions.browser &&
-        ["local-editor-v10", "local-editor-v11", "local-editor-v12", "local-editor-v13"].includes(this.agentProfile)
+        ["local-editor-v10", "local-editor-v11", "local-editor-v12", "local-editor-v13", "local-editor-v14"].includes(this.agentProfile)
           ? { browserToolsEnabled: true as const }
           : {}),
         events: [],
@@ -770,14 +771,14 @@ export class AgentService {
       proposal: r.proposal,
       current,
       organizeTracks: !r.undoOfRunId,
-      preserveAuthoredPaintOrder: ["local-editor-v12", "local-editor-v13"].includes(r.agentProfile ?? ""),
+      preserveAuthoredPaintOrder: ["local-editor-v12", "local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? ""),
     });
     if (r.completion) {
       const checks = checkNativeCompletionRequirements(
         comparison.beforeDocument,
         comparison.afterDocument,
         r.completion.requirements,
-        { preciseSpeechDiagnostics: r.agentProfile === "local-editor-v13" },
+        { preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? "") },
       );
       if (checks.some((check) => !check.passed))
         throw new HttpError(
@@ -846,14 +847,14 @@ export class AgentService {
         proposal: r.proposal,
         current: snapshot(p),
         organizeTracks: !r.undoOfRunId,
-      preserveAuthoredPaintOrder: ["local-editor-v12", "local-editor-v13"].includes(r.agentProfile ?? ""),
+      preserveAuthoredPaintOrder: ["local-editor-v12", "local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? ""),
       });
       if (r.completion) {
         const checks = checkNativeCompletionRequirements(
           comparison.beforeDocument,
           comparison.afterDocument,
           r.completion.requirements,
-          { preciseSpeechDiagnostics: r.agentProfile === "local-editor-v13" },
+          { preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? "") },
         );
         if (checks.some((check) => !check.passed))
           throw new HttpError(
