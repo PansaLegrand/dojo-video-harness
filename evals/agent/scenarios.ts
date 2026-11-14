@@ -26,6 +26,9 @@ export type Scenario = {
   critical?: boolean;
   fixture?: "injection" | "locked";
   turns: Turn[];
+  /** Optional fixture/oracle for richer reliability cases; never sent as model instructions. */
+  document?: VideoProjectDocument;
+  assertOutcome?: (before: VideoProjectDocument, after: VideoProjectDocument, turn: number) => void;
   manualThenUndo?: boolean;
 };
 export const setNode = (
