@@ -325,7 +325,7 @@ Paired real-media
 human acceptance and broader editing coverage remain open. The agent can correct
 tool validation errors and perform the bounded preview workflow described in
 [the current agent map](docs/agent-system.md). New local runs select
-`local-editor-v14` with kit 0.2.8, loop 0.2.0 and engine 1.2.3. The 0.2.8 local gate
+`local-editor-v14` with development kit 0.2.9, loop 0.2.0 and engine 1.2.3. The 0.2.8 local gate
 passed 968 tests/build and 66 browser checks. Validated `captionPairs` supply any
 missing caption-pair checks before the checklist freezes. Supplied checks remain
 intact, with at most 12 combined. The 61 focused checks include two speech sources,

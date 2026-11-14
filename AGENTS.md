@@ -26,12 +26,17 @@ Start with:
 Plans are not completed evidence. Verify source and reports before claiming a
 capability is accepted; mark plan items complete only with the required evidence.
 
-The local application starts new runs with `local-editor-v14`, agent kit **0.2.8**
+The local application starts new runs with `local-editor-v14`, development agent kit **0.2.9**
 and loop **0.2.0**, consuming published engine **1.2.3**. Earlier runs use their
 retained profile/coordinator archives. The commercial counterpart is
 `commercial-editing-v15`. Check [the agent map](docs/agent-system.md) and
 [execution ledger](docs/readiness-progress.md) before describing acceptance.
-The frozen 0.2.8 kit source is `63af724`, with separate later documentation commits.
+The original public 0.2.8 source remains retained. New runs persist their kit
+build separately from the profile. Old local-v14 runs without that field select
+original 0.2.8. Never replace a saved run with the current build during recovery.
+Maintain one development candidate with a central capability table. Record exact
+source commits and content-addressed candidate archives instead of adding a new
+permanent behavior profile for each trial. Published archives remain immutable.
 
 ## Architecture and where to work
 
@@ -67,7 +72,10 @@ it does not own the domain's commit semantics.
 | `tsconfig.json`, `config/aliases.ts`, `vitest.config.ts`                                      | Source-workspace resolution and test discovery                                               |
 
 The current loop already supports model → tool → observation and bounded validation
-correction. Ordinary local editor requests apply automatically after the browser
+correction. Simple edits can review and propose directly; durable planning is for
+batching, dependencies and waits. Current builds retain the exact successful direct
+review in existing checkpoint state and finalize it with {reviewed:true}; full
+command grammar stays in review_edit. Failed reviews clear that eligibility. Ordinary local editor requests apply automatically after the browser
 saves active manual edits. Compare and Undo remain available afterward. The model
 returns validated commands; the host controls application. Headless evaluation
 hosts default to review mode, and paid/cloud workflows retain their approvals.
@@ -187,7 +195,7 @@ stacking when automatic typed-lane grouping would invert overlapping content.
 Generated-media skills require a registered host executor. Local image/video job
 integration remains the bounded optional LH-R15 follow-up.
 
-Local v13/commercial v14 adds versioned semantic editing guidance. Choose a
+The semantic editing contract requires precise source-bound checks. Choose a
 speech check matching the intended display before requirements freeze.
 `speech_callout` displays the selected spoken quote verbatim. `speech_highlight`
 uses recognized numeric word IDs and supported numeric/percent display. Keep
@@ -197,7 +205,7 @@ cue-by-cue self-check before saving the batch. Latest-only diagnostics identify
 display, projected-start and readable-duration failures separately. Live language
 and creative quality use independent acceptance evidence.
 
-Local v14/commercial v15 makes `captionPairs` authoritative declarations for staged
+The staged contract makes `captionPairs` authoritative declarations for staged
 bilingual captions. Validate each pair's source, evidence, scope and manifest
 before deriving its missing `caption_pair` check and freezing the combined list.
 Preserve every supplied check and reuse matching explicit pair checks. Conflicting
@@ -230,6 +238,11 @@ placement. Keep the submit fence, provider-task reconciliation, private frozen
 configuration, cancellation and insertion receipt atomicity. Do not resubmit an
 unknown paid outcome. Markdown files cannot authorize spending or mutate the
 project. Compound workflow exports must match both the applied hash and revision.
+Use `eval:agent -- --suite reliability --repeat 2` for current-runtime reference
+checks; see `evals/agent/RELIABILITY.md` for capped Kie live evaluation. Old baseline
+suites default to v1 and do not qualify current behavior. Keep original failed
+reports and separately version any saved-output regrade. Synthetic/reference
+outcomes, actual-model outcomes and real browser/media acceptance are distinct.
 Run `eval:basic:planner` / `eval:speech:semantics` in reference mode for fixture checks;
 `--live` is a separately budgeted provider gate. `test:live:music -- --live` creates
 one paid generation; read its flags and preserve failed reports before using it.

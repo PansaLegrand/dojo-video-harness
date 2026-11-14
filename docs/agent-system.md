@@ -1,22 +1,29 @@
 # Editor agent ownership and extensions
 
 The shared model/tool loop is `packages/agent-loop` **0.2.0**. Portable editor definitions
-are `packages/agent-kit` **0.2.8**, with tool metadata and schemas, trusted Markdown skill
+are `packages/agent-kit` **0.2.9**, with tool metadata and schemas, trusted Markdown skill
 requirements, a tool factory with native host ports, and explicit prompt sections.
 There are no engine, database, provider SDK or credit dependencies in either kit.
 
-## Current runtime, 2026-11-12
+## Current runtime, 2026-11-14
 
 The local API starts new runs with `local-editor-v14`. Its commercial counterpart
-is `commercial-editing-v15`. The engine dependency is **1.2.3**. The frozen 0.2.8
-kit source is `63af724`. Subsequent documentation changes have their own
-commits and acceptance records.
+is `commercial-editing-v15`. The engine dependency is **1.2.3**. The development candidate is 0.2.9 under the existing profiles, with one central
+capability table. New runs persist `agentKitVersion`; old local-v14 records
+without it resolve to original public 0.2.8. Original archives and completed
+qualification evidence remain intact.
 
 Local v6, v7, v8, v9, v10, v11, v12 and v13 runs dispatch through retained kit 0.2.0,
 0.2.1, 0.2.2, 0.2.3, 0.2.4, 0.2.5, 0.2.6 and 0.2.7 coordinators respectively. Each saved run keeps its model,
 inventory, source basis, receipts and original budget. The application selects
 the run's stored profile during recovery. Standalone `AgentService` integrations
 retain their explicit profile selection.
+
+Simple edits use direct `review_edit` followed by `propose_edit({reviewed:true})`.
+The same owned checkpoint retains the checked edit; failed reviews invalidate it.
+No new durable storage or loop is introduced. Full command grammar is advertised
+once on review rather than repeated on the proposal marker. Dependent edits use
+the existing durable stages.
 
 The stage coordinator freezes the original instruction and typed requirements,
 collects evidence, prepares bounded translation batches when requested, and
@@ -327,3 +334,13 @@ A standalone original-token guard protects anchors, speech cuts and raw binding
 validation from bridging untimed interior tokens. Leading/trailing omitted tokens
 outside a selected phrase preserve its genuine word-range behavior. Source evidence
 with all valid timestamps preserves its previous binding JSON.
+
+
+## Reliability evaluation
+
+`evals/agent/RELIABILITY.md` defines 16 repeated cases on the explicitly selected
+current runtime. Reports include the build/commit, unchanged-source check, model
+calls, validation recovery, prompt sizes and known/unknown usage. Kie-only request
+and cost reservations are persisted before dispatch. The original large mixed-media
+and audio journeys remain regression cases, not unseen holdouts. Regrading saved
+output cannot claim Apply or recovery steps that the original runner did not reach.
