@@ -81,3 +81,25 @@ preservation violations. With two repeats, each case must pass both. The live ga
 also requires a clean, unchanged source checkout. Thresholds are fixed before
 running; change fixtures or graders only for a demonstrated measurement defect,
 retaining the original report and documenting the reason.
+
+## Grader version 2 and saved-evidence comparisons
+
+Version 2 treats an absent `videoStartTime`/`audioStartTime` as zero only on
+valid corresponding media nodes. The engine already uses that source origin.
+Explicit null, any nonzero offset, duration, timeline position, speed, nested
+state and unrelated content remain exact. Reports include a grader version and
+fingerprint. This corrects the case where `set(duration)` and `trimItem` produce
+identical playback but serialize the default origin differently.
+
+Preserve the original report and inspect the independent regrade separately:
+
+```sh
+node --import tsx scripts/regrade-agent-evaluation.ts ORIGINAL_REPORT NEW_REPORT
+```
+
+This command verifies saved evidence checksums and regrades every available
+candidate without provider requests or project writes. `originalWorkflowPassed`
+remains the old result; `semanticPassed` describes saved candidate semantics.
+If original grading stopped a trial before Apply, regrading does not execute
+Apply/Undo or turn that missing coverage into a full workflow pass. Both scores
+and per-trial applied-check counts remain in the new report.

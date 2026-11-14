@@ -1,3 +1,4 @@
+import { canonicalEvaluationDocument } from "./semantic-defaults";
 import { fixture, scenarios, setNode, type Scenario, type Turn } from "./scenarios";
 import { extendedScenarios } from "./extended-scenarios";
 import { canonicalSerialize, parseVideoProjectDocument, type VideoProjectDocument } from "../../packages/core/src/lib/video-project/document";
@@ -32,7 +33,7 @@ function oracle(change: (expected: VideoProjectDocument, turn: number) => void):
   return (before, after, turn) => {
     const expected = structuredClone(before); change(expected, turn);
     const normalize = (doc: VideoProjectDocument) => {
-      const copy = structuredClone(doc);
+      const copy = canonicalEvaluationDocument(doc);
       for (const item of copy.items) if (item.node.style?.color) item.node.style.color = item.node.style.color.toLowerCase();
       return canonicalSerialize(copy);
     };

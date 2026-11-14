@@ -1,3 +1,4 @@
+import { canonicalEvaluationDocument } from "./semantic-defaults";
 import {
   canonicalSerialize,
   type VideoProjectDocument,
@@ -54,7 +55,7 @@ export function normalizedResult(
   document: VideoProjectDocument,
   before: VideoProjectDocument,
 ) {
-  const value = structuredClone(document);
+  const value = canonicalEvaluationDocument(document);
   const known = new Set(before.items.map((i) => i.id));
   let next = 0;
   for (const item of value.items)

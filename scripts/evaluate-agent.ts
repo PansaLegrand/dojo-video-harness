@@ -1,3 +1,4 @@
+import { evaluationGraderIdentity } from "../evals/agent/grader-identity";
 /** Local, provider-independent evaluation runner. --live explicitly permits paid GPT calls. */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -121,6 +122,8 @@ const files = [...new Set([
   "evals/agent/runner.ts",
   "evals/agent/reliability.ts",
   "evals/agent/request-budget.ts",
+  "evals/agent/semantic-defaults.ts",
+  "evals/agent/grader-identity.ts",
   "scripts/evaluate-agent.ts",
   "packages/agent/src/loop.ts",
   "packages/agent/src/tools.ts",
@@ -180,6 +183,7 @@ async function report() {
     budgetExhausted,
     skippedTrials: cases.length * repeats - trials.length,
     grade,
+    grader: await evaluationGraderIdentity(),
     reliability: { ...reliabilityMetrics(trials, cases.length * repeats), providerCostUsd: !live ? 0 : budget && budget.requests.every(request => request.status === "completed") ? budget.accountedUsd : null },
     reliabilityAgentGatePassed: live && suite === "reliability" && profile === "local-editor-v14" && !selection && repeats >= 2 && !dirty && sourceUnchanged && grade.passed,
     // A reference fixture run or a filtered/single-pass live run cannot qualify a milestone.
