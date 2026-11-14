@@ -33,6 +33,7 @@ import {
   usesPreviewRepair,
   usesAppendPreviewRepair,
   usesDerivedCaptionPlan,
+  usesCompactReviewedProposals,
 } from "./catalog.js";
 import {
   completionCanonical,
@@ -301,6 +302,7 @@ export function createEditorToolset<T>(input: {
     !!ports.previewEvidence &&
     !!input.extraTools?.some((tool) => tool.name === "request_project_preview");
   const reviewReferences = usesReviewedEditReferences(input.profile);
+  const compactProposal = usesCompactReviewedProposals(input.profile);
   const stages = usesStagedEditing(input.profile) ? ports.stages : undefined;
   const deriveCaptionPlan =
     usesDerivedCaptionPlan(input.profile) && stages?.deriveCaptionPlan === true;
@@ -639,6 +641,7 @@ export function createEditorToolset<T>(input: {
         if (previewRepair && state) {
           delete state.successfulReceipt;
           delete state.successfulReviewRef;
+          delete state.successfulEdit;
         }
         const value = record(
           args,
@@ -649,6 +652,7 @@ export function createEditorToolset<T>(input: {
         if (reviewReferences && state) {
           delete state.successfulReceipt;
           delete state.successfulReviewRef;
+          delete state.successfulEdit;
         }
         await checkedState();
         const declared =
@@ -805,6 +809,8 @@ export function createEditorToolset<T>(input: {
           );
           if (receipt) {
             state.successfulReceipt = receipt;
+            if (compactProposal && phase === "planning")
+              state.successfulEdit = structuredClone(edit);
             if (reviewReferences && recorded?.reviewRef) {
               reviewRef = parseEditArtifactRef(recorded.reviewRef);
               if (reviewRef.kind !== "verification")
@@ -820,6 +826,7 @@ export function createEditorToolset<T>(input: {
           if (reviewReferences && state) {
             delete state.successfulReceipt;
             delete state.successfulReviewRef;
+            delete state.successfulEdit;
           }
           checks = [
             {
@@ -849,9 +856,11 @@ export function createEditorToolset<T>(input: {
                         ? "For visual uncertainty, request_project_preview({frames,reviewed:true}) for this saved candidate and inspect its actual labeled pixels. If the samples are clean, propose_edit({reviewed:true,previewReport:{requestId,receiptHash,issues:[]}}). Observed failures permit one previewRepair correction and a second preview. A simple edit that needs no visual inspection may finish with {reviewed:true}."
                         : reviewReferences && receipt && reviewRef
                           ? "Call propose_edit with {reviewed:true}. The host resolves this exact successful review; do not regenerate its command JSON."
-                          : receipt
-                            ? "Call propose_edit with the exact edit object from this successful review; do not send the requirements or receipt yourself."
-                            : "No edit was saved or applied. Keep every frozen requirement, repair the complete command list, and call review_edit again with that full edit. Do not use commands:[] unless the host explicitly supplies preparedCommands.",
+                          : receipt && compactProposal && phase === "planning"
+                            ? "Call propose_edit({reviewed:true}) to finish this exact checked edit. No staged plan or repeated command JSON is needed."
+                            : receipt
+                              ? "Call propose_edit with the exact edit object from this successful review; do not send the requirements or receipt yourself."
+                              : "No edit was saved or applied. Keep every frozen requirement, repair the complete command list, and call review_edit again with that full edit. Do not use commands:[] unless the host explicitly supplies preparedCommands.",
                 }
               : {}),
             completionPreflight: {
@@ -1116,37 +1125,49 @@ export function createEditorToolset<T>(input: {
       ...toolMetadata("propose_edit"),
       ...(authoring
         ? {
-            description: previewRepair
-              ? "Finish the latest successful saved review with {reviewed:true}. After visual inspection include previewReport:{requestId,receiptHash,issues:[remaining sampled failures]}; after a correction this MUST cite a SECOND preview of the repaired candidate. The host verifies candidate identity/receipts and appends sampled coverage, remaining failures and audio-not-inspected to the saved summary. One correction round is available. Exact raw reviewed edits remain supported before a preview correction."
-              : reviewReferences
-                ? "Finish the latest successful saved review with exactly {reviewed:true}. The host resolves its immutable owned edit, rechecks hashes/receipt and compiles it for guarded application; do not regenerate its command JSON or supply an artifact reference. A failed/error review invalidates this route until a new complete review passes. The raw reviewed edit form remains supported."
-                : "Finish an edit only AFTER review_edit passed for the same complete edit. Send the exact reviewed {outcome:'proposal',summary,commands} object. This call does not save an unreviewed draft. A failed attempt changes no document or draft, so retain your full commands and review them before trying again.",
+            description: compactProposal
+              ? "Finish the latest successful review with {reviewed:true}; do not repeat command JSON. The host resolves the exact checked edit and compiles it under the original scope and snapshot. If a preview correction was claimed, include previewReport for the required second owned preview. A failed review clears the prior successful edit."
+              : previewRepair
+                ? "Finish the latest successful saved review with {reviewed:true}. After visual inspection include previewReport:{requestId,receiptHash,issues:[remaining sampled failures]}; after a correction this MUST cite a SECOND preview of the repaired candidate. The host verifies candidate identity/receipts and appends sampled coverage, remaining failures and audio-not-inspected to the saved summary. One correction round is available. Exact raw reviewed edits remain supported before a preview correction."
+                : reviewReferences
+                  ? "Finish the latest successful saved review with exactly {reviewed:true}. The host resolves its immutable owned edit, rechecks hashes/receipt and compiles it for guarded application; do not regenerate its command JSON or supply an artifact reference. A failed/error review invalidates this route until a new complete review passes. The raw reviewed edit form remains supported."
+                  : "Finish an edit only AFTER review_edit passed for the same complete edit. Send the exact reviewed {outcome:'proposal',summary,commands} object. This call does not save an unreviewed draft. A failed attempt changes no document or draft, so retain your full commands and review them before trying again.",
           }
         : {}),
-      parameters: previewRepair
-        ? {
-            oneOf: [
-              reviewedProposalSchema(input.proposalSchema, {
-                preparedCommands: stages?.preparedCommands,
-              }),
-              object(
-                {
-                  reviewed: { const: true },
-                  previewReport: previewInspectionSchema,
-                },
-                ["reviewed", "previewReport"],
-              ),
-            ],
-          }
-        : reviewReferences
-          ? reviewedProposalSchema(input.proposalSchema, {
-              preparedCommands: stages?.preparedCommands,
-            })
-          : usesResolvedEditSchema(input.profile)
-            ? editingOnlyProposalSchema(input.proposalSchema, {
+      parameters: compactProposal
+        ? object(
+            {
+              reviewed: { const: true },
+              ...(previewRepair
+                ? { previewReport: previewInspectionSchema }
+                : {}),
+            },
+            ["reviewed"],
+          )
+        : previewRepair
+          ? {
+              oneOf: [
+                reviewedProposalSchema(input.proposalSchema, {
+                  preparedCommands: stages?.preparedCommands,
+                }),
+                object(
+                  {
+                    reviewed: { const: true },
+                    previewReport: previewInspectionSchema,
+                  },
+                  ["reviewed", "previewReport"],
+                ),
+              ],
+            }
+          : reviewReferences
+            ? reviewedProposalSchema(input.proposalSchema, {
                 preparedCommands: stages?.preparedCommands,
               })
-            : input.proposalSchema,
+            : usesResolvedEditSchema(input.profile)
+              ? editingOnlyProposalSchema(input.proposalSchema, {
+                  preparedCommands: stages?.preparedCommands,
+                })
+              : input.proposalSchema,
       execute: async (args, signal) => {
         let previewReport: PreviewInspection | undefined;
         const useReviewed =
@@ -1166,18 +1187,26 @@ export function createEditorToolset<T>(input: {
               "Use exactly {reviewed:true} for the latest successful saved review.",
             );
           await checkedState();
-          if (
-            !state?.successfulReceipt ||
-            !state.successfulReviewRef ||
-            !stages
-          )
+          if (!state?.successfulReceipt || !stages)
             throw new Error(
               "No latest successful saved review is available. Review the complete repaired edit first.",
             );
-          args = await stages.resolvePreparedEdit(
-            { reviewRef: state.successfulReviewRef },
-            signal,
-          );
+          if (
+            compactProposal &&
+            phase === "planning" &&
+            state.successfulEdit !== undefined
+          )
+            args = structuredClone(state.successfulEdit);
+          else {
+            if (!state.successfulReviewRef)
+              throw new Error(
+                "No latest successful saved review is available. Review the complete repaired edit first.",
+              );
+            args = await stages.resolvePreparedEdit(
+              { reviewRef: state.successfulReviewRef },
+              signal,
+            );
+          }
         } else {
           // Validate model form before allowing any internal reference resolution.
           if (reviewReferences) assertEditingProposal(args);

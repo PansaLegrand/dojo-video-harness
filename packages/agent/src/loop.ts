@@ -8,6 +8,7 @@ import {
   usesReviewedEditReferences,
   usesPreviewRepair,
   usesAppendPreviewRepair,
+  usesCompactReviewedProposals,
   type PreviewRepairEvidence,
   type EditorStagePorts,
   type AgentProfile,
@@ -197,6 +198,13 @@ export async function runAgent(input: {
                     input.profile ?? "local-editor-v1",
                   )
                     ? { appendPreviewRepair: true as const }
+                    : {}),
+                  ...(usesCompactReviewedProposals(
+                    input.profile ?? "local-editor-v1",
+                  ) &&
+                  input.agentKitVersion !== "0.2.8" &&
+                  (input.stages.phase ?? "planning") === "planning"
+                    ? { retainSuccessfulEdit: true as const }
                     : {}),
                   resolvePreparedEdit: (edit) =>
                     input.stages!.resolvePreparedEdit(edit, signal),

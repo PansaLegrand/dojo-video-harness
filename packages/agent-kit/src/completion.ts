@@ -98,6 +98,8 @@ export type CompletionState = {
   successfulReceipt?: CompletionReceipt;
   /** Small owned reference only; command JSON remains in the original review/artifact. */
   successfulReviewRef?: EditArtifactRef;
+  /** Planning-only cache rebuilt from the checked review call in the checkpoint. */
+  successfulEdit?: unknown;
   previewRepair?: PreviewRepairClaim;
 };
 export const COMPLETION_LIMITS = {
@@ -386,6 +388,7 @@ export async function restoreCompletionStateFromMessages(
     reviewReferences?: true;
     previewRepair?: true;
     appendPreviewRepair?: true;
+    retainSuccessfulEdit?: true;
   } = {},
 ): Promise<CompletionState | undefined> {
   let state: CompletionState | undefined;
@@ -414,9 +417,10 @@ export async function restoreCompletionStateFromMessages(
       continue;
     // Latest failed/error review invalidates the compact proposal path. Never
     // silently use an earlier successful edit after an unsuccessful repair.
-    if (options.reviewReferences && state) {
+    if ((options.reviewReferences || options.retainSuccessfulEdit) && state) {
       delete state.successfulReceipt;
       delete state.successfulReviewRef;
+      delete state.successfulEdit;
     }
     const value = JSON.parse(message.content);
     if (!plain(value) || !plain(value.completionPreflight)) continue;
@@ -476,6 +480,8 @@ export async function restoreCompletionStateFromMessages(
           "Restored completion review does not match its tool call.",
         );
       state.successfulReceipt = receipt;
+      if (options.retainSuccessfulEdit)
+        state.successfulEdit = structuredClone(edit);
       if (options.reviewReferences && review.reviewRef !== undefined) {
         const ref = parseEditArtifactRef(review.reviewRef);
         if (ref.kind !== "verification")

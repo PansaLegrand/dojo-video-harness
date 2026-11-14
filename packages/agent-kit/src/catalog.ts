@@ -221,7 +221,8 @@ export type ProfileCapability =
   | "installedGraphicsGrammar"
   | "appendPreviewRepair"
   | "semanticEditingGuidance"
-  | "derivedCaptionPlan";
+  | "derivedCaptionPlan"
+  | "compactReviewedProposals";
 type ProfileDefinition = Readonly<{
   kitVersion: string;
   capabilities: readonly ProfileCapability[];
@@ -300,6 +301,11 @@ const derivedCaptionPlan = extendProfile(
   AGENT_KIT_VERSION,
   "derivedCaptionPlan",
 );
+const compactReviewedProposals = extendProfile(
+  derivedCaptionPlan,
+  AGENT_KIT_VERSION,
+  "compactReviewedProposals",
+);
 export const profileCapabilities = Object.freeze({
   "local-editor-v1": legacy,
   "commercial-editing-v2": legacy,
@@ -327,8 +333,8 @@ export const profileCapabilities = Object.freeze({
   "commercial-editing-v13": appendPreviewRepair,
   "local-editor-v13": semanticEditingGuidance,
   "commercial-editing-v14": semanticEditingGuidance,
-  "local-editor-v14": derivedCaptionPlan,
-  "commercial-editing-v15": derivedCaptionPlan,
+  "local-editor-v14": compactReviewedProposals,
+  "commercial-editing-v15": compactReviewedProposals,
 } satisfies Record<AgentProfile, ProfileDefinition>);
 const hasCapability = (
   profile: AgentProfile,
@@ -363,6 +369,8 @@ export const usesSemanticEditingGuidance = (profile: AgentProfile) =>
   hasCapability(profile, "semanticEditingGuidance");
 export const usesDerivedCaptionPlan = (profile: AgentProfile) =>
   hasCapability(profile, "derivedCaptionPlan");
+export const usesCompactReviewedProposals = (profile: AgentProfile) =>
+  hasCapability(profile, "compactReviewedProposals");
 export const profileKitVersion = (profile: AgentProfile) =>
   profileCapabilities[profile]?.kitVersion ?? "0.1.1";
 export const profileSkills: Record<

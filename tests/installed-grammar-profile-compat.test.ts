@@ -596,7 +596,12 @@ it("new derived-caption profiles retain all earlier features and tools while mak
         "combined supplied plus derived list must fit12",
       );
       expect(prompt).toContain("THAT source cue");
-      expect(prompt).toContain("mode:'append'");
+      if (
+        phase === "planning" &&
+        !names(current.tools).includes("request_project_preview")
+      )
+        expect(prompt).not.toContain("mode:'append'");
+      else expect(prompt).toContain("mode:'append'");
       expect(prompt).not.toContain("32 model calls");
       if (phase === "planning") {
         expect(
