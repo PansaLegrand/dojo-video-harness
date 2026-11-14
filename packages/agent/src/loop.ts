@@ -1,6 +1,5 @@
+import { selectAgentKit } from "./runtime-build";
 import {
-  composeToolAgentPrompt,
-  restoreCompletionStateFromMessages,
   usesCompletionPreflight,
   usesPagedReaders,
   usesEfficientReaders,
@@ -60,6 +59,7 @@ export async function runAgent(input: {
   compaction?: LoopCompactionOptions;
   extraTools?: AgentTool[];
   profile?: AgentProfile;
+  agentKitVersion?: string;
   stages?: EditorStagePorts<NativeAgentResult>;
   previewEvidence?: (
     requestId: string,
@@ -68,6 +68,7 @@ export async function runAgent(input: {
   stageContext?: unknown;
 }): Promise<NativeAgentResult> {
   const { request, model, skills, signal } = input;
+  const kit = selectAgentKit(input.profile, input.agentKitVersion);
   signal.throwIfAborted();
   await compileNativeAgentResult(request, {
     outcome: "answer",
@@ -121,6 +122,7 @@ export async function runAgent(input: {
   }
   const toolset = createVideoToolset(request, skills, input.extraTools ?? [], {
     profile: input.profile,
+    agentKitVersion: input.agentKitVersion,
     ...(input.stages ? { stages: input.stages } : {}),
     ...(input.previewEvidence
       ? { previewEvidence: input.previewEvidence }
@@ -128,7 +130,7 @@ export async function runAgent(input: {
   });
   const tools = toolset.tools;
   const system =
-    composeToolAgentPrompt({
+    kit.composeToolAgentPrompt({
       profile: input.profile,
       editingGuide: prompts.systemPrompt,
       toolNames: tools.map((tool) => tool.name),
@@ -178,7 +180,7 @@ export async function runAgent(input: {
     toolset.restoreCompletionState(
       saved === null
         ? undefined
-        : await restoreCompletionStateFromMessages(
+        : await kit.restoreCompletionStateFromMessages(
             parseLoopCheckpoint(saved).messages,
             request.baseHash,
             input.stages

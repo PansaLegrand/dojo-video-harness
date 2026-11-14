@@ -1,4 +1,4 @@
-export const AGENT_KIT_VERSION = "0.2.8" as const;
+export const AGENT_KIT_VERSION = "0.2.9" as const;
 export type ToolEffect = "read" | "propose" | "ask";
 export type ToolSpec = {
   name: string;
@@ -206,180 +206,165 @@ export type AgentProfile =
   | "commercial-editing-v14"
   | "local-editor-v14"
   | "commercial-editing-v15";
+/** One compatibility table owns capability selection. These wrappers remain public
+ * so consumers need not duplicate profile lists or understand version ordering. */
+export type ProfileCapability =
+  | "completionPreflight"
+  | "pagedReaders"
+  | "efficientReaders"
+  | "resolvedEditSchema"
+  | "stagedEditing"
+  | "authoringContracts"
+  | "reviewedEditReferences"
+  | "phaseScopedTools"
+  | "previewRepair"
+  | "installedGraphicsGrammar"
+  | "appendPreviewRepair"
+  | "semanticEditingGuidance"
+  | "derivedCaptionPlan";
+type ProfileDefinition = Readonly<{
+  kitVersion: string;
+  capabilities: readonly ProfileCapability[];
+}>;
+const extendProfile = (
+  previous: ProfileDefinition,
+  kitVersion: string,
+  capability: ProfileCapability,
+): ProfileDefinition =>
+  Object.freeze({
+    kitVersion,
+    capabilities: Object.freeze([...previous.capabilities, capability]),
+  });
+const legacy: ProfileDefinition = Object.freeze({
+  kitVersion: "0.1.1",
+  capabilities: Object.freeze([]),
+});
+const completionPreflight = extendProfile(
+  legacy,
+  "0.1.2",
+  "completionPreflight",
+);
+const pagedReaders = extendProfile(
+  completionPreflight,
+  "0.1.3",
+  "pagedReaders",
+);
+const efficientReaders = extendProfile(
+  pagedReaders,
+  "0.1.4",
+  "efficientReaders",
+);
+const resolvedEditSchema = extendProfile(
+  efficientReaders,
+  "0.1.5",
+  "resolvedEditSchema",
+);
+const stagedEditing = extendProfile(
+  resolvedEditSchema,
+  "0.2.0",
+  "stagedEditing",
+);
+const authoringContracts = extendProfile(
+  stagedEditing,
+  "0.2.1",
+  "authoringContracts",
+);
+const reviewedEditReferences = extendProfile(
+  authoringContracts,
+  "0.2.2",
+  "reviewedEditReferences",
+);
+const phaseScopedTools = extendProfile(
+  reviewedEditReferences,
+  "0.2.3",
+  "phaseScopedTools",
+);
+const previewRepair = extendProfile(phaseScopedTools, "0.2.4", "previewRepair");
+const installedGraphicsGrammar = extendProfile(
+  previewRepair,
+  "0.2.5",
+  "installedGraphicsGrammar",
+);
+const appendPreviewRepair = extendProfile(
+  installedGraphicsGrammar,
+  "0.2.6",
+  "appendPreviewRepair",
+);
+const semanticEditingGuidance = extendProfile(
+  appendPreviewRepair,
+  "0.2.7",
+  "semanticEditingGuidance",
+);
+const derivedCaptionPlan = extendProfile(
+  semanticEditingGuidance,
+  AGENT_KIT_VERSION,
+  "derivedCaptionPlan",
+);
+export const profileCapabilities = Object.freeze({
+  "local-editor-v1": legacy,
+  "commercial-editing-v2": legacy,
+  "local-editor-v2": completionPreflight,
+  "commercial-editing-v3": completionPreflight,
+  "local-editor-v3": pagedReaders,
+  "commercial-editing-v4": pagedReaders,
+  "local-editor-v4": efficientReaders,
+  "commercial-editing-v5": efficientReaders,
+  "local-editor-v5": resolvedEditSchema,
+  "commercial-editing-v6": resolvedEditSchema,
+  "local-editor-v6": stagedEditing,
+  "commercial-editing-v7": stagedEditing,
+  "local-editor-v7": authoringContracts,
+  "commercial-editing-v8": authoringContracts,
+  "local-editor-v8": reviewedEditReferences,
+  "commercial-editing-v9": reviewedEditReferences,
+  "local-editor-v9": phaseScopedTools,
+  "commercial-editing-v10": phaseScopedTools,
+  "local-editor-v10": previewRepair,
+  "commercial-editing-v11": previewRepair,
+  "local-editor-v11": installedGraphicsGrammar,
+  "commercial-editing-v12": installedGraphicsGrammar,
+  "local-editor-v12": appendPreviewRepair,
+  "commercial-editing-v13": appendPreviewRepair,
+  "local-editor-v13": semanticEditingGuidance,
+  "commercial-editing-v14": semanticEditingGuidance,
+  "local-editor-v14": derivedCaptionPlan,
+  "commercial-editing-v15": derivedCaptionPlan,
+} satisfies Record<AgentProfile, ProfileDefinition>);
+const hasCapability = (
+  profile: AgentProfile,
+  capability: ProfileCapability,
+): boolean =>
+  (
+    profileCapabilities[profile] as ProfileDefinition | undefined
+  )?.capabilities.includes(capability) ?? false;
 export const usesCompletionPreflight = (profile: AgentProfile) =>
-  [
-    "local-editor-v2",
-    "commercial-editing-v3",
-    "local-editor-v3",
-    "commercial-editing-v4",
-    "local-editor-v4",
-    "commercial-editing-v5",
-    "local-editor-v5",
-    "commercial-editing-v6",
-    "local-editor-v6",
-    "commercial-editing-v7",
-    "local-editor-v7",
-    "commercial-editing-v8",
-    "local-editor-v8",
-    "commercial-editing-v9",
-    "local-editor-v9",
-    "commercial-editing-v10",
-    "local-editor-v10",
-    "commercial-editing-v11",
-    "local-editor-v11",
-    "commercial-editing-v12",
-    "local-editor-v12",
-    "commercial-editing-v13",
-    "local-editor-v13",
-    "commercial-editing-v14",
-    "local-editor-v14",
-    "commercial-editing-v15",
-  ].includes(profile);
+  hasCapability(profile, "completionPreflight");
 export const usesPagedReaders = (profile: AgentProfile) =>
-  [
-    "local-editor-v3",
-    "commercial-editing-v4",
-    "local-editor-v4",
-    "commercial-editing-v5",
-    "local-editor-v5",
-    "commercial-editing-v6",
-    "local-editor-v6",
-    "commercial-editing-v7",
-    "local-editor-v7",
-    "commercial-editing-v8",
-    "local-editor-v8",
-    "commercial-editing-v9",
-    "local-editor-v9",
-    "commercial-editing-v10",
-    "local-editor-v10",
-    "commercial-editing-v11",
-    "local-editor-v11",
-    "commercial-editing-v12",
-    "local-editor-v12",
-    "commercial-editing-v13",
-    "local-editor-v13",
-    "commercial-editing-v14",
-    "local-editor-v14",
-    "commercial-editing-v15",
-  ].includes(profile);
+  hasCapability(profile, "pagedReaders");
 export const usesEfficientReaders = (profile: AgentProfile) =>
-  [
-    "local-editor-v4",
-    "commercial-editing-v5",
-    "local-editor-v5",
-    "commercial-editing-v6",
-    "local-editor-v6",
-    "commercial-editing-v7",
-    "local-editor-v7",
-    "commercial-editing-v8",
-    "local-editor-v8",
-    "commercial-editing-v9",
-    "local-editor-v9",
-    "commercial-editing-v10",
-    "local-editor-v10",
-    "commercial-editing-v11",
-    "local-editor-v11",
-    "commercial-editing-v12",
-    "local-editor-v12",
-    "commercial-editing-v13",
-    "local-editor-v13",
-    "commercial-editing-v14",
-    "local-editor-v14",
-    "commercial-editing-v15",
-  ].includes(profile);
+  hasCapability(profile, "efficientReaders");
 export const usesResolvedEditSchema = (profile: AgentProfile) =>
-  [
-    "local-editor-v5",
-    "commercial-editing-v6",
-    "local-editor-v6",
-    "commercial-editing-v7",
-    "local-editor-v7",
-    "commercial-editing-v8",
-    "local-editor-v8",
-    "commercial-editing-v9",
-    "local-editor-v9",
-    "commercial-editing-v10",
-    "local-editor-v10",
-    "commercial-editing-v11",
-    "local-editor-v11",
-    "commercial-editing-v12",
-    "local-editor-v12",
-    "commercial-editing-v13",
-    "local-editor-v13",
-    "commercial-editing-v14",
-    "local-editor-v14",
-    "commercial-editing-v15",
-  ].includes(profile);
+  hasCapability(profile, "resolvedEditSchema");
 export const usesStagedEditing = (profile: AgentProfile) =>
-  profile === "local-editor-v6" ||
-  profile === "commercial-editing-v7" ||
-  usesAuthoringContracts(profile);
-/** New contracts do not change metadata or repair behavior for accepted 0.2 runs. */
+  hasCapability(profile, "stagedEditing");
 export const usesAuthoringContracts = (profile: AgentProfile) =>
-  profile === "local-editor-v7" ||
-  profile === "commercial-editing-v8" ||
-  usesReviewedEditReferences(profile);
-/** Saved successful edits are proposed without regenerating their command JSON. */
+  hasCapability(profile, "authoringContracts");
 export const usesReviewedEditReferences = (profile: AgentProfile) =>
-  profile === "local-editor-v8" ||
-  profile === "commercial-editing-v9" ||
-  usesPhaseScopedTools(profile);
-/** Tool availability follows the host-owned active stage in new profiles only. */
+  hasCapability(profile, "reviewedEditReferences");
 export const usesPhaseScopedTools = (profile: AgentProfile) =>
-  profile === "local-editor-v9" ||
-  profile === "commercial-editing-v10" ||
-  usesPreviewRepair(profile);
-/** A single preview-bound correction uses existing artifacts and guarded commands. */
+  hasCapability(profile, "phaseScopedTools");
 export const usesPreviewRepair = (profile: AgentProfile) =>
-  profile === "local-editor-v10" ||
-  profile === "commercial-editing-v11" ||
-  usesInstalledGraphicsGrammar(profile);
-/** Discovery preserves the installed engine's refined-value grammar metadata. */
+  hasCapability(profile, "previewRepair");
 export const usesInstalledGraphicsGrammar = (profile: AgentProfile) =>
-  profile === "local-editor-v11" ||
-  profile === "commercial-editing-v12" ||
-  usesAppendPreviewRepair(profile);
-/** Targeted preview repairs expand against the exact owned successful candidate. */
+  hasCapability(profile, "installedGraphicsGrammar");
 export const usesAppendPreviewRepair = (profile: AgentProfile) =>
-  profile === "local-editor-v12" ||
-  profile === "commercial-editing-v13" ||
-  usesSemanticEditingGuidance(profile);
-/** Cue fidelity and explicit speech-display checks are selected before freezing. */
+  hasCapability(profile, "appendPreviewRepair");
 export const usesSemanticEditingGuidance = (profile: AgentProfile) =>
-  profile === "local-editor-v13" ||
-  profile === "commercial-editing-v14" ||
-  usesDerivedCaptionPlan(profile);
-/** Exact caption pair declarations supply their matching completion checks. */
+  hasCapability(profile, "semanticEditingGuidance");
 export const usesDerivedCaptionPlan = (profile: AgentProfile) =>
-  profile === "local-editor-v14" || profile === "commercial-editing-v15";
+  hasCapability(profile, "derivedCaptionPlan");
 export const profileKitVersion = (profile: AgentProfile) =>
-  usesDerivedCaptionPlan(profile)
-    ? AGENT_KIT_VERSION
-    : usesSemanticEditingGuidance(profile)
-      ? "0.2.7"
-      : usesAppendPreviewRepair(profile)
-        ? "0.2.6"
-        : usesInstalledGraphicsGrammar(profile)
-          ? "0.2.5"
-          : usesPreviewRepair(profile)
-            ? "0.2.4"
-            : usesPhaseScopedTools(profile)
-              ? "0.2.3"
-              : usesReviewedEditReferences(profile)
-                ? "0.2.2"
-                : usesAuthoringContracts(profile)
-                  ? "0.2.1"
-                  : usesStagedEditing(profile)
-                    ? "0.2.0"
-                    : usesResolvedEditSchema(profile)
-                      ? "0.1.5"
-                      : usesEfficientReaders(profile)
-                        ? "0.1.4"
-                        : usesPagedReaders(profile)
-                          ? "0.1.3"
-                          : usesCompletionPreflight(profile)
-                            ? "0.1.2"
-                            : "0.1.1";
+  profileCapabilities[profile]?.kitVersion ?? "0.1.1";
 export const profileSkills: Record<
   AgentProfile,
   readonly BuiltinSkillName[] | null

@@ -273,4 +273,121 @@ describe("native completion target paths before declaration", () => {
       ]),
     ).toThrow(/invalid item/);
   });
+  it("allows sourceStartSeconds:0 on image assets while rejecting non-zero image offsets and mismatched speech wordIds before freezing", () => {
+    const document = createVideoProjectDocument({
+      width: 640,
+      height: 360,
+      fps: 30,
+      durationInFrames: 300,
+    });
+    document.assets.photo = {
+      id: "photo",
+      type: "image",
+      source: "local",
+      name: "Photo",
+    };
+    document.assets.speech = {
+      id: "speech",
+      type: "video",
+      source: "local",
+      name: "Speech",
+      durationSeconds: 10,
+    };
+    document.sources.speech = { assetId: "speech", revision: "rev" };
+    document.items.push({
+      id: "clip",
+      name: "Speech",
+      trackId: "visual",
+      node: {
+        id: "clip",
+        type: "video",
+        assetId: "speech",
+        from: 0,
+        duration: 300,
+      },
+    });
+    document.evidence.asr = {
+      id: "asr",
+      sourceAssetId: "speech",
+      sourceRevision: "rev",
+      transcriptHash: "hash",
+      language: "en",
+      text: "uh computer science professor",
+      words: [
+        { id: "w0", text: "uh,", startMs: 1000, endMs: 1200 },
+        { id: "w1", text: "computer", startMs: 1200, endMs: 1500 },
+        { id: "w2", text: "science", startMs: 1500, endMs: 1800 },
+        { id: "w3", text: "professor", startMs: 1800, endMs: 2200 },
+      ],
+    };
+    expect(
+      validateNativeCompletionRequirements(
+        [
+          {
+            id: "images",
+            kind: "asset_sequence",
+            items: [
+              {
+                itemId: "card",
+                assetId: "photo",
+                from: 0,
+                duration: 60,
+                sourceStartSeconds: 0,
+              },
+            ],
+          },
+          {
+            id: "quote",
+            kind: "speech_callout",
+            itemId: "callout",
+            bindingId: "bind",
+            sourceItemId: "clip",
+            evidenceId: "asr",
+            wordIds: ["w1", "w2", "w3"],
+            exactText: "computer science professor",
+            minReadableMs: 1200,
+          },
+        ],
+        document,
+      ),
+    ).toHaveLength(2);
+    expect(() =>
+      validateNativeCompletionRequirements(
+        [
+          {
+            id: "bad-image",
+            kind: "asset_sequence",
+            items: [
+              {
+                itemId: "card",
+                assetId: "photo",
+                from: 0,
+                duration: 60,
+                sourceStartSeconds: 2,
+              },
+            ],
+          },
+        ],
+        document,
+      ),
+    ).toThrow(/Source offsets apply only to video\/audio assets/);
+    expect(() =>
+      validateNativeCompletionRequirements(
+        [
+          {
+            id: "bad-quote",
+            kind: "speech_callout",
+            itemId: "callout",
+            bindingId: "bind",
+            sourceItemId: "clip",
+            evidenceId: "asr",
+            wordIds: ["w0", "w1", "w2"],
+            exactText: "computer science professor",
+            minReadableMs: 1200,
+          },
+        ],
+        document,
+      ),
+    ).toThrow(/wordIds resolve to "uh, computer science".*search_transcript/);
+  });
 });

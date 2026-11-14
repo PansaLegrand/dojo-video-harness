@@ -86,6 +86,7 @@ export type StoredRun = VideoProjectAgentRun & {
   preludeCheckpoints?: StoredAgentLoopCheckpoint[];
   stageProgress?: import("../../../packages/agent-kit/src/stage-progress").EditStageProgress;
   stageRecovery?: { canResume: boolean; canReuseSavedResult: boolean };
+  agentKitVersion?: string;
   agentProfile?:
     | "local-editor-v1"
     | "local-editor-v2"

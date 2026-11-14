@@ -26,6 +26,87 @@ import {
 } from "./artifacts.js";
 import type { EditorStagePorts } from "./staged-tools.js";
 import type { CaptionCueQuery } from "./tools.js";
+/** Repeated prepared output may be omitted only when it is exactly the same
+ * operation. Never infer a different editing command from a validation failure. */
+export function mergePreparedAssemblyCommands(
+  prepared: unknown[],
+  authored: unknown[],
+): unknown[] {
+  const record = (value: unknown): Record<string, any> | null =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, any>)
+      : null;
+  const commands = prepared
+    .map(record)
+    .filter((value): value is Record<string, any> => value !== null);
+  const captionIds = new Set(
+    commands
+      .filter(
+        (command) =>
+          command.type === "addItem" && record(command.item)?.caption,
+      )
+      .map((command) => command.item.id),
+  );
+  const trimIds = new Set(
+    commands
+      .filter((command) => command.type === "trimItem")
+      .map((command) => command.id),
+  );
+  const touched = new Set<string>();
+  const normalized: unknown[] = [];
+  for (const raw of authored) {
+    const command = record(raw);
+    if (!command) {
+      normalized.push(raw);
+      continue;
+    }
+    const target = record(command.target),
+      item = record(command.item);
+    const id =
+      typeof command.id === "string"
+        ? command.id
+        : typeof target?.itemId === "string"
+          ? target.itemId
+          : typeof item?.id === "string"
+            ? item.id
+            : undefined;
+    const duplicateCaption =
+      command.type === "addItem" && item?.caption && captionIds.has(id);
+    const pairLink =
+      command.type === "set" &&
+      target?.kind === "caption" &&
+      captionIds.has(id) &&
+      Array.isArray(command.path) &&
+      command.path[0] === "pairedItemId";
+    const sourceOffset =
+      command.type === "set" &&
+      target?.kind === "node" &&
+      Array.isArray(command.path) &&
+      command.path.length === 1 &&
+      ["videoStartTime", "audioStartTime"].includes(command.path[0]);
+    const preparedTrim = command.type === "trimItem" && trimIds.has(id);
+    if (
+      (duplicateCaption || pairLink || sourceOffset || preparedTrim) &&
+      id !== undefined &&
+      !touched.has(id) &&
+      prepared.some(
+        (value) => completionCanonical(value) === completionCanonical(raw),
+      )
+    )
+      continue;
+    if (duplicateCaption || pairLink)
+      throw new Error(
+        "The command conflicts with prepared captions. Reuse the prepared caption items and pair links; make intended display changes with explicit set commands.",
+      );
+    if (preparedTrim)
+      throw new Error(
+        "The prepared speech source range is frozen. Use moveItem to reposition this clip without changing its source offset; do not replace its prepared trim.",
+      );
+    normalized.push(raw);
+    if (id !== undefined) touched.add(id);
+  }
+  return [...prepared, ...normalized];
+}
 export type StagedEditPolicy = {
   planningModelCalls: number;
   modelCalls: number;
@@ -833,7 +914,12 @@ export async function runEditingStages<T extends StageNativeResult>(input: {
           throw new Error("Editing requires an explicit command array.");
         return {
           ...edit,
-          commands: [...(source?.commands ?? []), ...edit.commands],
+          commands: input.deriveCaptionPlan
+            ? mergePreparedAssemblyCommands(
+                source?.commands ?? [],
+                edit.commands,
+              )
+            : [...(source?.commands ?? []), ...edit.commands],
         };
       },
       ...(input.previewRepair

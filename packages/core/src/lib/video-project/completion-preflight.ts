@@ -42,11 +42,21 @@ import { normalizeCaptionLanguage } from "./caption-pair";
 import { z } from "zod/v3";
 import { nativeAgentTargetSchema } from "./agent-schema";
 
+const normalizedWords = (value: string) =>
+  value
+    .normalize("NFKC")
+    .toLowerCase()
+    .match(/[\p{L}\p{N}]+/gu)
+    ?.join(" ") ?? "";
+
 /** Check declaration paths against the real target schemas before a host freezes
  * them. This validates shape, not current existence/value: future graphics and
- * optional absent fields are legitimate outcomes of the pending edit. */
+ * optional absent fields are legitimate outcomes of the pending edit. A document
+ * opts the current profile into source-aware declaration checks; retained profiles
+ * omit it and keep their original shape/path-only declaration contract. */
 export function validateNativeCompletionRequirements(
   raw: unknown,
+  document?: VideoProjectDocument,
 ): CompletionRequirement[] {
   const requirements = parseCompletionRequirements(raw, {
     assetSequence: true,
@@ -108,6 +118,61 @@ export function validateNativeCompletionRequirements(
     return schema instanceof z.ZodAny || schema instanceof z.ZodUnknown;
   };
   for (const requirement of requirements) {
+    if (document && requirement.kind === "asset_sequence") {
+      for (const expected of requirement.items) {
+        const asset = document.assets[expected.assetId];
+        if (
+          asset &&
+          !["video", "audio"].includes(asset.type) &&
+          expected.sourceStartSeconds !== undefined &&
+          Math.abs(expected.sourceStartSeconds) > 1e-9
+        )
+          throw new Error(
+            `Completion requirement ${requirement.id} placement ${expected.itemId} sets sourceStartSeconds=${expected.sourceStartSeconds} on ${asset.type} asset ${expected.assetId}. Source offsets apply only to video/audio assets; omit sourceStartSeconds (or set 0) for image assets.`,
+          );
+      }
+      continue;
+    }
+    if (
+      document &&
+      (requirement.kind === "speech_callout" ||
+        requirement.kind === "speech_highlight")
+    ) {
+      resolveSpeechAnchor(document, {
+        id: requirement.bindingId,
+        itemId: requirement.itemId,
+        sourceItemId: requirement.sourceItemId,
+        evidenceId: requirement.evidenceId,
+        wordIds: requirement.wordIds,
+      });
+      const sourceWords = document.evidence[requirement.evidenceId]!.words
+        .filter((word) => requirement.wordIds.includes(word.id))
+        .map((word) => word.text)
+        .join(" ");
+      if (requirement.kind === "speech_callout") {
+        if (
+          !normalizedWords(sourceWords) ||
+          normalizedWords(sourceWords) !==
+            normalizedWords(requirement.exactText)
+        )
+          throw new Error(
+            `Completion requirement ${requirement.id} wordIds resolve to ${JSON.stringify(sourceWords)}, which does not match exactText ${JSON.stringify(requirement.exactText)}. Use search_transcript to find the exact contiguous wordIds for that spoken phrase before freezing requirements.`,
+          );
+      } else {
+        let sourceNum: string | undefined, expectedNum: string | undefined;
+        try {
+          sourceNum = normalizeCompletionNumber(sourceWords);
+          expectedNum = normalizeCompletionNumber(requirement.exactText);
+        } catch {
+          sourceNum = undefined;
+        }
+        if (!sourceNum || sourceNum !== expectedNum)
+          throw new Error(
+            `Completion requirement ${requirement.id} wordIds resolve to ${JSON.stringify(sourceWords)}, which does not match numeric exactText ${JSON.stringify(requirement.exactText)}. Use search_transcript to find the exact contiguous numeric wordIds before freezing requirements.`,
+          );
+      }
+      continue;
+    }
     if (
       requirement.kind !== "property" &&
       requirement.kind !== "property_absent"
@@ -187,6 +252,7 @@ function assertRequirement(
   requirement: CompletionRequirement,
   editedSequence = false,
   preciseSpeechDiagnostics = false,
+  validateSourceRequirements = false,
 ) {
   const item = (id: string) => {
     const found = after.items.find((item) => item.id === id);
@@ -206,8 +272,14 @@ function assertRequirement(
           `Asset placement ${expected.itemId} needs its declared media identity and composition timing.`,
         );
       if (expected.sourceStartSeconds !== undefined) {
-        if (!["video", "audio"].includes(candidate.node.type))
-          throw new Error("Source offsets apply to video/audio assets.");
+        if (!["video", "audio"].includes(candidate.node.type)) {
+          if (
+            !validateSourceRequirements || candidate.node.type !== "img" ||
+            Math.abs(expected.sourceStartSeconds) > 1e-9
+          )
+            throw new Error("Source offsets apply to video/audio assets.");
+          continue;
+        }
         const actual =
           candidate.node.type === "video"
             ? (candidate.node.videoStartTime ?? 0)
@@ -398,12 +470,6 @@ function assertRequirement(
     )
       .map((word) => word.text)
       .join(" ");
-    const normalizedWords = (value: string) =>
-      value
-        .normalize("NFKC")
-        .toLowerCase()
-        .match(/[\p{L}\p{N}]+/gu)
-        ?.join(" ") ?? "";
     if (requirement.kind === "speech_callout") {
       if (
         !normalizedWords(sourceWords) ||
@@ -625,7 +691,7 @@ export function checkNativeCompletionRequirements(
   beforeInput: VideoProjectDocument,
   afterInput: VideoProjectDocument,
   raw: unknown,
-  options: { preciseSpeechDiagnostics?: boolean } = {},
+  options: { preciseSpeechDiagnostics?: boolean; validateSourceRequirements?: boolean } = {},
 ): CompletionCheck[] {
   const before = parseVideoProjectDocument(beforeInput),
     after = parseVideoProjectDocument(afterInput),
@@ -641,6 +707,7 @@ export function checkNativeCompletionRequirements(
         requirement,
         requirements.some((value) => value.kind === "asset_sequence"),
         options.preciseSpeechDiagnostics === true,
+        options.validateSourceRequirements === true,
       );
       return {
         id: requirement.id,
@@ -679,7 +746,7 @@ export function checkNativeCompletionRequirements(
 export async function reviewNativeCompletionEdit(
   request: NativeAgentRequest,
   input: { requirements: unknown; edit: unknown },
-  options: { preserveAuthoredPaintOrder?: boolean; preciseSpeechDiagnostics?: boolean } = {},
+  options: { preserveAuthoredPaintOrder?: boolean; preciseSpeechDiagnostics?: boolean; validateSourceRequirements?: boolean } = {},
 ) {
   const requirements = parseCompletionRequirements(input.requirements, {
       assetSequence: true,
@@ -727,7 +794,7 @@ export async function reviewNativeCompletionEdit(
 export async function compileNativeCompletionResponse(
   request: NativeAgentRequest,
   raw: unknown,
-  options: { preserveAuthoredPaintOrder?: boolean; preciseSpeechDiagnostics?: boolean } = {},
+  options: { preserveAuthoredPaintOrder?: boolean; preciseSpeechDiagnostics?: boolean; validateSourceRequirements?: boolean } = {},
 ): Promise<NativeAgentResult> {
   if (typeof raw === "string") {
     if (raw.length > 4_000_000)

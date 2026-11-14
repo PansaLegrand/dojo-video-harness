@@ -1,3 +1,4 @@
+import { savedAgentKitVersion, sourceRequirementValidation } from "../../../packages/agent/src/runtime-build";
 import { randomUUID } from "node:crypto";
 import { parseLoopCheckpoint } from "../../../packages/agent-loop/src/index";
 import { z } from "zod/v3";
@@ -327,6 +328,7 @@ async function candidate(project: Project, run: StoredRun, raw: unknown) {
       },
     },
     {
+      validateSourceRequirements: sourceRequirementValidation(profile, savedAgentKitVersion(run)),
       ...(usesAppendPreviewRepair(profile)
         ? { preserveAuthoredPaintOrder: true }
         : {}),

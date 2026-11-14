@@ -1,3 +1,4 @@
+import { selectAgentKit, sourceRequirementValidation } from "./runtime-build";
 import { sourceAudioTrackPresence } from "../../core/src/lib/video-project/source-audio";
 import { importSvgGraphic } from "@dojo-video-engine/interchange/svg";
 import {
@@ -7,7 +8,6 @@ import {
 } from "@dojo-video-engine/three/schema";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import {
-  createEditorToolset,
   type AgentTool as KitTool,
   type Skill,
   type AgentProfile,
@@ -90,6 +90,7 @@ export function createVideoToolset(
   extraTools: AgentTool[] = [],
   options: {
     profile?: AgentProfile;
+    agentKitVersion?: string;
     initialCompletionState?: CompletionState;
     stages?: EditorStagePorts<NativeAgentResult>;
     previewEvidence?: (
@@ -106,7 +107,9 @@ export function createVideoToolset(
   const audioAssets = Object.values(document.assets).filter((asset) =>
     ["video", "audio"].includes(asset.type),
   );
-  const toolset = createEditorToolset<NativeAgentResult>({
+  const kit = selectAgentKit(options.profile, options.agentKitVersion);
+  const validateSourceRequirements = sourceRequirementValidation(options.profile, options.agentKitVersion);
+  const toolset = kit.createEditorToolset<NativeAgentResult>({
     skills,
     profile: options.profile ?? "local-editor-v1",
     snapshotHash: request.baseHash,
@@ -128,7 +131,7 @@ export function createVideoToolset(
       ...(usesReviewedEditReferences(options.profile ?? "local-editor-v1")
         ? {
             validateRequirements: (raw: unknown) => {
-              validateNativeCompletionRequirements(raw);
+              validateNativeCompletionRequirements(raw, validateSourceRequirements ? document : undefined);
             },
           }
         : {}),
@@ -294,6 +297,7 @@ export function createVideoToolset(
       }),
       reviewEdit: (input) =>
         reviewNativeCompletionEdit(request, input, {
+          ...(validateSourceRequirements ? { validateSourceRequirements: true } : {}),
           ...(usesAppendPreviewRepair(options.profile ?? "local-editor-v1")
             ? { preserveAuthoredPaintOrder: true }
             : {}),
@@ -321,6 +325,7 @@ export function createVideoToolset(
                 completion,
               },
               {
+                ...(validateSourceRequirements ? { validateSourceRequirements: true } : {}),
                 ...(usesAppendPreviewRepair(
                   options.profile ?? "local-editor-v1",
                 )
