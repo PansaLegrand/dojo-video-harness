@@ -344,3 +344,25 @@ calls, validation recovery, prompt sizes and known/unknown usage. Kie-only reque
 and cost reservations are persisted before dispatch. The original large mixed-media
 and audio journeys remain regression cases, not unseen holdouts. Regrading saved
 output cannot claim Apply or recovery steps that the original runner did not reach.
+
+The November 14 bounded live comparison ran 16 cases twice through Kie on clean,
+unchanged candidates. Before (`708aaaf`) recorded 30/32 full workflow passes;
+two semantically correct compound edits were rejected for an implicit-versus-
+explicit zero media offset. Grader v2 keeps the original report and records a
+separate 32/32 saved-candidate semantic regrade, without claiming the Apply steps
+that those failed trials never reached. After (`0872090`) passed **32/32 full
+workflow trials** under that same v2 grader, including normal Apply/replay.
+
+Observed model requests fell **101 to 76**, reported input tokens **1,695,905 to
+1,149,541**, and estimated cost **$1.31563 to $0.89656**. First-pass successes rose
+**21 to 31**; one actual source-offset rejection was corrected within the existing
+allowance. No missing proposals, preservation violations or unknown provider
+outcomes occurred. The shared campaign used **177/256 requests** and estimated
+**$2.21218/$5**, with no new ASR, TTS, generation or Gateway requests.
+
+These are bounded local-harness semantic and recovery results, separate from
+commercial billing, production deployment and open-ended creative acceptance.
+The release candidate also passed **1,028 tests**, full TypeScript/integrity and
+production build checks, and **66 actual browser checks** with scripted provider
+HTTP. See [the dated ledger](readiness-progress.md#november-14-candidate-stabilization-and-repeated-live-evaluation-029)
+for original-versus-regraded outcomes, token/byte distinctions and remaining scope.
