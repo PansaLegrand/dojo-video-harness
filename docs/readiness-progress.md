@@ -1,6 +1,81 @@
 # Readiness execution ledger
 
-Started on 2026-11-01. Last updated on 2026-11-12. The harness plan remains the acceptance contract.
+Started on 2026-11-01. Last updated on 2026-11-14. The harness plan remains the acceptance contract.
+
+## November 14 candidate stabilization and repeated live evaluation, 0.2.9
+
+The development candidate remains `local-editor-v14` with kit **0.2.9**, loop
+**0.2.0** and engine **1.2.3**. Source `0ff2ae4` restores exact saved-build
+selection and release provenance; `1491c03` keeps direct review/proposal editing
+within the existing coordinator and reduces repeated command schemas. It does
+not introduce a second agent framework or require planning for straightforward
+edits. New runs use a build identity; retained runs keep their recorded behavior.
+The package source is `0872090`; later documentation commits do not change it.
+
+The existing evaluation runner now explicitly selects the current profile rather
+than silently exercising the historical v1 host. The 16-case reliability suite
+runs each instruction twice. It covers exact edits, source-offset trims,
+three-source ordering, image placement, existing bilingual text styling,
+follow-ups, restart/questions, locked tracks, missing media/evidence and injected
+project text. Both live runs used Kie `gpt-6-1-sol`, exclusively through the allowed
+Responses endpoint, on clean source that remained unchanged throughout execution.
+No Vercel Gateway, ASR, TTS or media-generation requests were made.
+
+| Measurement | Before, `708aaaf` | After, `0872090` |
+| --- | ---: | ---: |
+| Executed trials | 32 | 32 |
+| Original complete workflow passes | 30 | 32 |
+| Saved candidate semantic passes under grader v2 | 32 | 32 |
+| First-pass workflow successes | 21 | 31 |
+| Workflow successes after validation correction | 9 | 1 |
+| Model requests | 101 | 76 |
+| Reported input tokens | 1,695,905 | 1,149,541 |
+| Reported output tokens | 14,566 | 11,467 |
+| Estimated cost at conservative quoted rates | $1.31563 | $0.89656 |
+| Median / p95 trial latency | 19.9 s / 62.8 s | 17.6 s / 35.7 s |
+
+Both original before failures were the same compound-edit case. The candidate
+preserved the media's implicit zero source start, while the reference trim wrote
+an explicit zero. Grader v2 (`0d55b11`) normalizes only absent source-start defaults
+on valid media nodes. Wrong nonzero offsets, durations, positions, rates, explicit
+null, nested state and unrelated content remain rejected. The unchanged before
+report retains **30/32 workflow passes**; a separate checksum-verified regrade
+records **32/32 saved semantic outcomes**, with zero provider calls and no project
+writes. Those two trials did not reach Apply, and the regrade does not claim they
+did. Both after trials completed the normal Apply/replay path. Before regrading
+and after evaluation used the same grader fingerprint.
+
+After passed the full current-profile reliability gate with **32/32 workflow
+trials**, all critical cases passing, zero missing proposals, zero preservation
+violations and zero unknown provider outcomes. Twelve earlier saved-review marker
+errors disappeared. One genuine invalid source-offset trim was rejected, corrected
+by the model, and then passed. The first title request's message/tool payload fell
+from 102,408 to 74,374 bytes, while its reported input tokens fell from 14,877 to
+14,089. Total token savings also reflect fewer calls; byte and token reductions
+are not interchangeable.
+
+The combined campaign consumed **177 requests and estimated $2.21218**, within
+its shared **256-request / $5** ceiling. Estimates use $0.75 per million input
+and $3 per million output tokens; these are not invoice verification. Every
+request had a persisted reservation before dispatch, and all usage resolved.
+Original failures, reports and the separate regrade are retained under the
+ignored `test-results/agent-evals/` directory. No paid retry replaced a failed
+trial. See [evaluation guide](../evals/agent/RELIABILITY.md) for commands, accounting
+and report semantics.
+
+Local release verification passed **1,028 tests**, full TypeScript, integrity
+checks and the production build, plus **66 actual browser checks** with scripted
+provider HTTP. Browser checks exercise real React, local persistence, preview,
+export, decoded media, dependent speech, Apply and Undo; they are separate from
+the actual-model semantic evaluation. Public CI and package publication remain
+separate release facts until their receipts are recorded.
+
+This bounded two-repeat suite supports the demonstrated editing and recovery
+scope. It does not establish broad creative quality, physical-device breadth,
+commercial billing acceptance or production deployment. The earlier real
+mixed-media and five-minute audio journeys remain regression cases rather than
+unseen holdouts. General local image/video job adapters remain the optional
+LH-R15 follow-up.
 
 ## November 12 derived caption plans, 0.2.8
 

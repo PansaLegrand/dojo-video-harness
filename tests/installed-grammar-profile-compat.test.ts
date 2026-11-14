@@ -552,7 +552,7 @@ it("new derived-caption profiles retain all earlier features and tools while mak
     ["commercial-editing-v14", "commercial-editing-v15"],
   ] as const) {
     expect(usesDerivedCaptionPlan(profile)).toBe(true);
-    expect(profileKitVersion(profile)).toBe("0.2.8");
+    expect(profileKitVersion(profile)).toBe("0.2.9");
     expect(profileSkills[profile]).toEqual(profileSkills[previous]);
     for (const feature of [
       usesCompletionPreflight,
@@ -583,7 +583,7 @@ it("new derived-caption profiles retain all earlier features and tools while mak
       const current = make(profile),
         old = make(previous);
       expect(names(current.tools)).toEqual(names(old.tools));
-      expect(current.inventory.kitVersion).toBe("0.2.8");
+      expect(current.inventory.kitVersion).toBe("0.2.9");
       const prompt = composeToolAgentPrompt({
         profile,
         phase,
@@ -596,7 +596,12 @@ it("new derived-caption profiles retain all earlier features and tools while mak
         "combined supplied plus derived list must fit12",
       );
       expect(prompt).toContain("THAT source cue");
-      expect(prompt).toContain("mode:'append'");
+      if (
+        phase === "planning" &&
+        !names(current.tools).includes("request_project_preview")
+      )
+        expect(prompt).not.toContain("mode:'append'");
+      else expect(prompt).toContain("mode:'append'");
       expect(prompt).not.toContain("32 model calls");
       if (phase === "planning") {
         expect(

@@ -561,3 +561,21 @@ it("cancelled direct edits cannot apply on a later browser poll", async () => {
   ).rejects.toThrow(/no longer actionable/);
   expect((await store.read(p.id)).documentHash).toBe(p.documentHash);
 });
+
+it("persists the new kit build on a local v14 run and keeps it across restart and duplicate start", async () => {
+  const { profileKitVersion } = await import("../packages/agent-kit/src/index");
+  const model: LanguageModel = { identity: "new-build-test", complete: vi.fn(async () => ({ text: "Nothing changed.", calls: [], usage: { inputTokens: 10, outputTokens: 5 } })) };
+  const f = await fixture(model);
+  const host = new AgentService(f.store, model, [], undefined, "review", undefined, "local-editor-v14");
+  const started = await host.start(f.p.id, f.input);
+  const done = await settle(f.store, f.p.id);
+  expect(done.runs[0].agentKitVersion).toBe(profileKitVersion("local-editor-v14"));
+  const reopened = new ProjectStore(f.store.directory);
+  await reopened.init();
+  const restarted = new AgentService(reopened, model, [], undefined, "review", undefined, "local-editor-v14");
+  const priorCalls = vi.mocked(model.complete).mock.calls.length;
+  const repeated = await restarted.start(f.p.id, f.input);
+  expect(repeated.run.id).toBe(started.run.id);
+  expect((await reopened.read(f.p.id)).runs[0].agentKitVersion).toBe("0.2.9");
+  expect(model.complete).toHaveBeenCalledTimes(priorCalls);
+});

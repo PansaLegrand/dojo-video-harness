@@ -128,13 +128,17 @@ function offsetItem(item: EditorItem, frames: number, fps: number): EditorItem {
     const start =
       (node.videoStartTime ?? 0) + (frames / fps) * (node.playbackRate ?? 1);
     if (start < -1e-8)
-      throw new Error("The trim starts before the source media.");
+      throw new Error(
+        "The trim starts before the source media. trimItem shifts videoStartTime by (from - currentFrom)/fps; use moveItem first to reposition a clip on the timeline without shifting its source offset.",
+      );
     node.videoStartTime = Math.max(0, start);
   }
   if (node.type === "audio") {
     const start = (node.audioStartTime ?? 0) + frames / fps;
     if (start < -1e-8)
-      throw new Error("The trim starts before the source media.");
+      throw new Error(
+        "The trim starts before the source media. trimItem shifts audioStartTime by (from - currentFrom)/fps; use moveItem first to reposition a clip on the timeline without shifting its source offset.",
+      );
     node.audioStartTime = Math.max(0, start);
   }
   if (next.caption) {

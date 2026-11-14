@@ -1,9 +1,9 @@
+import { savedAgentKitVersion, selectAgentKit, sourceRequirementValidation } from "../../../packages/agent/src/runtime-build";
 import { runEditingStages as runRetainedSemanticEditingStages } from "@dojo-video/agent-kit-v27";
 import { runEditingStages as runRetainedAppendEditingStages } from "@dojo-video/agent-kit-v26";
 import { runEditingStages as runRetainedGrammarEditingStages } from "@dojo-video/agent-kit-v25";
 import { runEditingStages as runRetainedPreviewEditingStages } from "@dojo-video/agent-kit-v24";
 import {
-  runEditingStages,
   assertEditStageBinding,
   completionHash,
   STAGED_EDIT_POLICY,
@@ -105,9 +105,11 @@ export async function runStagedEditing(input: {
     { modelCalls: 0, toolCalls: 0, inputTokens: 0, outputTokens: 0 },
   );
   const port = createLocalEditStagePort({ ...input, binding });
+  const agentKitVersion = savedAgentKitVersion(run);
+  const validateSourceRequirements = sourceRequirementValidation(run.agentProfile, agentKitVersion);
   const coordinate =
     run.agentProfile === "local-editor-v14"
-      ? runEditingStages
+      ? selectAgentKit(run.agentProfile, agentKitVersion).runEditingStages
       : run.agentProfile === "local-editor-v13"
         ? runRetainedSemanticEditingStages
       : run.agentProfile === "local-editor-v12"
@@ -265,7 +267,7 @@ export async function runStagedEditing(input: {
       )
         ? {
             validateRequirements: (requirements: CompletionRequirement[]) => {
-              validateNativeCompletionRequirements(requirements);
+              validateNativeCompletionRequirements(requirements, validateSourceRequirements ? document : undefined);
             },
           }
         : {}),
@@ -302,7 +304,7 @@ export async function runStagedEditing(input: {
         compileNativeCompletionResponse(input.request, {
           ...(edit as object),
           completion,
-        }, { preserveAuthoredPaintOrder: ["local-editor-v12", "local-editor-v13", "local-editor-v14"].includes(run.agentProfile ?? ""), preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(run.agentProfile ?? "") }),
+        }, { validateSourceRequirements, preserveAuthoredPaintOrder: ["local-editor-v12", "local-editor-v13", "local-editor-v14"].includes(run.agentProfile ?? ""), preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(run.agentProfile ?? "") }),
     },
     invoke: (options) => {
       const { checkpointRef, ...other } = options;

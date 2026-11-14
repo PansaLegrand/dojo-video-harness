@@ -1,3 +1,5 @@
+import { savedAgentKitVersion, sourceRequirementValidation } from "../../../packages/agent/src/runtime-build";
+import { EditStageError as RetainedV28EditStageError } from "@dojo-video/agent-kit-v28";
 import { EditStageError as RetainedV24EditStageError } from "@dojo-video/agent-kit-v24";
 import { EditStageError as RetainedV23EditStageError } from "@dojo-video/agent-kit-v23";
 import { EditStageError as RetainedV21EditStageError } from "@dojo-video/agent-kit-v21";
@@ -73,6 +75,7 @@ import {
   completionHash,
   editStageProgress,
   usesStagedEditing,
+  profileKitVersion,
 } from "../../../packages/agent-kit/src/index";
 import {
   LoopHostInputRequiredError,
@@ -90,13 +93,15 @@ const isStageError = (
   | RetainedV21EditStageError
   | RetainedV22EditStageError
   | RetainedV23EditStageError
-  | RetainedV24EditStageError =>
+  | RetainedV24EditStageError
+  | RetainedV28EditStageError =>
   cause instanceof EditStageError ||
   cause instanceof RetainedEditStageError ||
   cause instanceof RetainedV21EditStageError ||
   cause instanceof RetainedV22EditStageError ||
   cause instanceof RetainedV23EditStageError ||
-  cause instanceof RetainedV24EditStageError;
+  cause instanceof RetainedV24EditStageError ||
+  cause instanceof RetainedV28EditStageError;
 export class AgentService {
   private active = new Map<string, AbortController>();
   private deadlines = new Map<string, ReturnType<typeof setTimeout>>();
@@ -214,6 +219,7 @@ export class AgentService {
         scope,
         reviewBasisRequired: true,
         agentProfile: this.agentProfile,
+        agentKitVersion: profileKitVersion(this.agentProfile),
         ...(this.stagedOptions.browser &&
         ["local-editor-v10", "local-editor-v11", "local-editor-v12", "local-editor-v13", "local-editor-v14"].includes(this.agentProfile)
           ? { browserToolsEnabled: true as const }
@@ -429,6 +435,7 @@ export class AgentService {
       runAgent({
         request,
         profile: run.agentProfile ?? "local-editor-v1",
+        agentKitVersion: savedAgentKitVersion(run),
         model,
         skills: this.skills,
         extraTools: [
@@ -778,7 +785,7 @@ export class AgentService {
         comparison.beforeDocument,
         comparison.afterDocument,
         r.completion.requirements,
-        { preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? "") },
+        { preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? ""), validateSourceRequirements: sourceRequirementValidation(r.agentProfile, savedAgentKitVersion(r)) },
       );
       if (checks.some((check) => !check.passed))
         throw new HttpError(
@@ -854,7 +861,7 @@ export class AgentService {
           comparison.beforeDocument,
           comparison.afterDocument,
           r.completion.requirements,
-          { preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? "") },
+          { preciseSpeechDiagnostics: ["local-editor-v13", "local-editor-v14"].includes(r.agentProfile ?? ""), validateSourceRequirements: sourceRequirementValidation(r.agentProfile, savedAgentKitVersion(r)) },
         );
         if (checks.some((check) => !check.passed))
           throw new HttpError(

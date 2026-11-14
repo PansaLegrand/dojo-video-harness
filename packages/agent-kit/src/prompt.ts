@@ -10,6 +10,7 @@ import {
   usesAppendPreviewRepair,
   usesSemanticEditingGuidance,
   usesDerivedCaptionPlan,
+  usesCompactReviewedProposals,
   type AgentProfile,
 } from "./catalog.js";
 import type { Skill } from "./catalog.js";
@@ -39,28 +40,36 @@ export function composeToolAgentPrompt(input: {
   const phaseScoped =
     input.profile !== undefined && usesPhaseScopedTools(input.profile);
   const phase = input.phase ?? "planning";
+  const compactPlanning =
+    input.profile !== undefined &&
+    usesCompactReviewedProposals(input.profile) &&
+    phase === "planning";
   if (phaseScoped && !["planning", "caption_batch", "assemble"].includes(phase))
     throw new Error("The host supplied an unknown editing phase.");
   const staged =
     input.profile !== undefined && usesStagedEditing(input.profile);
   return [
     input.editingGuide,
-    phaseScoped
-      ? PHASE_EXECUTION_GUIDES[phase]
-      : authoring
-        ? AUTHORING_EXECUTION_GUIDE
-        : staged
-          ? STAGED_EXECUTION_GUIDE
-          : resolved
-            ? EDITING_EXECUTION_GUIDE
-            : efficient
-              ? EFFICIENT_TOOL_GUIDE
-              : TOOL_GUIDE,
+    compactPlanning
+      ? COMPACT_PLANNING_GUIDE
+      : phaseScoped
+        ? PHASE_EXECUTION_GUIDES[phase]
+        : authoring
+          ? AUTHORING_EXECUTION_GUIDE
+          : staged
+            ? STAGED_EXECUTION_GUIDE
+            : resolved
+              ? EDITING_EXECUTION_GUIDE
+              : efficient
+                ? EFFICIENT_TOOL_GUIDE
+                : TOOL_GUIDE,
     ...(input.toolNames.includes("prepare_text_overlay")
       ? [OVERLAY_GUIDE]
       : []),
     CORRECTION_GUIDE,
-    ...(input.profile && usesPreviewRepair(input.profile)
+    ...(input.profile &&
+    usesPreviewRepair(input.profile) &&
+    (!compactPlanning || input.toolNames.includes("request_project_preview"))
       ? [
           usesAppendPreviewRepair(input.profile)
             ? APPEND_PREVIEW_REPAIR_GUIDE
@@ -70,18 +79,22 @@ export function composeToolAgentPrompt(input: {
     ...(input.profile && usesSemanticEditingGuidance(input.profile)
       ? [SEMANTIC_EDITING_GUIDE]
       : []),
-    ...(input.profile && usesDerivedCaptionPlan(input.profile)
+    ...(input.profile &&
+    usesDerivedCaptionPlan(input.profile) &&
+    !compactPlanning
       ? [DERIVED_CAPTION_PLAN_GUIDE]
       : []),
     ...(input.toolNames.includes("review_edit")
       ? [
-          phaseScoped && phase === "assemble"
-            ? ASSEMBLY_COMPLETION_GUIDE
-            : reviewReferences
-              ? REVIEW_REFERENCE_COMPLETION_GUIDE
-              : authoring
-                ? AUTHORING_COMPLETION_GUIDE
-                : "Completion preflight: use review_edit with a small typed requirement for EVERY requested output (max12). The first valid list freezes for this run. Use host cue IDs/prepare_caption_pair for complete bilingual captions; word-bound highlights need readable holdMs and genuine IDs. Repair every failed check, including bounded layout checks, then propose_edit with EXACTLY the successful reviewed commands. A review receipt proves only the declared checklist, never universal semantic or visual quality. A fancy ending must follow the original full duration and reach the final timeline end. Never claim completion after silently dropping a dependent request.",
+          compactPlanning
+            ? COMPACT_COMPLETION_GUIDE
+            : phaseScoped && phase === "assemble"
+              ? ASSEMBLY_COMPLETION_GUIDE
+              : reviewReferences
+                ? REVIEW_REFERENCE_COMPLETION_GUIDE
+                : authoring
+                  ? AUTHORING_COMPLETION_GUIDE
+                  : "Completion preflight: use review_edit with a small typed requirement for EVERY requested output (max12). The first valid list freezes for this run. Use host cue IDs/prepare_caption_pair for complete bilingual captions; word-bound highlights need readable holdMs and genuine IDs. Repair every failed check, including bounded layout checks, then propose_edit with EXACTLY the successful reviewed commands. A review receipt proves only the declared checklist, never universal semantic or visual quality. A fancy ending must follow the original full duration and reach the final timeline end. Never claim completion after silently dropping a dependent request.",
         ]
       : []),
     ...(input.toolNames.includes("list_assets")
@@ -98,6 +111,11 @@ export function composeToolAgentPrompt(input: {
 }
 const STAGED_EXECUTION_GUIDE =
   "Complete the original request using frozen project facts, declared outcomes and the active durable stage. For large or multi-source caption work, call plan_edit_stages with every requested outcome and exact source/range caption settings. The host persists the ordered plan and original overall budget, then continues each stage. In a caption_batch stage read only that exact batch's ranged genuine cue IDs; save_caption_batch persists all of its translations and yields to the host. Completed siblings are immutable reusable artifacts. Do not claim the overall task complete after one batch. read_edit_artifact resolves a specific missing owned artifact; financial/provider/binary data stays in dedicated host ports. During assembly the host includes its prepared command artifacts automatically. Supply only additional or repair commands; commands:[] is valid only when preparedCommands is explicitly present in durableStages. Requirements remain frozen while commands remain repairable. Review the complete expanded candidate and propose the exact successful edit. Current project edits and the original instruction govern earlier decisions. Host-input waits pause this same attempt until its authorized receipt exists; never spend model calls polling. All stages share the original overall allowance; no stage, narration or skill authorizes additional provider work or fallback. For existing manually edited caption text, use read_caption_track and preserve its current-display-v1 IDs/times/pair links; these display values never replace genuine ASR words. Read at most one needed skill before starting preparation and retain explicit incomplete coverage.";
+
+const COMPACT_PLANNING_GUIDE =
+  "Active phase: PLANNING. For an edit whose inputs are available, read only missing facts, review the complete edit, then propose_edit({reviewed:true}). A staged plan is optional. Use plan_edit_stages for dependent work needing caption batches or durable continuation: captionPairs are authoritative declarations: list each distinct-language pair once with exact source/evidence, IDs, colors and range; the host derives matching caption checks. Put other outcomes in requirements; the combined supplied plus derived list must fit12. Monolingual work uses captionPairs:[], not same-language translation. No plan applies edits. Use genuine ranged cue IDs for speech; incomplete requested coverage remains unfinished. Inspect unfamiliar graphics syntax on demand. Use the actual tools, not a plain-text description of an unapplied edit. Ownership, consent, source evidence and the original total budget remain binding.";
+const COMPACT_COMPLETION_GUIDE =
+  "Call review_edit({requirements,edit:{outcome:'proposal',summary,commands:[all intended commands]}}). Declare supported concrete checks for requested outputs; requirements freeze at the first valid review. Use node targets for node duration/from properties. Correct failed commands without weakening the requirements, then review again. On success call propose_edit({reviewed:true}); the host retains and compiles that exact checked edit, so do not repeat command JSON. Any failed/error review clears the previous successful edit. Ordinary edits need no staged plan or preview; inspect available preview evidence when visual uncertainty requires it. A review proves declared checks, not universal semantic or visual quality. Never claim application before the host applies.";
 
 const EFFICIENT_TOOL_GUIDE =
   "Complete the requested editing work using authoritative supplied project metadata, IDs, cue packets and source clocks. Begin preparation once the needed facts are available. Reader calls resolve a specific missing or ambiguous requested fact. Scope all discovery to REQUESTED assets, source ranges and outputs. 'All requested outputs' never requires enumerating an unrelated imported library. The reader snapshotHash argument can be omitted because the host already binds its frozen snapshot; a supplied mismatch is rejected. Use list_assets name/type filters for missing named assets; preserve IDs already supplied instead of looking them up again. Use read_caption_cues only for the requested sourceRange/pages when its needed cues are incomplete. read_skill is optional reference: use at most one relevant skill before beginning preparation, then read another only when a concrete validation gap requires it. Avoid repeated inspection that returns the same facts. Prepare requested caption pairs and exact media placement commands, review_edit the complete candidate, repair failed checks and propose_edit exact successful commands. ask_user is for essential unresolved information. Preserve editing scope, source evidence and paid-operation authorization. Never claim application before the host applies the candidate.";
@@ -136,4 +154,4 @@ const SEMANTIC_EDITING_GUIDE =
   "Before plan_edit_stages or the first review freezes requirements, choose the check that matches the intended displayed content. speech_callout requires genuine word IDs for a verbatim spoken quote, exactText matching that quote, and exactly that displayed text in the checked item. Put explanatory labels, shortened currency and unit labels in separate items with their own item/property checks. speech_highlight uses only recognized numeric word IDs and a supported numeric or percent exactText display. Keep currency, unit and context labels in separate items. Preserve the original genuine word identities and timing. Once requirements freeze, repair the edit against them. For caption translation, EACH cue must retain ALL facts, proper names, numbers, units, reporting periods, time qualifiers, comparisons and negation from THAT source cue. Neighboring context may clarify meaning while every source fact stays in its own cue. Before save_caption_batch, self-check every translated cue against its matching genuine source cue and confirm complete cue-ID coverage. Context never authorizes moving a fact to an adjacent cue or dropping it for brevity.";
 
 const DERIVED_CAPTION_PLAN_GUIDE =
-  "In plan_edit_stages, captionPairs are authoritative declarations for the requested bilingual captions. Declare each pair once with its exact source/evidence, stable item IDs, languages, colors and requested sourceRange. The host validates those pairs and derives any missing caption_pair checks before requirements freeze. A matching explicit pair check is reused. Keep all other requested outcome checks in requirements; supplied checks are preserved, and the combined supplied plus derived list must fit12. Conflicting fields, duplicate IDs and explicit checks for unplanned pairs are rejected. requirements:[] is valid when declared pairs derive at least one check. Both requirements:[] and captionPairs:[] is invalid. After planning, use the host's complete frozen checklist without rewriting or weakening it. Scope, genuine cue coverage, per-cue fidelity and the original allowance remain binding.";
+  "In plan_edit_stages, captionPairs are authoritative declarations for the requested bilingual captions. Declare each pair once with its exact source/evidence, stable item IDs, languages, colors and requested sourceRange. The host validates those pairs and derives any missing caption_pair checks before requirements freeze. A matching explicit pair check is reused. Keep all other requested outcome checks in requirements; supplied checks are preserved, and the combined supplied plus derived list must fit12. Conflicting fields, duplicate IDs and explicit checks for unplanned pairs are rejected. requirements:[] is valid when declared pairs derive at least one check. Both requirements:[] and captionPairs:[] is invalid. Use search_transcript before plan_edit_stages to resolve exact contiguous wordIds for speech_callout or speech_highlight checks, and omit sourceStartSeconds on image assets in asset_sequence. After planning, use the host's complete frozen checklist without rewriting or weakening it. In final assembly with preparedCommands, the host already prepends the prepared caption pairs and source range trims; do not call prepare_caption_pair again, use moveItem (never trimItem) to reposition prepared speech clips on the timeline so their videoStartTime and linked captions move together, use moveItem plus node duration/videoStartTime sets for other clips, and pass holdMs on anchorSpeech rather than setting timing on anchored items. If a tool call returns a validation error, immediately call the tool again with corrected arguments; never reply with plain text describing an unapplied plan or error. Scope, genuine cue coverage, per-cue fidelity and the original allowance remain binding.";

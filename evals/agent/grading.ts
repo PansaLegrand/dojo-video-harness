@@ -1,3 +1,4 @@
+import { canonicalEvaluationDocument } from "./semantic-defaults";
 import {
   canonicalSerialize,
   type VideoProjectDocument,
@@ -54,7 +55,7 @@ export function normalizedResult(
   document: VideoProjectDocument,
   before: VideoProjectDocument,
 ) {
-  const value = structuredClone(document);
+  const value = canonicalEvaluationDocument(document);
   const known = new Set(before.items.map((i) => i.id));
   let next = 0;
   for (const item of value.items)
@@ -88,6 +89,10 @@ export function gradeEdit(
     );
 }
 export type Trial = {
+  profile?: string;
+  firstRequest?: { messagesBytes: number; toolsBytes: number; inputTokens: number | null };
+  rejectedObservations?: number;
+  noProposal?: boolean;
   scenarioId: string;
   repetition: number;
   passed: boolean;
@@ -103,6 +108,7 @@ export type Trial = {
   inputTokens: number | null;
   outputTokens: number | null;
   usageUnavailableCalls?: number;
+  notDispatchedCalls?: number;
   evidence?: { path: string; sha256: string; omitted: number };
   durationMs: number;
   tools: string[];

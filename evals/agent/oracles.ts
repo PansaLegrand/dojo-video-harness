@@ -1,3 +1,4 @@
+import { canonicalEvaluationDocument } from "./semantic-defaults";
 import {
   canonicalSerialize,
   type VideoProjectDocument,
@@ -154,7 +155,7 @@ export function assertIndependentOutcome(
   // Hex color case has no semantic meaning. All other values, including existing
   // IDs, source offsets, ordering and metadata, must match the authored outcome.
   const normalize = (d: VideoProjectDocument) => {
-    const copy = structuredClone(d);
+    const copy = canonicalEvaluationDocument(d);
     for (const x of copy.items)
       if (x.node.style?.color)
         x.node.style.color = x.node.style.color.toLowerCase();

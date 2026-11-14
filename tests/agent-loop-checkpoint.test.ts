@@ -1027,3 +1027,32 @@ it("records an oversize opaque provider reply as a breach without automatically 
   await host.recover();
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+
+it.each([undefined, "0.2.8", "0.2.9"])("restarts a local v14 paid checkpoint with its saved kit build %s", async storedVersion => {
+  const { savedAgentKitVersion } = await import("../packages/agent/src/runtime-build");
+  const f = await seed();
+  await f.store.transaction(f.projectId, p => {
+    p.runs[0].agentProfile = "local-editor-v14";
+    if (storedVersion) p.runs[0].agentKitVersion = storedVersion;
+  });
+  const expected = storedVersion ?? "0.2.8";
+  const model: LanguageModel = { identity: "retained-build-test", complete: vi.fn(async () => ({ text: "The saved source remains unchanged.", calls: [], usage })) };
+  const invoke = async (store: ProjectStore, crash: boolean) => {
+    const run = (await store.read(f.projectId)).runs[0];
+    return runAgent({ request: f.request, profile: run.agentProfile, agentKitVersion: savedAgentKitVersion(run), model, skills: [], signal: new AbortController().signal,
+      stages: { phase: "planning", generalEditing: true, deriveCaptionPlan: true, preparedCommands: false, planEditStages: async () => { throw Error("No plan in answer replay"); }, saveCaptionBatch: async () => { throw Error("No batch in answer replay"); }, readEditArtifact: async () => ({}), resolvePreparedEdit: async value => value },
+      checkpoint: async ({ inventory, skills }) => {
+        expect(inventory.kitVersion).toBe(expected);
+        const port = await createAgentCheckpointPort({ store, projectId: f.projectId, runId: f.runId, request: f.request, history: [], inventory, skills, modelIdentity: model.identity, signal: new AbortController().signal });
+        return { ...port, save: async (next, previous) => { await port.save(next, previous); if (crash && next.phase === "model-returned") throw Error("Crash after paid response"); } };
+      } });
+  };
+  await expect(invoke(f.store, true)).rejects.toThrow(/Crash after paid response/);
+  expect(model.complete).toHaveBeenCalledTimes(1);
+  const reopened = new ProjectStore(f.store.directory);
+  await reopened.init();
+  expect((await invoke(reopened, false)).outcome).toBe("answer");
+  expect((await invoke(reopened, false)).outcome).toBe("answer");
+  expect(model.complete).toHaveBeenCalledTimes(1);
+  expect(savedAgentKitVersion((await reopened.read(f.projectId)).runs[0])).toBe(expected);
+});

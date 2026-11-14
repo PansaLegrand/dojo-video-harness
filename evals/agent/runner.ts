@@ -13,21 +13,34 @@ import type {
   LanguageModel,
   ModelReply,
   ChatMessage,
+  ToolSpec,
 } from "../../packages/agent/src/types";
 import { fixture, setNode, type Scenario, type Turn } from "./scenarios";
 import { gradeEdit, InvariantError, OutcomeError, type Trial } from "./grading";
 import { assertIndependentOutcome } from "./oracles";
+import { EvaluationAdmissionError } from "./request-budget";
 import { createTrialEvidence, redactEvidence } from "./evidence";
 function invariant(value: unknown, message: string): asserts value {
   if (!value) throw new InvariantError(message);
 }
-function referenceReply(turn: Turn, answered: boolean): ModelReply {
+function referenceReply(turn: Turn, answered: boolean, messages: ChatMessage[], specs: ToolSpec[]): ModelReply {
   const question = turn.expected === "question" && !answered;
   if (turn.expected === "advice")
     return {
       text: "This requires a capability, evidence, or permission that is not currently available. No edit was made.",
       calls: [],
     };
+  const context = JSON.parse(String(messages.find(message => message.role === "user")?.content ?? "{}")).durableStages;
+  const edit = { outcome: "proposal", summary: "Requested edit", commands: turn.reference };
+  const reviewed = messages.some(message => {
+    if (message.role !== "tool") return false;
+    try { return JSON.parse(String(message.content)).completionPreflight?.status === "passed"; } catch { return false; }
+  });
+  const staged = specs.some(tool => tool.name === "plan_edit_stages");
+  if (!question && (staged || context)) return {
+    text: "", calls: [{ id: randomUUID(), name: !context ? "plan_edit_stages" : reviewed ? "propose_edit" : "review_edit",
+      arguments: JSON.stringify(!context ? { requirements: [{ id: "retain-source", kind: "item_present", itemId: "clip" }], captionPairs: [] } : reviewed ? edit : { edit }) }],
+  };
   return {
     text: "",
     calls: [
@@ -63,6 +76,7 @@ export async function runScenario(
     onMessages?: (messages: ChatMessage[], turnIndex: number) => void;
     evidenceDir?: string;
     redactValues?: string[];
+    profile?: ConstructorParameters<typeof AgentService>[6];
   } = {},
 ): Promise<Trial> {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-agent-eval-"));
@@ -73,8 +87,13 @@ export async function runScenario(
     inputTokens = 0,
     outputTokens = 0;
   const tools: string[] = [];
-  let usageUnavailableCalls = 0;
-  let providerFailed = false;
+  let usageUnavailableCalls = 0, notDispatchedCalls = 0;
+  let providerFailed = false, noProposal = false;
+  let firstRequest: { messagesBytes: number; toolsBytes: number; inputTokens: number | null } | undefined;
+  const rejectedObservations = new Set<string>();
+  const profile = options.profile ?? "local-editor-v1";
+  const assertOutcome = (before: ReturnType<typeof fixture>, after: ReturnType<typeof fixture>, id: string, turn = 0) =>
+    scenario.assertOutcome && id === scenario.id ? scenario.assertOutcome(before, after, turn) : assertIndependentOutcome(before, after, id, turn);
   let finalTrial: Trial | undefined;
   const evidence = createTrialEvidence(
     options.evidenceDir,
@@ -82,8 +101,16 @@ export async function runScenario(
   );
   const started = Date.now();
   const model: LanguageModel = {
-    async complete(messages, specs, signal) {
+    identity: options.model?.identity ?? "reference-fixture-v1",
+    async complete(messages, specs, signal, limits) {
       calls++;
+      if (!firstRequest) firstRequest = { messagesBytes: Buffer.byteLength(JSON.stringify(messages)), toolsBytes: Buffer.byteLength(JSON.stringify(specs)), inputTokens: null };
+      for (const message of messages) if (message.role === "tool") {
+        try {
+          const result = JSON.parse(String(message.content));
+          if (result.error || result.completionPreflight?.status === "failed") rejectedObservations.add(message.tool_call_id ?? String(message.content));
+        } catch { /* Non-JSON observations are not presumed failures. */ }
+      }
       options.onMessages?.(messages, turnIndex);
       evidence.record("model.request", {
         turnIndex,
@@ -94,13 +121,18 @@ export async function runScenario(
       let reply: ModelReply;
       try {
         reply = options.model
-          ? await options.model.complete(messages, specs, signal)
-          : referenceReply(scenario.turns[turnIndex], answered);
+          ? await options.model.complete(messages, specs, signal, limits)
+          : referenceReply(scenario.turns[turnIndex], answered, messages, specs);
       } catch (error) {
-        providerFailed = true;
-        if (options.model) usageUnavailableCalls++;
+        if (error instanceof EvaluationAdmissionError) notDispatchedCalls++;
+        else {
+          providerFailed = true;
+          if (options.model) usageUnavailableCalls++;
+        }
         throw error;
       }
+      if (!options.model) reply.usage = { inputTokens: 0, outputTokens: 0 };
+      if (calls === 1) firstRequest.inputTokens = reply.usage?.inputTokens ?? null;
       if (options.model && !reply.usage) usageUnavailableCalls++;
       evidence.record("model.response", {
         turnIndex,
@@ -131,14 +163,14 @@ export async function runScenario(
         };
       }),
   );
-  let agent = new AgentService(store, model, skills);
+  let agent = new AgentService(store, model, skills, undefined, "review", undefined, profile);
   let projectId: string | undefined;
   let activeRun: string | undefined;
   async function restart() {
     store = new ProjectStore(root);
     await store.init();
     await store.recoverInterrupted();
-    agent = new AgentService(store, model, skills);
+    agent = new AgentService(store, model, skills, undefined, "review", undefined, profile);
   }
   async function settle(id: string): Promise<StoredRun> {
     const deadline = Date.now() + 185_000;
@@ -164,7 +196,7 @@ export async function runScenario(
     const seed = await store.create("Agent milestone fixture");
     projectId = seed.id;
     await store.transaction(projectId, (p) =>
-      commitDocument(p, fixture(scenario.fixture), false),
+      commitDocument(p, scenario.document ?? fixture(scenario.fixture), false),
     );
     for (turnIndex = 0; turnIndex < scenario.turns.length; turnIndex++) {
       const turn = scenario.turns[turnIndex];
@@ -235,10 +267,12 @@ export async function runScenario(
           child.run.id === replay.run.id,
           "Answer replay created another continuation.",
         );
-        invariant(
-          child.run.clarificationParentRunId === activeRun,
-          "Answer lost its parent question.",
-        );
+        if (child.run.id === activeRun) {
+          const saved = await store.read(projectId);
+          invariant(saved.runs.find(run => run.id === activeRun)?.answers?.[reply.operationId]?.childId === activeRun,
+            "Same-run answer lost its durable original-question receipt.");
+          invariant(saved.runs.length === before.runs.length + 1, "Same-run answer created another funded run.");
+        } else invariant(child.run.clarificationParentRunId === activeRun, "Answer lost its parent question.");
         activeRun = child.run.id;
         run = await settle(activeRun);
         evidence.record("question.continuation", { turnIndex, run });
@@ -257,7 +291,7 @@ export async function runScenario(
           run.proposal === null,
           "Unsupported request produced an edit proposal.",
         );
-        assertIndependentOutcome(
+        assertOutcome(
           before.document,
           (await store.read(projectId)).document,
           scenario.id,
@@ -265,6 +299,7 @@ export async function runScenario(
         );
         continue;
       }
+      noProposal ||= !run.proposal;
       assert.equal(
         run.status,
         "awaiting_review",
@@ -272,13 +307,13 @@ export async function runScenario(
       );
       const comparison = await agent.review(projectId, activeRun);
       evidence.record("comparison", { turnIndex, comparison });
-      assertIndependentOutcome(
+      gradeEdit(before.document, comparison.afterDocument, turn.reference);
+      assertOutcome(
         before.document,
         comparison.afterDocument,
         scenario.id,
         turnIndex,
       );
-      gradeEdit(before.document, comparison.afterDocument, turn.reference);
       if (turn.reject) {
         await agent.cancel(projectId, activeRun);
         invariant(
@@ -308,13 +343,13 @@ export async function runScenario(
         hash: saved.documentHash,
         document: saved.document,
       });
-      assertIndependentOutcome(
+      gradeEdit(before.document, saved.document, turn.reference);
+      assertOutcome(
         before.document,
         saved.document,
         scenario.id,
         turnIndex,
       );
-      gradeEdit(before.document, saved.document, turn.reference);
     }
     if (scenario.manualThenUndo) {
       const p = await store.read(projectId);
@@ -340,26 +375,32 @@ export async function runScenario(
       gradeEdit(beforeLast!, (await store.read(projectId)).document, [
         setNode("title", ["text"], "Manual wording retained"),
       ]);
-      assertIndependentOutcome(
+      assertOutcome(
         beforeLast!,
         (await store.read(projectId)).document,
         "manual-wording-after-undo",
       );
     }
     finalTrial = {
+      profile, firstRequest, rejectedObservations: rejectedObservations.size, noProposal,
       scenarioId: scenario.id,
       repetition: options.repetition ?? 1,
       passed: true,
       calls,
       inputTokens: usageUnavailableCalls ? null : inputTokens,
       outputTokens: usageUnavailableCalls ? null : outputTokens,
-      usageUnavailableCalls,
+      usageUnavailableCalls, notDispatchedCalls,
       durationMs: Date.now() - started,
       tools,
     };
     return finalTrial;
   } catch (error) {
+    if (projectId && activeRun && scenario.turns[turnIndex]?.expected !== "advice") {
+      const saved = await store.read(projectId).catch(() => null);
+      noProposal ||= !saved?.runs.find(run => run.id === activeRun)?.proposal;
+    }
     finalTrial = {
+      profile, firstRequest, rejectedObservations: rejectedObservations.size, noProposal,
       scenarioId: scenario.id,
       repetition: options.repetition ?? 1,
       passed: false,
@@ -380,7 +421,7 @@ export async function runScenario(
       calls,
       inputTokens: usageUnavailableCalls ? null : inputTokens,
       outputTokens: usageUnavailableCalls ? null : outputTokens,
-      usageUnavailableCalls,
+      usageUnavailableCalls, notDispatchedCalls,
       durationMs: Date.now() - started,
       tools,
     };
